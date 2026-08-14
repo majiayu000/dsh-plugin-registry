@@ -74,6 +74,7 @@
 
 <script type="module">
 await import('/assets/i18n.js');
+const { validateBundleManifest } = await import('/assets/bundle-manifest.js');
 (function () {
   'use strict';
   function parseRepo(value) {
@@ -93,11 +94,14 @@ await import('/assets/i18n.js');
       var data = await repoResponse.json();
       setCheck('repo', true); setCheck('topic', (data.topics || []).indexOf('dsh-plugin') >= 0); setCheck('status', !data.archived && !data.fork);
       var packageResponse = await fetch('https://api.github.com/repos/' + repo + '/contents/package.json', { headers: { accept: 'application/vnd.github.raw+json' } });
-      var validBundle = false;
-      if (packageResponse.ok) { var pkg = JSON.parse(await packageResponse.text()); validBundle = Boolean(pkg.dsh && pkg.dsh.bundle && typeof pkg.dsh.bundle === 'object'); }
+      var bundleCheck = { valid: false, reason: 'package.json 不存在。' };
+      if (packageResponse.ok) bundleCheck = validateBundleManifest(await packageResponse.text());
+      var validBundle = bundleCheck.valid;
       setCheck('bundle', validBundle);
       var ready = (data.topics || []).indexOf('dsh-plugin') >= 0 && !data.archived && !data.fork && validBundle;
-      message.textContent = ready ? '检查通过。这个仓库会在下一轮同步中被自动发现。' : '还有项目未通过，请按上面的契约修复后重新检查。';
+      message.textContent = ready
+        ? '检查通过。这个仓库会在下一轮同步中被自动发现。'
+        : (!validBundle ? 'Manifest 未通过：' + bundleCheck.reason : '还有项目未通过，请按上面的契约修复后重新检查。');
     } catch (error) { message.textContent = '检查失败：' + error.message; }
     finally { this.disabled = false; this.textContent = '重新检查'; }
   });

@@ -2,8 +2,12 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { applyGovernance, hasBundleManifest, inferCategory, mergePlugins, normalizeCurated, normalizeDiscovered, validateHealth } from '../scripts/registry-core.mjs'
 
-test('only a dsh.bundle object is installable', () => {
+test('only a dsh.bundle with a safe relative patch is installable', () => {
   assert.equal(hasBundleManifest('{"dsh":{"bundle":{"patch":"./cordis.patch.yml"}}}'), true)
+  assert.equal(hasBundleManifest('{"dsh":{"bundle":{}}}'), false)
+  assert.equal(hasBundleManifest('{"dsh":{"bundle":[]}}'), false)
+  assert.equal(hasBundleManifest('{"dsh":{"bundle":{"patch":"../outside.yml"}}}'), false)
+  assert.equal(hasBundleManifest('{"dsh":{"bundle":{"patch":"/absolute.yml"}}}'), false)
   assert.equal(hasBundleManifest('{"dsh":{"client":{"platform":"web"}}}'), false)
   assert.equal(hasBundleManifest('not json'), false)
 })

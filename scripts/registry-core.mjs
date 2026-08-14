@@ -1,3 +1,5 @@
+import { validateBundleManifest } from '../assets/bundle-manifest.js'
+
 const CATEGORY_RULES = [
   ['theme', /theme|skin|appearance|pixel|主题|皮肤/i],
   ['ui', /\bui\b|sidebar|desktop|tui|webview|界面|侧边栏|桌面/i],
@@ -19,13 +21,7 @@ export function inferCategory(repository) {
 }
 
 export function hasBundleManifest(text) {
-  if (!text) return false
-  try {
-    const pkg = JSON.parse(text)
-    return Boolean(pkg?.dsh?.bundle && typeof pkg.dsh.bundle === 'object')
-  } catch {
-    return false
-  }
+  return validateBundleManifest(text).valid
 }
 
 export function repoKey(owner, name) {
