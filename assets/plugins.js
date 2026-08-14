@@ -1,4 +1,6 @@
 /* Harness Registry — real registry loader and shared render helpers */
+import { writeClipboardText } from './clipboard.js'
+
 (function () {
   'use strict';
 
@@ -55,13 +57,19 @@
 
   function copyText(button, command) {
     var original = button.textContent;
-    var done = function () {
+    button.setAttribute('aria-live', 'polite');
+    writeClipboardText(command).then(function () {
       button.textContent = locale() === 'en' ? 'Copied ✓' : '已复制 ✓';
       button.classList.add('done');
-      setTimeout(function () { button.textContent = original; button.classList.remove('done'); }, 1500);
-    };
-    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(command).then(done, done);
-    else done();
+    }).catch(function () {
+      button.textContent = locale() === 'en' ? 'Copy failed' : '复制失败';
+      button.classList.add('error');
+    }).finally(function () {
+      setTimeout(function () {
+        button.textContent = original;
+        button.classList.remove('done', 'error');
+      }, 1500);
+    });
   }
 
   function installBtn(plugin) {
