@@ -1,8 +1,26 @@
 {
   "name": "dsh-plugin-registry-ui",
   "version": "0.1.0",
+  "description": "Searchable DeepSeek Harness plugin registry with curated listings and manifest-verified GitHub discovery.",
   "private": true,
   "type": "module",
+  "homepage": "https://github.com/majiayu000/dsh-plugin#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/majiayu000/dsh-plugin.git"
+  },
+  "bugs": {
+    "url": "https://github.com/majiayu000/dsh-plugin/issues"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh-plugin",
+    "plugin-registry",
+    "plugin-discovery"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",

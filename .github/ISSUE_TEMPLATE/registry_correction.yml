@@ -1,0 +1,34 @@
+name: Registry correction
+description: Report incorrect, stale, duplicate, or unsafe public plugin metadata.
+title: "[Registry]: "
+labels: [registry]
+body:
+  - type: input
+    id: repository
+    attributes:
+      label: Plugin repository
+      placeholder: https://github.com/owner/repository
+    validations:
+      required: true
+  - type: dropdown
+    id: correction
+    attributes:
+      label: Correction type
+      options:
+        - Incorrect metadata
+        - Missing eligible plugin
+        - Duplicate entry
+        - Ineligible or archived repository
+        - Potentially malicious repository
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Link to public source evidence and describe the expected correction.
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: For exploitable vulnerabilities or leaked credentials, stop and use private vulnerability reporting instead.

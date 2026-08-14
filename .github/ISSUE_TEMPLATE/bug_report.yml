@@ -1,0 +1,31 @@
+name: Bug report
+description: Report a reproducible problem in the registry UI or tooling.
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Describe the observed behavior and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction
+      description: Include the page, commands, input, and minimal steps needed to reproduce it.
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: Browser, OS, Node.js version, or commit
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Security check
+      options:
+        - label: This report does not contain credentials or an undisclosed vulnerability.
+          required: true
