@@ -5,7 +5,7 @@ This record follows the ShipWise discoverability checklist. Public GitHub settin
 ## Identity and keywords
 
 - Canonical product name: Harness Registry
-- Repository slug: `majiayu000/dsh-plugin`
+- Repository slug: `majiayu000/dsh-plugin-registry`
 - Archetype: `registry-dataset`
 - Primary keyword: `DeepSeek Harness plugin registry`
 - Secondary keywords: `DSH plugin`, `plugin discovery`, `plugin directory`, `dsh.bundle`, `manifest verification`

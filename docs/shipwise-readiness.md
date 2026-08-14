@@ -6,7 +6,7 @@
 - Version: 0.1.0
 - Archetype: `registry-dataset`
 - Goal type: adoption and feedback, not yet confirmed by the repository owner
-- Repository: <https://github.com/majiayu000/dsh-plugin>
+- Repository: <https://github.com/majiayu000/dsh-plugin-registry>
 - Verification date: 2026-08-15
 - Recommendation: improve before launch
 

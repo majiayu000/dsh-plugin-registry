@@ -4,7 +4,7 @@
 
 Do not disclose exploitable vulnerabilities, leaked credentials, or malicious registry payloads in a public issue.
 
-Use GitHub's [private vulnerability reporting](https://github.com/majiayu000/dsh-plugin/security/advisories/new) to send reproduction steps, affected files or URLs, impact, and any suggested mitigation. For ordinary bugs or incorrect public plugin metadata, use the public [issue tracker](https://github.com/majiayu000/dsh-plugin/issues).
+Use GitHub's [private vulnerability reporting](https://github.com/majiayu000/dsh-plugin-registry/security/advisories/new) to send reproduction steps, affected files or URLs, impact, and any suggested mitigation. For ordinary bugs or incorrect public plugin metadata, use the public [issue tracker](https://github.com/majiayu000/dsh-plugin-registry/issues).
 
 ## Scope
 

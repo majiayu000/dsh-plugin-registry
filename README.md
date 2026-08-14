@@ -11,7 +11,7 @@ Harness Registry is a searchable DeepSeek Harness plugin registry for DSH users 
 Requirements: Node.js 22 and npm.
 
 ```bash
-git clone https://github.com/majiayu000/dsh-plugin.git
+git clone https://github.com/majiayu000/dsh-plugin-registry.git
 cd dsh-plugin
 npm ci
 npm run dev
@@ -99,8 +99,8 @@ Do not commit tokens or generated credentials. See [CONTRIBUTING.md](CONTRIBUTIN
 
 ## Support and security
 
-- Bugs, data corrections, and feature requests: [GitHub Issues](https://github.com/majiayu000/dsh-plugin/issues)
-- Sensitive vulnerabilities: [private vulnerability report](https://github.com/majiayu000/dsh-plugin/security/advisories/new)
+- Bugs, data corrections, and feature requests: [GitHub Issues](https://github.com/majiayu000/dsh-plugin-registry/issues)
+- Sensitive vulnerabilities: [private vulnerability report](https://github.com/majiayu000/dsh-plugin-registry/security/advisories/new)
 - Security policy: [SECURITY.md](SECURITY.md)
 
 ## License
