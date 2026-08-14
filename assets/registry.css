@@ -552,7 +552,12 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
   .stepper { flex-direction: column; }
   .step { border-right: 0; border-bottom: 1px solid var(--border-soft); }
   .step:last-child { border-bottom: 0; }
-  .nav { display: none; }
+  .topbar-in { height: auto; min-height: 60px; flex-wrap: wrap; gap: 8px 18px; padding-top: 10px; padding-bottom: 8px; }
+  .nav {
+    display: flex; order: 3; width: 100%; margin-left: 0;
+    overflow-x: auto; overscroll-behavior-inline: contain; scrollbar-width: thin;
+  }
+  .nav a { flex: 0 0 auto; }
 }
 @media (max-width: 600px) {
   .wrap { padding: 0 16px; }
