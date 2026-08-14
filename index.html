@@ -105,6 +105,7 @@
 <script type="module">
 await import('/assets/i18n.js');
 await import('/assets/plugins.js');
+const { createPluginSearchIndex, filterPluginSearchIndex } = await import('/assets/registry-search.js');
 (async function () {
   'use strict';
   var state = { q: '', cat: 'all', curated: false, sort: 'stars', limit: 60 };
@@ -116,6 +117,10 @@ await import('/assets/plugins.js');
     list.innerHTML = '<div class="prow-empty">插件数据暂时无法加载，请稍后重试。</div>';
     return;
   }
+
+  var searchIndex = createPluginSearchIndex(HR.PLUGINS, function (plugin) {
+    return plugin.id + ' ' + HR.description(plugin) + ' ' + plugin.owner + ' ' + HR.categoryName(plugin.category) + ' ' + (plugin.topics || []).join(' ');
+  });
 
   /* 统计条 */
   var totalStars = HR.PLUGINS.reduce(function (sum, plugin) { return sum + plugin.stars; }, 0);
@@ -160,14 +165,10 @@ await import('/assets/plugins.js');
 
   /* 列表渲染 + 筛选 */
   function apply() {
-    var rows = HR.PLUGINS.filter(function (p) {
-      if (state.cat !== 'all' && p.category !== state.cat) return false;
-      if (state.curated && p.source !== 'curated') return false;
-      if (state.q) {
-        var hay = (p.id + ' ' + HR.description(p) + ' ' + p.owner + ' ' + HR.categoryName(p.category) + ' ' + (p.topics || []).join(' ')).toLowerCase();
-        if (hay.indexOf(state.q.toLowerCase()) < 0) return false;
-      }
-      return true;
+    var rows = filterPluginSearchIndex(searchIndex, {
+      category: state.cat,
+      curatedOnly: state.curated,
+      query: state.q,
     });
     rows.sort(function (a, b) {
       if (state.sort === 'forks') return b.forks - a.forks;
