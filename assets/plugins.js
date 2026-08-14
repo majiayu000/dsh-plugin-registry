@@ -102,7 +102,7 @@ import { writeClipboardText } from './clipboard.js'
       '<span class="prow-av"></span>' +
       '<div class="prow-main">' +
         '<div class="prow-name"><a href="' + detailHref(plugin) + '">' + escapeHtml(plugin.name) + '</a>' + sourcePill(plugin) + '</div>' +
-        '<div class="prow-desc">' + escapeHtml(description(plugin) || (locale() === 'en' ? 'No description provided.' : '作者暂未提供简介。')) + '</div>' +
+        '<div class="prow-desc">' + escapeHtml(description(plugin) || (locale() === 'en' ? 'No description provided. Review the GitHub source before installing.' : '作者未提供简介；安装前请先查看 GitHub 源码。')) + '</div>' +
       '</div>' +
       '<div class="prow-meta"><b>@' + escapeHtml(plugin.owner) + '</b><br>' + escapeHtml(categoryName(plugin.category)) + '</div>' +
       '<div class="prow-stars">' + STAR + '<b>' + fmtNumber(plugin.stars) + '</b><small>Stars</small></div>' +

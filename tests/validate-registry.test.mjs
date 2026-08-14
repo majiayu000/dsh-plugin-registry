@@ -7,6 +7,8 @@ function registry(plugin = {}) {
     schemaVersion: 1,
     generatedAt: '2026-08-14T00:00:00.000Z',
     categories: { tools: { zh: '工具', en: 'Tools' } },
+    stats: {},
+    sources: {},
     plugins: [{
       id: 'acme/plugin', name: 'plugin', owner: 'acme', url: 'https://github.com/acme/plugin',
       description: { zh: '描述', en: 'Description' }, category: 'tools', stars: 1, forks: 0,
@@ -18,6 +20,15 @@ function registry(plugin = {}) {
 
 test('valid registry contract passes', () => {
   assert.deepEqual(validateRegistry(registry()), { errors: [], warnings: [] })
+})
+
+test('contract requires every schema-level registry section', () => {
+  const document = registry()
+  delete document.stats
+  delete document.sources
+  const result = validateRegistry(document)
+  assert.match(result.errors.join(' '), /stats must be an object/)
+  assert.match(result.errors.join(' '), /sources must be an object/)
 })
 
 test('contract rejects mismatched identity and trust', () => {

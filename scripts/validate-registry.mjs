@@ -22,6 +22,9 @@ export function validateRegistry(registry) {
 
   if (registry?.schemaVersion !== 1) errors.push('schemaVersion must be 1.')
   if (!registry?.generatedAt || Number.isNaN(Date.parse(registry.generatedAt))) errors.push('generatedAt must be a valid ISO date.')
+  if (!registry?.categories || typeof registry.categories !== 'object' || Array.isArray(registry.categories)) errors.push('categories must be an object.')
+  if (!registry?.stats || typeof registry.stats !== 'object' || Array.isArray(registry.stats)) errors.push('stats must be an object.')
+  if (!registry?.sources || typeof registry.sources !== 'object' || Array.isArray(registry.sources)) errors.push('sources must be an object.')
   if (!Array.isArray(registry?.plugins)) return { errors: [...errors, 'plugins must be an array.'], warnings }
 
   registry.plugins.forEach((plugin, index) => {
@@ -65,7 +68,7 @@ async function main() {
   console.log(`Registry contract valid: ${registry.plugins.length} plugins, ${result.warnings.length} warnings.`)
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main().catch(error => {
     console.error(error.message)
     process.exitCode = 1
