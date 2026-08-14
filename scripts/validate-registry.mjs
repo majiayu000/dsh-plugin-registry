@@ -4,6 +4,14 @@ import { resolve } from 'node:path'
 import { repoKey } from './registry-core.mjs'
 
 const INSTALL_PREFIX = 'dsh plugin --profile web add '
+const GITHUB_OWNER_PATTERN = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/
+const GITHUB_REPOSITORY_PATTERN = /^[A-Za-z0-9._-]{1,100}$/
+
+function parseGithubRepositoryUrl(value) {
+  const match = String(value || '').match(/^https:\/\/github\.com\/([^/]+)\/([^/?#]+)(?:\/tree\/[^/]+\/.+)?\/?$/)
+  if (!match || !GITHUB_OWNER_PATTERN.test(match[1]) || !GITHUB_REPOSITORY_PATTERN.test(match[2])) return null
+  return { owner: match[1], repository: match[2] }
+}
 
 export function validateRegistry(registry) {
   const errors = []
@@ -21,14 +29,14 @@ export function validateRegistry(registry) {
     if (!String(plugin?.name || '').trim()) errors.push(`${label}.name is required.`)
     if (!String(plugin?.owner || '').trim()) errors.push(`${label}.owner is required.`)
     if (!plugin?.description || typeof plugin.description.zh !== 'string' || typeof plugin.description.en !== 'string') errors.push(`${label}.description must contain zh and en strings.`)
-    const urlMatch = String(plugin?.url || '').match(/^https:\/\/github\.com\/([^/]+)\/([^/?#]+)(?:\/tree\/[^/]+\/.+)?\/?$/)
-    const key = urlMatch ? repoKey(urlMatch[1], urlMatch[2]) : ''
+    const repositoryUrl = parseGithubRepositoryUrl(plugin?.url)
+    const key = repositoryUrl ? repoKey(repositoryUrl.owner, repositoryUrl.repository) : ''
     const idRepository = String(plugin?.id || '').split('#')[0].toLowerCase()
     if (!plugin?.id || idRepository !== key) errors.push(`${label}.id must match the GitHub repository URL.`)
-    if (urlMatch && String(plugin?.owner).toLowerCase() !== urlMatch[1].toLowerCase()) errors.push(`${label}.owner must match the GitHub repository URL.`)
+    if (repositoryUrl && String(plugin?.owner).toLowerCase() !== repositoryUrl.owner.toLowerCase()) errors.push(`${label}.owner must match the GitHub repository URL.`)
     if (ids.has(String(plugin?.id).toLowerCase())) errors.push(`${label}.id is duplicated: ${plugin.id}.`)
     ids.add(String(plugin?.id).toLowerCase())
-    if (!urlMatch) errors.push(`${label}.url must be a GitHub repository URL.`)
+    if (!repositoryUrl) errors.push(`${label}.url must be a valid GitHub repository URL.`)
     if (key && repositories.has(key) && !String(plugin.id).includes('#')) errors.push(`${label} duplicates repository ${key}.`)
     if (key) repositories.add(key)
     if (!/^https:\/\//.test(plugin?.icon || '')) errors.push(`${label}.icon must be an HTTPS URL.`)

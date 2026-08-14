@@ -153,7 +153,7 @@ const { createPluginSearchIndex, filterPluginSearchIndex } = await import('/asse
     a.href = HR.detailHref(p);
     a.innerHTML =
       '<div class="fcard-top"><span class="fcard-av"></span><div>' +
-        '<div class="fcard-name">' + p.id + '</div>' +
+        '<div class="fcard-name">' + HR.escapeHtml(p.id) + '</div>' +
         '<div style="font:12px var(--font-mono);color:var(--faint)">@' + HR.escapeHtml(p.owner) + ' · ' + (window.HRI18N.locale === 'en-US' ? 'Curated' : '精选') + '</div>' +
       '</div></div>' +
       '<p class="fcard-desc">' + HR.escapeHtml(HR.description(p)) + '</p>' +

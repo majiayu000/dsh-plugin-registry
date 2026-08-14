@@ -39,3 +39,14 @@ test('duplicate repositories and malformed install commands fail', () => {
   assert.match(result.errors.join(' '), /install is invalid/)
   assert.match(result.errors.join(' '), /duplicates repository/)
 })
+
+test('GitHub identities reject markup before registry data reaches HTML renderers', () => {
+  const owner = '<img src=x onerror=alert(1)>'
+  const result = validateRegistry(registry({
+    id: `${owner}/plugin`,
+    owner,
+    url: `https://github.com/${owner}/plugin`,
+  }))
+
+  assert.match(result.errors.join(' '), /valid GitHub repository URL/)
+})
