@@ -59,13 +59,22 @@
 <script type="module">
 await import('/assets/i18n.js');
 await import('/assets/plugins.js');
+const { findPluginById } = await import('/assets/plugin-detail.js');
 (async function () {
   'use strict';
   try { await HR.ready; } catch (error) { document.getElementById('plugin-name').textContent = '插件数据加载失败'; return; }
   var requested = new URLSearchParams(location.search).get('plugin');
-  var plugin = HR.PLUGINS.find(function (item) { return item.id.toLowerCase() === String(requested || '').toLowerCase(); }) || HR.PLUGINS[0];
-  if (!plugin) { document.getElementById('plugin-name').textContent = '没有找到这个插件'; return; }
   var english = window.HRI18N.locale === 'en-US';
+  var plugin = findPluginById(HR.PLUGINS, requested);
+  if (!plugin) {
+    document.title = english ? 'Plugin not found — Harness Registry' : '插件不存在 — Harness Registry';
+    document.getElementById('detail-root').innerHTML =
+      '<a class="crumb" href="index.html">← ' + (english ? 'Back to plugins' : '返回插件列表') + '</a>' +
+      '<div class="prow-empty"><h1>' + (english ? 'Plugin not found' : '没有找到这个插件') + '</h1><p>' +
+      (english ? 'The link may be outdated or the plugin is no longer listed.' : '链接可能已经失效，或者该插件已不再收录。') +
+      '</p></div>';
+    return;
+  }
   document.title = plugin.name + ' — Harness Registry';
   document.getElementById('plugin-name').textContent = plugin.name;
   document.getElementById('plugin-owner').textContent = '@' + plugin.owner;
