@@ -50,6 +50,7 @@ export function normalizeCurated(plugin, metadata = {}) {
     pushedAt: metadata.pushedAt || null,
     addedAt: plugin.added || null,
     source: 'curated',
+    trustLevel: 'curated',
     verified: true,
     installable: true,
     install: plugin.install || `dsh plugin --profile web add github:${owner}/${name}`,
@@ -76,6 +77,7 @@ export function normalizeDiscovered(repository, installable) {
     pushedAt: repository.pushed_at || null,
     addedAt: null,
     source: 'discovered',
+    trustLevel: installable ? 'manifest_verified' : 'pending_review',
     verified: Boolean(installable),
     installable: Boolean(installable),
     install: `dsh plugin --profile web add github:${repository.full_name}`,
@@ -83,6 +85,71 @@ export function normalizeDiscovered(repository, installable) {
     topics: repository.topics || [],
     icon: repository.icon || repository.owner?.avatar_url || `https://github.com/${owner}.png?size=96`,
   }
+}
+
+const OVERRIDABLE_FIELDS = ['name', 'description', 'category', 'icon', 'install']
+
+export function applyOverride(plugin, override = {}) {
+  const next = { ...plugin }
+  for (const field of OVERRIDABLE_FIELDS) {
+    if (override[field] === undefined) continue
+    next[field] = field === 'description'
+      ? { ...plugin.description, ...override.description }
+      : override[field]
+  }
+  return next
+}
+
+export function applyGovernance(plugins, blocklist = {}, overrides = {}) {
+  const blocked = new Map((blocklist.repositories || []).map(entry => [String(entry.repo).toLowerCase(), entry]))
+  const patches = overrides.plugins || {}
+  const published = []
+  const quarantined = []
+
+  for (const plugin of plugins) {
+    const key = repoKey(plugin.owner, plugin.name)
+    const block = blocked.get(key)
+    if (block) {
+      quarantined.push({
+        id: plugin.id,
+        url: plugin.url,
+        trustLevel: 'quarantined',
+        reason: block.reason || 'Blocked by registry maintainers',
+      })
+      continue
+    }
+    published.push(applyOverride(plugin, patches[key] || patches[plugin.id] || {}))
+  }
+  return { plugins: published, quarantined }
+}
+
+export function validateHealth(next, previous, options = {}) {
+  const errors = []
+  if (!previous?.plugins?.length) return errors
+  if (options.allowUnsafe || process.env.DSH_SYNC_ALLOW_UNSAFE === '1') return errors
+
+  const previousMode = previous.stats?.discoveryMode
+  const nextMode = next.stats?.discoveryMode
+  if (previousMode === 'complete' && nextMode !== 'complete') {
+    errors.push('A partial discovery run cannot overwrite a complete registry snapshot.')
+    return errors
+  }
+
+  if (nextMode !== 'complete') return errors
+  const publishedRatio = options.publishedRatio ?? Number(process.env.DSH_MIN_PUBLISHED_RATIO || 0.8)
+  const curatedRatio = options.curatedRatio ?? Number(process.env.DSH_MIN_CURATED_RATIO || 0.85)
+  const previousPublished = previous.stats?.published ?? previous.plugins.length
+  const previousCurated = previous.stats?.curated ?? previous.plugins.filter(plugin => plugin.source === 'curated').length
+  const nextPublished = next.stats?.published ?? next.plugins.length
+  const nextCurated = next.stats?.curated ?? next.plugins.filter(plugin => plugin.source === 'curated').length
+
+  if (nextPublished < Math.floor(previousPublished * publishedRatio)) {
+    errors.push(`Published plugins dropped from ${previousPublished} to ${nextPublished} (minimum allowed: ${Math.floor(previousPublished * publishedRatio)}).`)
+  }
+  if (nextCurated < Math.floor(previousCurated * curatedRatio)) {
+    errors.push(`Curated plugins dropped from ${previousCurated} to ${nextCurated} (minimum allowed: ${Math.floor(previousCurated * curatedRatio)}).`)
+  }
+  return errors
 }
 
 export function mergePlugins(curated, discovered) {

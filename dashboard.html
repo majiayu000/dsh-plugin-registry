@@ -29,7 +29,7 @@
     <div class="kpi"><div class="kl">GitHub Stars</div><div class="kv2" id="k-stars">—</div><div class="kd">已收录仓库合计</div></div>
     <div class="kpi"><div class="kl">收录插件</div><div class="kv2" id="k-count">—</div><div class="kd">可安装插件</div></div>
     <div class="kpi"><div class="kl">插件作者</div><div class="kv2" id="k-author">—</div><div class="kd">按 GitHub owner 去重</div></div>
-    <div class="kpi"><div class="kl">自动发现</div><div class="kv2" id="k-auto">—</div><div class="kd">manifest 验证通过</div></div>
+    <div class="kpi"><div class="kl">Manifest 已验证</div><div class="kv2" id="k-auto">—</div><div class="kd">可直接安装</div></div>
   </div>
 
   <div class="dash-grid rise rise-4">
@@ -37,7 +37,7 @@
       <h3>分类分布</h3><div class="psub">按可安装插件数量</div><div id="cats"></div>
     </div>
     <div class="panel">
-      <h3>来源构成</h3><div class="psub">精选与自动发现</div><div id="sources"></div>
+      <h3>可信等级</h3><div class="psub">发布列表与审计队列</div><div id="sources"></div>
       <p class="registry-updated" id="updated"></p>
     </div>
   </div>
@@ -73,7 +73,8 @@ await import('/assets/plugins.js');
   function bars(target, rows) {
     var max = Math.max.apply(null, rows.map(function (row) { return row.value; })) || 1;
     document.getElementById(target).innerHTML = rows.map(function (row) {
-      return '<div class="hbar-row"><span>' + HR.escapeHtml(row.name) + '</span><div class="hbar-track"><div class="hbar-fill" style="width:' + Math.max(2, Math.round(row.value / max * 100)) + '%"></div></div><span class="hbar-n">' + row.value.toLocaleString() + '</span></div>';
+      var width = row.value === 0 ? 0 : Math.max(2, Math.round(row.value / max * 100));
+      return '<div class="hbar-row"><span>' + HR.escapeHtml(row.name) + '</span><div class="hbar-track"><div class="hbar-fill" style="width:' + width + '%"></div></div><span class="hbar-n">' + row.value.toLocaleString() + '</span></div>';
     }).join('');
   }
 
@@ -81,7 +82,13 @@ await import('/assets/plugins.js');
   plugins.forEach(function (plugin) { byCategory[plugin.category] = (byCategory[plugin.category] || 0) + 1; });
   bars('cats', Object.keys(byCategory).map(function (key) { return { name: HR.categoryName(key), value: byCategory[key] }; }).sort(function (a, b) { return b.value - a.value; }));
   var curated = plugins.filter(function (plugin) { return plugin.source === 'curated'; }).length;
-  bars('sources', [{ name: window.HRI18N.locale === 'en-US' ? 'Curated' : '精选', value: curated }, { name: window.HRI18N.locale === 'en-US' ? 'Auto-discovered' : '自动发现', value: plugins.length - curated }]);
+  var english = window.HRI18N.locale === 'en-US';
+  bars('sources', [
+    { name: english ? 'Curated' : '精选', value: curated },
+    { name: english ? 'Manifest verified' : 'Manifest 已验证', value: plugins.length - curated },
+    { name: english ? 'Pending review' : '待审查', value: HR.registry.stats.pendingReview || 0 },
+    { name: english ? 'Quarantined' : '已隔离', value: HR.registry.stats.quarantined || 0 }
+  ]);
   document.getElementById('updated').textContent = (window.HRI18N.locale === 'en-US' ? 'Generated: ' : '数据生成于：') + new Date(HR.registry.generatedAt).toLocaleString();
 
   document.getElementById('top-rows').innerHTML = plugins.slice().sort(function (a, b) { return b.stars - a.stars; }).slice(0, 10).map(function (plugin, index) {

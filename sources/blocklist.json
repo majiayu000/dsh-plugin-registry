@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "repositories": [
+    {
+      "repo": "deepseek-ai/deepseek-harness",
+      "reason": "DeepSeek Harness core repository, not a plugin"
+    }
+  ]
+}

@@ -8,6 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "sync:plugins": "node scripts/sync-plugins.mjs",
+    "validate:registry": "node scripts/validate-registry.mjs",
     "test": "node --test tests/*.test.mjs"
   },
   "devDependencies": {

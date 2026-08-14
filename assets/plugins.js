@@ -78,8 +78,8 @@
   }
 
   function sourcePill(plugin) {
-    if (plugin.source === 'curated') return '<span class="pill pill-official">' + (locale() === 'en' ? 'Curated' : '精选') + '</span>';
-    return '<span class="pill">' + (locale() === 'en' ? 'Auto-discovered' : '自动发现') + '</span>';
+    if (plugin.trustLevel === 'curated' || plugin.source === 'curated') return '<span class="pill pill-official">' + (locale() === 'en' ? 'Curated' : '精选') + '</span>';
+    return '<span class="pill">' + (locale() === 'en' ? 'Manifest verified' : 'Manifest 已验证') + '</span>';
   }
 
   function detailHref(plugin) {
