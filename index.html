@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Harness Registry — DeepSeek 插件库</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Inter:wght@400;500;600&family=Noto+Sans+SC:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/registry.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap topbar-in">
+    <a class="brand" href="index.html">
+      <span class="brand-mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h7M4 12h10M4 17h7"/><circle cx="17" cy="7" r="2.4"/><circle cx="20" cy="12" r="2.4" transform="translate(-3 0)"/><circle cx="17" cy="17" r="2.4"/></svg>
+      </span>
+      <span class="brand-word">Harness <em>Registry</em></span>
+    </a>
+    <nav class="nav">
+      <a href="index.html" class="on">浏览插件</a>
+      <a href="publish.html">发布</a>
+      <a href="dashboard.html">统计</a>
+    </nav>
+    <div class="topbar-r">
+      <span class="cli-tag">REGISTRY LIVE</span>
+      <span class="avatar-dot" title="已登录：lifcc"></span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="page-head">
+    <p class="eyebrow rise">DeepSeek Harness · Plugin Registry</p>
+    <h1 class="page-title rise rise-1">给 Harness 装上能力。<span class="caret"></span></h1>
+    <p class="page-sub rise rise-2">路由、检索、评测、安全 —— 社区维护的插件都在这里。新手不必读懂源码：复制一行命令，回车，装好了。</p>
+
+    <div class="searchbar rise rise-3">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+      <input id="q" type="text" placeholder="搜索插件、作者或能力关键词…" autocomplete="off">
+      <span class="kbd">⌘K</span>
+    </div>
+
+    <div class="termline rise rise-3">
+      <span class="tl-prompt">$</span>
+      <span id="typer"></span>
+      <span class="caret"></span>
+    </div>
+
+    <div class="statstrip rise rise-4">      <div class="ss"><b class="num" id="st-count">—</b><span>收录插件</span></div>
+      <div class="ss"><b class="num" id="st-stars">—</b><span>GitHub Stars</span></div>
+      <div class="ss"><b class="num" id="st-author">—</b><span>插件作者</span></div>
+      <div class="ss"><b class="num" id="st-auto">—</b><span>自动发现</span></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="toolbar">
+      <div class="chips" id="chips">
+        <button class="chip on" data-cat="all">全部</button>
+      </div>
+      <div class="toolbar-r">
+        <label class="switch"><input type="checkbox" id="curatedOnly"><span class="sw"></span>仅看精选</label>
+        <select class="sel" id="sort">
+          <option value="stars">按 Stars</option>
+          <option value="forks">按 Forks</option>
+          <option value="new">按最近更新</option>
+        </select>
+      </div>
+    </div>
+  </section>
+
+  <section id="featured-sec">
+    <div class="section-label">
+      <h2>热门精选</h2>
+      <span class="sl-note">CURATED · 按 GitHub Stars</span>
+    </div>
+    <div class="featured" id="featured"></div>
+  </section>
+
+  <section>
+    <div class="section-label">
+      <h2>全部插件</h2>
+      <span class="sl-note" id="list-note"></span>
+    </div>
+    <div class="plist" id="list"></div>
+    <div class="load-more-wrap" id="load-more-wrap"><button class="btn" id="load-more">加载更多</button></div>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <div class="wrap footer-in">
+    <a href="publish.html">发布你的插件</a>
+    <a href="https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/blob/main/contributing.md" target="_blank" rel="noopener">审核规范</a>
+    <a href="/data/plugins.json">API 文档</a>
+    <a href="https://github.com/deepseek-ai/deepseek-harness" target="_blank" rel="noopener">DeepSeek Harness</a>
+    <span class="fr">registry.deepseek-harness.dev · 每 8 小时自动发现</span>
+  </div>
+</footer>
+
+<script type="module">
+await import('/assets/i18n.js');
+await import('/assets/plugins.js');
+(async function () {
+  'use strict';
+  var state = { q: '', cat: 'all', curated: false, sort: 'stars', limit: 60 };
+  var list = document.getElementById('list');
+  var note = document.getElementById('list-note');
+
+  try { await HR.ready; }
+  catch (error) {
+    list.innerHTML = '<div class="prow-empty">插件数据暂时无法加载，请稍后重试。</div>';
+    return;
+  }
+
+  /* 统计条 */
+  var totalStars = HR.PLUGINS.reduce(function (sum, plugin) { return sum + plugin.stars; }, 0);
+  var authors = {};
+  HR.PLUGINS.forEach(function (p) { authors[p.owner] = 1; });
+  animateNum('st-count', HR.PLUGINS.length, '');
+  animateNum('st-stars', totalStars, '');
+  animateNum('st-author', Object.keys(authors).length, '');
+  animateNum('st-auto', HR.registry.stats.automaticallyDiscovered || 0, '');
+
+  function animateNum(id, target, suffix) {
+    var el = document.getElementById(id);
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { el.textContent = target.toLocaleString() + suffix; return; }
+    var t0 = null;
+    function step(ts) {
+      if (!t0) t0 = ts;
+      var k = Math.min(1, (ts - t0) / 700);
+      el.textContent = Math.round(target * (1 - Math.pow(1 - k, 3))).toLocaleString() + suffix;
+      if (k < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  /* 精选卡片 */
+  var feat = document.getElementById('featured');
+  HR.PLUGINS.filter(function (p) { return p.source === 'curated'; }).slice(0, 3).forEach(function (p) {
+    var a = document.createElement('a');
+    a.className = 'fcard';
+    a.href = HR.detailHref(p);
+    a.innerHTML =
+      '<div class="fcard-top"><span class="fcard-av"></span><div>' +
+        '<div class="fcard-name">' + p.id + '</div>' +
+        '<div style="font:12px var(--font-mono);color:var(--faint)">@' + HR.escapeHtml(p.owner) + ' · ' + (window.HRI18N.locale === 'en-US' ? 'Curated' : '精选') + '</div>' +
+      '</div></div>' +
+      '<p class="fcard-desc">' + HR.escapeHtml(HR.description(p)) + '</p>' +
+      '<div class="fcard-meta"><span>' + HR.STAR + '<b>' + p.stars.toLocaleString() + '</b> Stars</span><span>' + HR.FORK + '<b>' + p.forks.toLocaleString() + '</b> Forks</span><span style="margin-left:auto">' + HR.escapeHtml(HR.categoryName(p.category)) + '</span></div>';
+    a.querySelector('.fcard-av').appendChild(HR.avatar(p));
+    a.querySelector('.fcard-meta svg').style.width = '12px';
+    a.querySelector('.fcard-meta svg').style.height = '12px';
+    feat.appendChild(a);
+  });
+
+  /* 列表渲染 + 筛选 */
+  function apply() {
+    var rows = HR.PLUGINS.filter(function (p) {
+      if (state.cat !== 'all' && p.category !== state.cat) return false;
+      if (state.curated && p.source !== 'curated') return false;
+      if (state.q) {
+        var hay = (p.id + ' ' + HR.description(p) + ' ' + p.owner + ' ' + HR.categoryName(p.category) + ' ' + (p.topics || []).join(' ')).toLowerCase();
+        if (hay.indexOf(state.q.toLowerCase()) < 0) return false;
+      }
+      return true;
+    });
+    rows.sort(function (a, b) {
+      if (state.sort === 'forks') return b.forks - a.forks;
+      if (state.sort === 'new') return String(b.pushedAt || '').localeCompare(String(a.pushedAt || ''));
+      return b.stars - a.stars;
+    });
+    list.innerHTML = '';
+    if (!rows.length) {
+      list.innerHTML = '<div class="prow-empty">没有匹配的插件 —— 试试换个关键词，或<a href="publish.html" style="color:var(--fg)">自己发布一个</a>。</div>';
+    } else {
+      rows.slice(0, state.limit).forEach(function (p, i) { list.appendChild(HR.row(p, i)); });
+    }
+    note.textContent = rows.length + ' 个结果';
+    document.getElementById('load-more-wrap').hidden = rows.length <= state.limit;
+  }
+
+  document.getElementById('q').addEventListener('input', function (e) { state.q = e.target.value.trim(); state.limit = 60; apply(); });
+  document.getElementById('curatedOnly').addEventListener('change', function (e) { state.curated = e.target.checked; state.limit = 60; apply(); });
+  document.getElementById('sort').addEventListener('change', function (e) { state.sort = e.target.value; state.limit = 60; apply(); });
+  document.getElementById('load-more').addEventListener('click', function () { state.limit += 60; apply(); });
+  document.getElementById('chips').addEventListener('click', function (e) {
+    var c = e.target.closest('.chip');
+    if (!c) return;
+    document.querySelectorAll('#chips .chip').forEach(function (x) { x.classList.remove('on'); });
+    c.classList.add('on');
+    state.cat = c.dataset.cat;
+    state.limit = 60;
+    apply();
+  });
+
+  Object.keys(HR.registry.categories || {}).forEach(function (key) {
+    var chip = document.createElement('button');
+    chip.className = 'chip';
+    chip.dataset.cat = key;
+    chip.textContent = HR.categoryName(key);
+    document.getElementById('chips').appendChild(chip);
+  });
+  document.addEventListener('keydown', function (e) {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); document.getElementById('q').focus(); }
+  });
+
+  /* 终端打字循环 */
+  var examples = HR.PLUGINS.slice(0, 3).map(function (p) { return p.install; });
+  var CMDS = examples.length ? examples : ['dsh plugin --profile web add github:owner/plugin'];
+  var typer = document.getElementById('typer');
+  var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduced) { typer.textContent = CMDS[0]; }
+  else {
+    var ci = 0, pos = 0, deleting = false;
+    (function tick() {
+      var cmd = CMDS[ci];
+      if (!deleting) {
+        pos++;
+        typer.textContent = cmd.slice(0, pos);
+        if (pos === cmd.length) { deleting = true; setTimeout(tick, 2100); return; }
+        setTimeout(tick, 55 + Math.random() * 60);
+      } else {
+        pos--;
+        typer.textContent = cmd.slice(0, pos);
+        if (pos === 0) { deleting = false; ci = (ci + 1) % CMDS.length; setTimeout(tick, 350); return; }
+        setTimeout(tick, 26);
+      }
+    })();
+  }
+
+  apply();
+})();
+</script>
+</body>
+</html>

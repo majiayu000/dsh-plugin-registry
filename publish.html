@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>发布插件 — Harness Registry</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Inter:wght@400;500;600&family=Noto+Sans+SC:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/registry.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="wrap topbar-in">
+    <a class="brand" href="index.html"><span class="brand-word">Harness <em>Registry</em></span></a>
+    <nav class="nav"><a href="index.html">浏览插件</a><a href="publish.html" class="on">发布</a><a href="dashboard.html">统计</a></nav>
+    <div class="topbar-r"><span class="cli-tag">AUTO DISCOVERY</span><span class="avatar-dot"></span></div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="page-head">
+    <p class="eyebrow rise">Publish · GitHub-native</p>
+    <h1 class="page-title rise rise-1">不用填表，让 Registry 找到你。</h1>
+    <p class="page-sub rise rise-2">插件仍由你自己的 GitHub 仓库托管。声明可安装的 DSH bundle，再添加 dsh-plugin Topic，Registry 会在下一次同步时自动发现。</p>
+  </section>
+
+  <div class="stepper rise rise-3">
+    <div class="step"><span class="step-n">01</span><div><b>声明 bundle</b><small>package.json</small></div></div>
+    <div class="step"><span class="step-n">02</span><div><b>添加 Topic</b><small>dsh-plugin</small></div></div>
+    <div class="step"><span class="step-n">03</span><div><b>自动验证</b><small>每 8 小时</small></div></div>
+    <div class="step"><span class="step-n">04</span><div><b>进入列表</b><small>无需提交表单</small></div></div>
+  </div>
+
+  <div class="pub-grid rise rise-4">
+    <section class="panel publish-guide">
+      <h3>最低可安装契约</h3>
+      <p class="psub">只有 dsh.client 不够，必须声明 dsh.bundle。</p>
+      <div class="codeblock">{
+  <span class="k">"dsh"</span>: {
+    <span class="k">"bundle"</span>: {
+      <span class="k">"patch"</span>: <span class="k">"./cordis.patch.yml"</span>
+    }
+  }
+}</div>
+      <h3>让自动发现生效</h3>
+      <ol class="publish-list">
+        <li>仓库包含真实、可运行的插件代码。</li>
+        <li>在 GitHub 仓库设置中添加 <code>dsh-plugin</code> Topic。</li>
+        <li>保持仓库公开且未归档；Fork 默认不会收录。</li>
+        <li>等待下一次定时同步，或在下面立即检查。</li>
+      </ol>
+      <a class="btn" href="https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/blob/main/contributing.md" target="_blank" rel="noopener">查看完整收录规范</a>
+    </section>
+
+    <aside class="panel repo-checker">
+      <h3>检查你的仓库</h3>
+      <p class="psub">输入 GitHub 仓库地址，只读取公开的 package.json 与 Topics。</p>
+      <label class="field"><span>GitHub 仓库</span><input id="repo-input" placeholder="owner/repo 或 GitHub URL" autocomplete="off"></label>
+      <button class="btn btn-primary" id="check-button">开始检查</button>
+      <div class="check-list" id="check-results" hidden>
+        <div class="check-row" data-check="repo"><span class="check-ic">✓</span>公开仓库存在</div>
+        <div class="check-row" data-check="topic"><span class="check-ic">✓</span>包含 dsh-plugin Topic</div>
+        <div class="check-row" data-check="bundle"><span class="check-ic">✓</span>声明有效的 dsh.bundle</div>
+        <div class="check-row" data-check="status"><span class="check-ic">✓</span>仓库未归档且不是 Fork</div>
+      </div>
+      <p class="form-hint" id="check-message"></p>
+    </aside>
+  </div>
+</main>
+
+<footer class="footer"><div class="wrap footer-in"><a href="index.html">返回插件库</a><a href="https://github.com/topics/dsh-plugin" target="_blank" rel="noopener">浏览 GitHub Topic</a><span class="fr">每 8 小时自动同步</span></div></footer>
+
+<script type="module">
+await import('/assets/i18n.js');
+(function () {
+  'use strict';
+  function parseRepo(value) {
+    return value.trim().replace(/^https?:\/\/github\.com\//i, '').replace(/\.git$/i, '').replace(/\/$/, '').split('/').slice(0, 2).join('/');
+  }
+  function setCheck(key, ok) { document.querySelector('[data-check="' + key + '"]').classList.toggle('ok', ok); }
+  document.getElementById('check-button').addEventListener('click', async function () {
+    var repo = parseRepo(document.getElementById('repo-input').value);
+    var message = document.getElementById('check-message');
+    var results = document.getElementById('check-results');
+    if (!/^[^/]+\/[^/]+$/.test(repo)) { message.textContent = '请输入 owner/repo 或完整 GitHub 仓库地址。'; return; }
+    this.disabled = true; this.textContent = '检查中…'; results.hidden = false; message.textContent = '';
+    ['repo', 'topic', 'bundle', 'status'].forEach(function (key) { setCheck(key, false); });
+    try {
+      var repoResponse = await fetch('https://api.github.com/repos/' + repo, { headers: { accept: 'application/vnd.github+json' } });
+      if (!repoResponse.ok) throw new Error('GitHub HTTP ' + repoResponse.status);
+      var data = await repoResponse.json();
+      setCheck('repo', true); setCheck('topic', (data.topics || []).indexOf('dsh-plugin') >= 0); setCheck('status', !data.archived && !data.fork);
+      var packageResponse = await fetch('https://api.github.com/repos/' + repo + '/contents/package.json', { headers: { accept: 'application/vnd.github.raw+json' } });
+      var validBundle = false;
+      if (packageResponse.ok) { var pkg = JSON.parse(await packageResponse.text()); validBundle = Boolean(pkg.dsh && pkg.dsh.bundle && typeof pkg.dsh.bundle === 'object'); }
+      setCheck('bundle', validBundle);
+      var ready = (data.topics || []).indexOf('dsh-plugin') >= 0 && !data.archived && !data.fork && validBundle;
+      message.textContent = ready ? '检查通过。这个仓库会在下一轮同步中被自动发现。' : '还有项目未通过，请按上面的契约修复后重新检查。';
+    } catch (error) { message.textContent = '检查失败：' + error.message; }
+    finally { this.disabled = false; this.textContent = '重新检查'; }
+  });
+})();
+</script>
+</body>
+</html>

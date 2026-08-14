@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>插件详情 — Harness Registry</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Inter:wght@400;500;600&family=Noto+Sans+SC:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/registry.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="wrap topbar-in">
+    <a class="brand" href="index.html"><span class="brand-word">Harness <em>Registry</em></span></a>
+    <nav class="nav"><a href="index.html" class="on">浏览插件</a><a href="publish.html">发布</a><a href="dashboard.html">统计</a></nav>
+    <div class="topbar-r"><span class="cli-tag">LIVE DATA</span><span class="avatar-dot"></span></div>
+  </div>
+</header>
+
+<main class="wrap" id="detail-root">
+  <a class="crumb rise" href="index.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 6l-6 6 6 6"/></svg>返回插件列表</a>
+  <section class="detail-head rise rise-1">
+    <div id="avatar-slot"></div>
+    <div style="flex:1;min-width:0">
+      <div class="detail-title"><h1 id="plugin-name">正在加载…</h1><span id="source-pill"></span></div>
+      <p class="detail-owner" id="plugin-owner"></p>
+      <p class="detail-desc" id="plugin-desc"></p>
+    </div>
+    <div class="detail-cta"><a class="btn" id="repo-button" target="_blank" rel="noopener">查看 GitHub</a><button class="btn btn-primary" id="install-btn">复制安装命令</button></div>
+  </section>
+
+  <div class="installbox rise rise-2"><span class="dollar">$</span><code id="install-command"></code><button class="copy" id="copy-btn">复制命令</button></div>
+
+  <div class="detail-grid">
+    <div>
+      <div class="tabs"><span class="tab on">README</span></div>
+      <div class="tabpane on readme registry-readme">
+        <p id="readme-desc"></p>
+        <h3>为什么被收录</h3>
+        <div class="evidence-card">
+          <span class="evidence-check">✓</span>
+          <div><b id="evidence-title"></b><p id="evidence-copy"></p></div>
+        </div>
+        <h3>GitHub Topics</h3>
+        <div class="topic-list" id="topic-list"></div>
+      </div>
+    </div>
+    <aside>
+      <div class="side-card"><h4>社区数据</h4><div class="metric-pair"><div><b id="plugin-stars">—</b><span>Stars</span></div><div><b id="plugin-forks">—</b><span>Forks</span></div></div></div>
+      <div class="side-card"><h4>信息</h4><div class="kv"><span class="k">维护者</span><span class="v" id="maintainer"></span></div><div class="kv"><span class="k">分类</span><span class="v" id="category"></span></div><div class="kv"><span class="k">来源</span><span class="v" id="source"></span></div><div class="kv"><span class="k">仓库</span><span class="v"><a id="repo-link" target="_blank" rel="noopener">GitHub</a></span></div></div>
+    </aside>
+  </div>
+</main>
+
+<footer class="footer"><div class="wrap footer-in"><a href="index.html">浏览插件</a><a href="publish.html">发布你的插件</a><span class="fr">registry.deepseek-harness.dev</span></div></footer>
+
+<script type="module">
+await import('/assets/i18n.js');
+await import('/assets/plugins.js');
+(async function () {
+  'use strict';
+  try { await HR.ready; } catch (error) { document.getElementById('plugin-name').textContent = '插件数据加载失败'; return; }
+  var requested = new URLSearchParams(location.search).get('plugin');
+  var plugin = HR.PLUGINS.find(function (item) { return item.id.toLowerCase() === String(requested || '').toLowerCase(); }) || HR.PLUGINS[0];
+  if (!plugin) { document.getElementById('plugin-name').textContent = '没有找到这个插件'; return; }
+  var english = window.HRI18N.locale === 'en-US';
+  document.title = plugin.name + ' — Harness Registry';
+  document.getElementById('plugin-name').textContent = plugin.name;
+  document.getElementById('plugin-owner').textContent = '@' + plugin.owner;
+  document.getElementById('plugin-desc').textContent = HR.description(plugin) || (english ? 'No description provided.' : '作者暂未提供简介。');
+  document.getElementById('readme-desc').textContent = HR.description(plugin);
+  document.getElementById('source-pill').innerHTML = HR.sourcePill(plugin);
+  document.getElementById('avatar-slot').appendChild(HR.avatar(plugin, 'lg'));
+  document.getElementById('install-command').textContent = plugin.install;
+  document.getElementById('plugin-stars').textContent = plugin.stars.toLocaleString();
+  document.getElementById('plugin-forks').textContent = plugin.forks.toLocaleString();
+  document.getElementById('maintainer').textContent = '@' + plugin.owner;
+  document.getElementById('category').textContent = HR.categoryName(plugin.category);
+  document.getElementById('source').textContent = plugin.source === 'curated' ? (english ? 'Curated registry' : '精选注册表') : (english ? 'GitHub auto-discovery' : 'GitHub 自动发现');
+  ['repo-button', 'repo-link'].forEach(function (id) { document.getElementById(id).href = plugin.url; });
+  document.getElementById('evidence-title').textContent = plugin.source === 'curated' ? (english ? 'Curated and installable' : '人工精选且可安装') : (english ? 'Manifest verified automatically' : 'Manifest 自动验证通过');
+  document.getElementById('evidence-copy').textContent = plugin.source === 'curated' ? (english ? 'Listed by the community registry under its installability policy.' : '已通过社区精选库的可安装性规则。') : (english ? 'The repository declares a valid dsh.bundle object in package.json.' : '仓库 package.json 声明了有效的 dsh.bundle。');
+  document.getElementById('topic-list').innerHTML = (plugin.topics || []).map(function (topic) { return '<span class="topic-chip">' + HR.escapeHtml(topic) + '</span>'; }).join('') || '<span class="topic-chip">dsh-plugin</span>';
+  ['install-btn', 'copy-btn'].forEach(function (id) { document.getElementById(id).addEventListener('click', function () { HR.copyText(this, plugin.install); }); });
+})();
+</script>
+</body>
+</html>
