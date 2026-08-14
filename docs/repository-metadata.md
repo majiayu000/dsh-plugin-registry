@@ -28,8 +28,8 @@ This record follows the ShipWise discoverability checklist. Public GitHub settin
 | Support path | verified | Public Issues and private vulnerability reporting are enabled |
 | Homepage | missing | Set only after a production deployment is verified |
 | Social preview | missing | Create and upload a 1280×640 repository social preview in GitHub Settings |
-| Release | missing | Define a release/version strategy after license and deployment decisions |
-| License | blocked | Repository owner must select and add an open-source license |
+| Release | missing | Define a release/version strategy after the deployment decision |
+| License | verified locally | MIT License selected by the repository owner and recorded in `LICENSE` and `package.json` |
 
 ## Anti-pattern check
 

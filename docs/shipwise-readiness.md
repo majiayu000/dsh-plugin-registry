@@ -10,7 +10,7 @@
 - Verification date: 2026-08-15
 - Recommendation: improve before launch
 
-The project has a working local registry UI, a validated schema, a real data snapshot, and a support path. Public launch remains blocked by the missing license and unverified production access path.
+The project has a working local registry UI, a validated schema, a real data snapshot, an MIT License, and a support path. Public launch remains blocked by the unverified production access path.
 
 ## Status legend
 
@@ -28,7 +28,7 @@ The project has a working local registry UI, a validated schema, a real data sna
 | Install/access path works | verified locally | `npm ci` and local Vite access | Deploy and verify a production URL before public launch |
 | Quickstart works | verified locally | `npm run dev -- --host 127.0.0.1` served the registry | Recheck from a clean clone before release |
 | Real proof asset exists | verified | [`docs/assets/harness-registry.png`](assets/harness-registry.png) uses the current registry snapshot | Keep it current when the UI changes materially |
-| License is present | blocked | No `LICENSE` file or GitHub license detected | Repository owner selects and adds a license |
+| License is present | verified locally | MIT License selected by the repository owner and recorded in `LICENSE` and `package.json` | Push and verify GitHub license detection |
 | Support path exists | verified | GitHub Issues enabled; private vulnerability reporting enabled | Publish local support files to the default branch |
 
 ## P1 readiness gaps
@@ -45,7 +45,7 @@ The project has a working local registry UI, a validated schema, a real data sna
 
 | Check | Status | Evidence | Next action |
 |---|---|---|---|
-| Platform-specific copy | blocked | No copy prepared because P0 blockers remain | Draft only after license and hosted access are ready |
+| Platform-specific copy | blocked | No copy prepared because hosted access remains unverified | Draft only after hosted access is ready |
 | Social image or preview | missing | Real UI proof exists, but it is not a 1280×640 social preview | Create and upload a dedicated preview |
 | Second-wave channels | unverified | No launch goal or audience channel confirmed | Decide only after first-wave proof and feedback plan |
 
@@ -69,10 +69,10 @@ These are point-in-time repository facts from `public/data/plugins.json`, not ma
 - Primary goal: unverified; likely adoption and data-quality feedback
 - First platform after blockers: GitHub repository and a verified hosted registry
 - Potential later platforms: Hacker News or X only after people can use the hosted site
-- Rejected for now: Product Hunt and broad community posting without deployment, license, or social preview
+- Rejected for now: Product Hunt and broad community posting without deployment or social preview
 - Official source docs checked: ShipWise GitHub source guide and linked GitHub documentation
-- Launch blockers: missing license, missing production deployment, missing release, missing social preview
-- Review date: after license and deployment decisions
+- Launch blockers: missing production deployment, missing release, missing social preview
+- Review date: after the deployment decision
 
 ## Verification commands
 
@@ -89,8 +89,8 @@ Expected outcome: dependency install succeeds; tests, registry validation, and V
 ## Decision
 
 - Launch: no
-- Reason: the repository has no license and no verified production access path
-- Next action: choose a license, deploy the built static site, then re-run this report from a clean clone
+- Reason: the repository has no verified production access path
+- Next action: deploy the built static site, then re-run this report from a clean clone
 
 ## Non-goals
 

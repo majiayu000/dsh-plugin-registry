@@ -1,6 +1,7 @@
 {
   "name": "dsh-plugin-registry-ui",
   "version": "0.1.0",
+  "license": "MIT",
   "description": "Searchable DeepSeek Harness plugin registry with curated listings and manifest-verified GitHub discovery.",
   "private": true,
   "type": "module",
