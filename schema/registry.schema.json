@@ -41,6 +41,7 @@
           "category": { "type": "string", "minLength": 1 },
           "stars": { "type": "integer", "minimum": 0 },
           "forks": { "type": "integer", "minimum": 0 },
+          "language": { "type": "string" },
           "source": { "enum": ["curated", "discovered"] },
           "trustLevel": { "enum": ["curated", "manifest_verified"] },
           "verified": { "const": true },

@@ -184,6 +184,7 @@ async function main() {
   const metadata = new Map(uniqueRepositories.map(repo => [repo.full_name.toLowerCase(), {
     stargazerCount: repo.stargazers_count,
     forkCount: repo.forks_count,
+    language: repo.language || '',
     pushedAt: repo.pushed_at,
     isArchived: repo.archived,
     repositoryTopics: { nodes: (repo.topics || []).map(name => ({ topic: { name } })) },

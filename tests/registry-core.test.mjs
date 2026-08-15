@@ -21,12 +21,14 @@ test('discovered repositories receive stable categories and install commands', (
     owner: { avatar_url: 'https://avatars.example/acme.png' },
     stargazers_count: 42,
     forks_count: 7,
+    language: 'TypeScript',
     pushed_at: '2026-08-14T00:00:00Z',
   }, true)
   assert.equal(inferCategory({ name: plugin.name, description: plugin.description.en }), 'memory')
   assert.equal(plugin.install, 'dsh plugin --profile web add github:acme/dsh-memory')
   assert.equal(plugin.verified, true)
   assert.equal(plugin.trustLevel, 'manifest_verified')
+  assert.equal(plugin.language, 'TypeScript')
   assert.equal(plugin.icon, 'https://avatars.example/acme.png')
 })
 

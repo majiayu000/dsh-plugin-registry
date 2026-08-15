@@ -46,6 +46,7 @@ export function validateRegistry(registry) {
     if (!categories.has(plugin?.category)) errors.push(`${label}.category is unknown: ${plugin?.category}.`)
     if (!Number.isInteger(plugin?.stars) || plugin.stars < 0) errors.push(`${label}.stars must be a non-negative integer.`)
     if (!Number.isInteger(plugin?.forks) || plugin.forks < 0) errors.push(`${label}.forks must be a non-negative integer.`)
+    if (plugin?.language !== undefined && typeof plugin.language !== 'string') errors.push(`${label}.language must be a string.`)
     if (!['curated', 'discovered'].includes(plugin?.source)) errors.push(`${label}.source is invalid.`)
     const expectedTrust = plugin?.source === 'curated' ? 'curated' : 'manifest_verified'
     if (plugin?.trustLevel !== expectedTrust) errors.push(`${label}.trustLevel must be ${expectedTrust}.`)

@@ -49,6 +49,12 @@ npm run validate:registry
 npm test
 ```
 
+Backfill GitHub primary-language metadata without rerunning full discovery:
+
+```bash
+GH_TOKEN=... npm run backfill:languages
+```
+
 ## How discovery works
 
 ```text
@@ -75,7 +81,7 @@ Use the local repository checker at <http://localhost:5173/publish.html> before 
 ## Known limitations
 
 - Manifest verification confirms the package shape; it is not a security audit or endorsement of plugin code.
-- Stars, Forks, descriptions, and Topics are point-in-time GitHub metadata and can lag until the next sync.
+- Stars, Forks, descriptions, Topics, and primary languages are point-in-time GitHub metadata and can lag until the next sync.
 - A complete discovery refresh requires a GitHub token; unauthenticated runs inspect only recent candidates and cannot overwrite a complete snapshot.
 - The browser-based repository checker uses the unauthenticated GitHub API and may encounter rate limits.
 - The GitHub Pages site tracks `main`; formal versioned releases are not yet available.

@@ -94,6 +94,22 @@ import { writeClipboardText } from './clipboard.js'
     return 'plugin-detail.html?plugin=' + encodeURIComponent(plugin.id);
   }
 
+  function updatedLabel(value) {
+    if (!value) return '';
+    var date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    var stamp = date.toISOString().slice(0, 10);
+    return (locale() === 'en' ? 'Updated ' : '更新于 ') + stamp;
+  }
+
+  function topicSignals(plugin) {
+    return (plugin.topics || [])
+      .filter(function (topic) { return !/^(dsh-plugin|deepseek-harness|dsh)$/i.test(topic); })
+      .slice(0, 2)
+      .map(function (topic) { return '<span class="prow-topic">#' + escapeHtml(topic) + '</span>'; })
+      .join('');
+  }
+
   function row(plugin, index) {
     var element = document.createElement('div');
     element.className = 'prow';
@@ -103,6 +119,7 @@ import { writeClipboardText } from './clipboard.js'
       '<div class="prow-main">' +
         '<div class="prow-name"><a href="' + detailHref(plugin) + '">' + escapeHtml(plugin.name) + '</a>' + sourcePill(plugin) + '</div>' +
         '<div class="prow-desc">' + escapeHtml(description(plugin) || (locale() === 'en' ? 'No description provided. Review the GitHub source before installing.' : '作者未提供简介；安装前请先查看 GitHub 源码。')) + '</div>' +
+        '<div class="prow-signals">' + topicSignals(plugin) + (updatedLabel(plugin.pushedAt) ? '<span class="prow-updated">' + updatedLabel(plugin.pushedAt) + '</span>' : '') + '</div>' +
       '</div>' +
       '<div class="prow-meta"><b>@' + escapeHtml(plugin.owner) + '</b><br>' + escapeHtml(categoryName(plugin.category)) + '</div>' +
       '<div class="prow-stars">' + STAR + '<b>' + fmtNumber(plugin.stars) + '</b><small>Stars</small></div>' +

@@ -38,7 +38,7 @@
       <div class="tabs"><span class="tab on">README</span></div>
       <div class="tabpane on readme registry-readme">
         <p id="readme-desc"></p>
-        <h3>为什么被收录</h3>
+        <h3>验证范围</h3>
         <div class="evidence-card">
           <span class="evidence-check">✓</span>
           <div><b id="evidence-title"></b><p id="evidence-copy"></p></div>
@@ -90,8 +90,10 @@ const { findPluginById } = await import('/assets/plugin-detail.js');
   document.getElementById('category').textContent = HR.categoryName(plugin.category);
   document.getElementById('source').textContent = plugin.source === 'curated' ? (english ? 'Curated registry' : '精选注册表') : (english ? 'GitHub auto-discovery' : 'GitHub 自动发现');
   ['repo-button', 'repo-link'].forEach(function (id) { document.getElementById(id).href = plugin.url; });
-  document.getElementById('evidence-title').textContent = plugin.source === 'curated' ? (english ? 'Curated and installable' : '人工精选且可安装') : (english ? 'Manifest verified automatically' : 'Manifest 自动验证通过');
-  document.getElementById('evidence-copy').textContent = plugin.source === 'curated' ? (english ? 'Listed by the community registry under its installability policy.' : '已通过社区精选库的可安装性规则。') : (english ? 'The repository declares a valid dsh.bundle object in package.json.' : '仓库 package.json 声明了有效的 dsh.bundle。');
+  document.getElementById('evidence-title').textContent = plugin.source === 'curated' ? (english ? 'Imported from the community catalog' : '来自社区目录') : (english ? 'Manifest format verified' : 'Manifest 格式验证通过');
+  document.getElementById('evidence-copy').textContent = plugin.source === 'curated'
+    ? (english ? 'Synced from the public awesome-dsh-plugin catalog. This registry has not independently reviewed its quality or security.' : '同步自 awesome-dsh-plugin 公开目录；本站未单独审核其功能质量或安全性。')
+    : (english ? 'At sync time, the root package.json contained a dsh.bundle object that matched the registry schema. This is not a security audit.' : '同步时，仓库根目录 package.json 的 dsh.bundle 字段符合注册表格式；这不代表安全审计。');
   document.getElementById('topic-list').innerHTML = (plugin.topics || []).map(function (topic) { return '<span class="topic-chip">' + HR.escapeHtml(topic) + '</span>'; }).join('') || '<span class="topic-chip">dsh-plugin</span>';
   ['install-btn', 'copy-btn'].forEach(function (id) { document.getElementById(id).addEventListener('click', function () { HR.copyText(this, plugin.install); }); });
 })();

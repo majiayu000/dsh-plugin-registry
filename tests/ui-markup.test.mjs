@@ -15,3 +15,23 @@ test('mobile styles keep primary navigation available', async () => {
   assert.doesNotMatch(css, /\.nav\s*\{\s*display:\s*none/)
   assert.match(css, /\.nav\s*\{[\s\S]*display:\s*flex;\s*order:\s*3;/)
 })
+
+test('plugin detail describes only verifiable registry signals', async () => {
+  const html = await readFile('plugin-detail.html', 'utf8')
+  assert.doesNotMatch(html, /为什么被收录|人工精选且可安装|已通过社区精选库/)
+  assert.match(html, /验证范围/)
+  assert.match(html, /这不代表安全审计/)
+  assert.match(html, /本站未单独审核其功能质量或安全性/)
+})
+
+test('plugin rows expose topics and update dates as decision signals', async () => {
+  const script = await readFile('assets/plugins.js', 'utf8')
+  assert.match(script, /prow-topic/)
+  assert.match(script, /prow-updated/)
+  assert.match(script, /plugin\.pushedAt/)
+})
+
+test('language filtering removes unfiltered featured recommendations', async () => {
+  const html = await readFile('index.html', 'utf8')
+  assert.match(html, /state\.language !== 'all'/)
+})

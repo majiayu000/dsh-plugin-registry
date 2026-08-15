@@ -38,16 +38,18 @@
     <h1 class="page-title rise rise-1">给 Harness 装上能力。<span class="caret"></span></h1>
     <p class="page-sub rise rise-2">路由、检索、评测、安全 —— 社区维护的插件都在这里。新手不必读懂源码：复制一行命令，回车，装好了。</p>
 
-    <div class="searchbar rise rise-3">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-      <input id="q" type="text" placeholder="搜索插件、作者或能力关键词…" autocomplete="off">
-      <span class="kbd">⌘K</span>
-    </div>
+    <div class="discovery-row rise rise-3">
+      <div class="searchbar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+        <input id="q" type="text" placeholder="搜索插件、作者或能力关键词…" autocomplete="off">
+        <span class="kbd">⌘K</span>
+      </div>
 
-    <div class="termline rise rise-3">
-      <span class="tl-prompt">$</span>
-      <span id="typer"></span>
-      <span class="caret"></span>
+      <div class="termline">
+        <span class="tl-prompt">$</span>
+        <span id="typer"></span>
+        <span class="caret"></span>
+      </div>
     </div>
 
     <div class="statstrip rise rise-4">      <div class="ss"><b class="num" id="st-count">—</b><span>收录插件</span></div>
@@ -60,10 +62,13 @@
   <section>
     <div class="toolbar">
       <div class="chips" id="chips">
-        <button class="chip on" data-cat="all">全部</button>
+        <button class="chip on" data-cat="all">全部 <span class="chip-count" id="all-count">—</span></button>
       </div>
       <div class="toolbar-r">
         <label class="switch"><input type="checkbox" id="curatedOnly"><span class="sw"></span>仅看精选</label>
+        <select class="sel" id="language" aria-label="编程语言">
+          <option value="all">全部语言</option>
+        </select>
         <select class="sel" id="sort">
           <option value="stars">按 Stars</option>
           <option value="forks">按 Forks</option>
@@ -73,10 +78,16 @@
     </div>
   </section>
 
-  <section id="featured-sec">
-    <div class="section-label">
-      <h2>热门精选</h2>
-      <span class="sl-note">CURATED · 按 GitHub Stars</span>
+  <section id="featured-sec" class="featured-sec">
+    <div class="section-label featured-label">
+      <div class="section-label-copy">
+        <h2>热门精选</h2>
+        <span class="sl-note">CURATED · 按 GitHub Stars</span>
+      </div>
+      <button class="featured-toggle" id="featured-toggle" type="button" aria-controls="featured" aria-expanded="true">
+        <span class="featured-toggle-label">收起</span>
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m3 6 5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
     </div>
     <div class="featured" id="featured"></div>
   </section>
@@ -108,7 +119,7 @@ await import('/assets/plugins.js');
 const { createPluginSearchIndex, filterPluginSearchIndex } = await import('/assets/registry-search.js');
 (async function () {
   'use strict';
-  var state = { q: '', cat: 'all', curated: false, sort: 'stars', limit: 60 };
+  var state = { q: '', cat: 'all', curated: false, language: 'all', sort: 'stars', limit: 60 };
   var list = document.getElementById('list');
   var note = document.getElementById('list-note');
 
@@ -119,7 +130,7 @@ const { createPluginSearchIndex, filterPluginSearchIndex } = await import('/asse
   }
 
   var searchIndex = createPluginSearchIndex(HR.PLUGINS, function (plugin) {
-    return plugin.id + ' ' + HR.description(plugin) + ' ' + plugin.owner + ' ' + HR.categoryName(plugin.category) + ' ' + (plugin.topics || []).join(' ');
+    return plugin.id + ' ' + HR.description(plugin) + ' ' + plugin.owner + ' ' + HR.categoryName(plugin.category) + ' ' + (plugin.language || '') + ' ' + (plugin.topics || []).join(' ');
   });
 
   /* 统计条 */
@@ -146,6 +157,21 @@ const { createPluginSearchIndex, filterPluginSearchIndex } = await import('/asse
 
   /* 精选卡片 */
   var feat = document.getElementById('featured');
+  var featuredSec = document.getElementById('featured-sec');
+  var featuredToggle = document.getElementById('featured-toggle');
+  var featuredToggleLabel = featuredToggle.querySelector('.featured-toggle-label');
+
+  function setFeaturedCollapsed(collapsed) {
+    featuredSec.classList.toggle('is-collapsed', collapsed);
+    featuredToggle.setAttribute('aria-expanded', String(!collapsed));
+    featuredToggleLabel.textContent = HRI18N.translateText(collapsed ? '展开精选' : '收起');
+  }
+
+  setFeaturedCollapsed(window.matchMedia('(max-width: 600px)').matches);
+  featuredToggle.addEventListener('click', function () {
+    setFeaturedCollapsed(!featuredSec.classList.contains('is-collapsed'));
+  });
+
   HR.PLUGINS.filter(function (p) { return p.source === 'curated'; }).slice(0, 3).forEach(function (p) {
     var a = document.createElement('a');
     a.className = 'fcard';
@@ -170,6 +196,7 @@ const { createPluginSearchIndex, filterPluginSearchIndex } = await import('/asse
       curatedOnly: state.curated,
       query: state.q,
     });
+    if (state.language !== 'all') rows = rows.filter(function (plugin) { return plugin.language === state.language; });
     rows.sort(function (a, b) {
       if (state.sort === 'forks') return b.forks - a.forks;
       if (state.sort === 'new') return String(b.pushedAt || '').localeCompare(String(a.pushedAt || ''));
@@ -183,10 +210,12 @@ const { createPluginSearchIndex, filterPluginSearchIndex } = await import('/asse
     }
     note.textContent = rows.length + ' 个结果';
     document.getElementById('load-more-wrap').hidden = rows.length <= state.limit;
+    featuredSec.hidden = Boolean(state.q || state.cat !== 'all' || state.curated || state.language !== 'all');
   }
 
   document.getElementById('q').addEventListener('input', function (e) { state.q = e.target.value.trim(); state.limit = 60; apply(); });
   document.getElementById('curatedOnly').addEventListener('change', function (e) { state.curated = e.target.checked; state.limit = 60; apply(); });
+  document.getElementById('language').addEventListener('change', function (e) { state.language = e.target.value; state.limit = 60; apply(); });
   document.getElementById('sort').addEventListener('change', function (e) { state.sort = e.target.value; state.limit = 60; apply(); });
   document.getElementById('load-more').addEventListener('click', function () { state.limit += 60; apply(); });
   document.getElementById('chips').addEventListener('click', function (e) {
@@ -203,9 +232,30 @@ const { createPluginSearchIndex, filterPluginSearchIndex } = await import('/asse
     var chip = document.createElement('button');
     chip.className = 'chip';
     chip.dataset.cat = key;
-    chip.textContent = HR.categoryName(key);
+    var count = HR.PLUGINS.filter(function (plugin) { return plugin.category === key; }).length;
+    chip.appendChild(document.createTextNode(HR.categoryName(key) + ' '));
+    var countEl = document.createElement('span');
+    countEl.className = 'chip-count';
+    countEl.textContent = count.toLocaleString();
+    chip.appendChild(countEl);
     document.getElementById('chips').appendChild(chip);
   });
+  document.getElementById('all-count').textContent = HR.PLUGINS.length.toLocaleString();
+  var languageSelect = document.getElementById('language');
+  var languageCounts = HR.PLUGINS.reduce(function (counts, plugin) {
+    if (plugin.language) counts[plugin.language] = (counts[plugin.language] || 0) + 1;
+    return counts;
+  }, {});
+  Object.keys(languageCounts).sort(function (a, b) { return languageCounts[b] - languageCounts[a] || a.localeCompare(b); }).forEach(function (language) {
+    var option = document.createElement('option');
+    option.value = language;
+    option.textContent = language + ' (' + languageCounts[language].toLocaleString() + ')';
+    languageSelect.appendChild(option);
+  });
+  if (!Object.keys(languageCounts).length) {
+    languageSelect.disabled = true;
+    languageSelect.options[0].textContent = window.HRI18N.locale === 'en-US' ? 'Language data pending' : '语言数据待同步';
+  }
   document.addEventListener('keydown', function (e) {
     if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); document.getElementById('q').focus(); }
   });

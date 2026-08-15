@@ -74,9 +74,11 @@
     '给用户看的名字': 'Name shown to users', '用户在列表里只会看到这一句，说清楚它解决什么问题。': 'This is the one sentence users see in the list. Explain the problem it solves.'
     , '插件作者': 'Plugin authors', '自动发现': 'Auto-discovered', 'Manifest 已验证': 'Manifest verified', '仅看精选': 'Curated only',
     '按 Stars': 'By Stars', '按 Forks': 'By Forks', '热门精选': 'Popular picks', '按 GitHub Stars': 'By GitHub Stars',
+    '全部语言': 'All languages', '编程语言': 'Programming language', '语言数据待同步': 'Language data pending',
+    '收起': 'Collapse', '展开精选': 'Show picks',
     '插件数据暂时无法加载，请稍后重试。': 'Plugin data is temporarily unavailable. Please try again later.',
     '插件数据暂时无法加载。': 'Plugin data is temporarily unavailable.', '作者暂未提供简介。': 'No description provided.',
-    '精选': 'Curated', '查看 GitHub': 'View on GitHub', '为什么被收录': 'Why it is listed', '社区数据': 'Community data',
+    '精选': 'Curated', '查看 GitHub': 'View on GitHub', '验证范围': 'Verification scope', '社区数据': 'Community data',
     '插件数据加载失败': 'Unable to load plugin data', '没有找到这个插件': 'Plugin not found',
     '数据来自精选注册表与 GitHub dsh-plugin Topic。这里不制造下载量或评分，只展示可以被验证的公开指标。': 'Data comes from the curated registry and the GitHub dsh-plugin topic. No fabricated installs or ratings — only verifiable public metrics.',
     '已收录仓库合计': 'Across listed repositories', '可安装插件': 'Installable plugins', '按 GitHub owner 去重': 'Unique GitHub owners',
