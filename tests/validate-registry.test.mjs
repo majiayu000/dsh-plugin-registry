@@ -4,7 +4,7 @@ import { validateRegistry } from '../scripts/validate-registry.mjs'
 
 function registry(plugin = {}) {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     generatedAt: '2026-08-14T00:00:00.000Z',
     categories: { tools: { zh: '工具', en: 'Tools' } },
     stats: {},
@@ -12,7 +12,8 @@ function registry(plugin = {}) {
     plugins: [{
       id: 'acme/plugin', name: 'plugin', owner: 'acme', url: 'https://github.com/acme/plugin',
       description: { zh: '描述', en: 'Description' }, category: 'tools', stars: 1, forks: 0,
-      source: 'discovered', trustLevel: 'manifest_verified', verified: true, installable: true,
+      source: 'discovered', trustLevel: 'manifest_verified',
+      verification: { manifest: 'shape_validated', installation: 'not_tested' },
       install: 'dsh plugin --profile web add github:acme/plugin', icon: 'https://github.com/acme.png', ...plugin,
     }],
   }
@@ -37,10 +38,15 @@ test('contract rejects mismatched identity and trust', () => {
   assert.match(result.errors.join(' '), /manifest_verified/)
 })
 
-test('missing descriptions are reported without removing installable plugins', () => {
+test('missing descriptions are reported without removing listed plugins', () => {
   const result = validateRegistry(registry({ description: { zh: '', en: '' } }))
   assert.equal(result.errors.length, 0)
   assert.equal(result.warnings.length, 1)
+})
+
+test('legacy verified and installable booleans are rejected as ambiguous', () => {
+  const result = validateRegistry(registry({ verified: true, installable: true }))
+  assert.match(result.errors.join(' '), /ambiguous verified or installable fields/)
 })
 
 test('duplicate repositories and malformed install commands fail', () => {

@@ -86,7 +86,7 @@ await import('/assets/plugins.js');
   var english = window.HRI18N.locale === 'en-US';
   bars('sources', [
     { name: english ? 'Community catalog' : '社区目录', value: curated },
-    { name: english ? 'Manifest verified' : 'Manifest 已验证', value: plugins.length - curated },
+    { name: english ? 'Manifest shape validated' : 'Manifest 结构已验证', value: plugins.length - curated },
     { name: english ? 'Pending review' : '待审查', value: HR.registry.stats.pendingReview || 0 },
     { name: english ? 'Quarantined' : '已隔离', value: HR.registry.stats.quarantined || 0 }
   ]);

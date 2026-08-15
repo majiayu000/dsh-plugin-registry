@@ -20,7 +20,7 @@ export function validateRegistry(registry) {
   const repositories = new Set()
   const categories = new Set(Object.keys(registry?.categories || {}))
 
-  if (registry?.schemaVersion !== 1) errors.push('schemaVersion must be 1.')
+  if (registry?.schemaVersion !== 2) errors.push('schemaVersion must be 2.')
   if (!registry?.generatedAt || Number.isNaN(Date.parse(registry.generatedAt))) errors.push('generatedAt must be a valid ISO date.')
   if (!registry?.categories || typeof registry.categories !== 'object' || Array.isArray(registry.categories)) errors.push('categories must be an object.')
   if (!registry?.stats || typeof registry.stats !== 'object' || Array.isArray(registry.stats)) errors.push('stats must be an object.')
@@ -50,7 +50,12 @@ export function validateRegistry(registry) {
     if (!['curated', 'discovered'].includes(plugin?.source)) errors.push(`${label}.source is invalid.`)
     const expectedTrust = plugin?.source === 'curated' ? 'curated' : 'manifest_verified'
     if (plugin?.trustLevel !== expectedTrust) errors.push(`${label}.trustLevel must be ${expectedTrust}.`)
-    if (plugin?.verified !== true || plugin?.installable !== true) errors.push(`${label} must be verified and installable.`)
+    if (Object.hasOwn(plugin || {}, 'verified') || Object.hasOwn(plugin || {}, 'installable')) {
+      errors.push(`${label} must not use the ambiguous verified or installable fields.`)
+    }
+    const expectedManifest = plugin?.source === 'curated' ? 'not_checked' : 'shape_validated'
+    if (plugin?.verification?.manifest !== expectedManifest) errors.push(`${label}.verification.manifest must be ${expectedManifest}.`)
+    if (plugin?.verification?.installation !== 'not_tested') errors.push(`${label}.verification.installation must be not_tested.`)
     const installTarget = String(plugin?.install || '').slice(INSTALL_PREFIX.length)
     if (!String(plugin?.install || '').startsWith(INSTALL_PREFIX) || !/^[^\s]+$/.test(installTarget)) errors.push(`${label}.install is invalid.`)
     if (plugin?.source === 'discovered' && installTarget.toLowerCase() !== `github:${plugin.id}`.toLowerCase()) errors.push(`${label}.install must target its repository ID.`)

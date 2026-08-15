@@ -48,8 +48,11 @@ export function normalizeCurated(plugin, metadata = {}) {
     addedAt: plugin.added || null,
     source: 'curated',
     trustLevel: 'curated',
-    verified: true,
-    installable: true,
+    listingEligible: true,
+    verification: {
+      manifest: 'not_checked',
+      installation: 'not_tested',
+    },
     install: plugin.install || `dsh plugin --profile web add github:${owner}/${name}`,
     archived: Boolean(metadata.isArchived),
     topics: metadata.repositoryTopics?.nodes?.map(node => node.topic.name) || [],
@@ -57,7 +60,7 @@ export function normalizeCurated(plugin, metadata = {}) {
   }
 }
 
-export function normalizeDiscovered(repository, installable) {
+export function normalizeDiscovered(repository, manifestShapeValid) {
   const [owner, name] = repository.full_name.split('/')
   return {
     id: repository.full_name,
@@ -75,9 +78,12 @@ export function normalizeDiscovered(repository, installable) {
     pushedAt: repository.pushed_at || null,
     addedAt: null,
     source: 'discovered',
-    trustLevel: installable ? 'manifest_verified' : 'pending_review',
-    verified: Boolean(installable),
-    installable: Boolean(installable),
+    trustLevel: manifestShapeValid ? 'manifest_verified' : 'pending_review',
+    listingEligible: Boolean(manifestShapeValid),
+    verification: {
+      manifest: manifestShapeValid ? 'shape_validated' : 'not_validated',
+      installation: 'not_tested',
+    },
     install: `dsh plugin --profile web add github:${repository.full_name}`,
     archived: Boolean(repository.archived),
     topics: repository.topics || [],
@@ -155,6 +161,11 @@ export function mergePlugins(curated, discovered) {
   for (const plugin of discovered) registry.set(repoKey(plugin.owner, plugin.name), plugin)
   for (const plugin of curated) registry.set(repoKey(plugin.owner, plugin.name), plugin)
   return [...registry.values()]
-    .filter(plugin => !plugin.archived && plugin.installable)
+    .filter(plugin => !plugin.archived && plugin.listingEligible)
     .sort((a, b) => b.stars - a.stars || a.id.localeCompare(b.id))
+}
+
+export function toPublicPlugin(plugin) {
+  const { listingEligible, ...publicPlugin } = plugin
+  return publicPlugin
 }

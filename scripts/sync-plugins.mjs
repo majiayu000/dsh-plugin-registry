@@ -7,6 +7,7 @@ import {
   normalizeCurated,
   normalizeDiscovered,
   repoKey,
+  toPublicPlugin,
   validateHealth,
 } from './registry-core.mjs'
 import { validateRegistry } from './validate-registry.mjs'
@@ -173,13 +174,13 @@ async function main() {
 
   const curatedKeys = new Set(curatedRegistry.plugins.map(plugin => repoKey(plugin.owner, plugin.name)))
   const newCandidates = uniqueRepositories.filter(repo => !curatedKeys.has(repo.full_name.toLowerCase()))
-  const previousVerified = new Map((previous?.plugins || [])
-    .filter(plugin => plugin.trustLevel === 'manifest_verified' || plugin.source === 'discovered')
+  const previousManifestValidated = new Map((previous?.plugins || [])
+    .filter(plugin => plugin.verification?.manifest === 'shape_validated' || plugin.source === 'discovered')
     .map(plugin => [plugin.id.toLowerCase(), plugin]))
-  const unchangedVerified = new Set(newCandidates
-    .filter(repo => previousVerified.get(repo.full_name.toLowerCase())?.pushedAt === repo.pushed_at)
+  const unchangedManifestValidated = new Set(newCandidates
+    .filter(repo => previousManifestValidated.get(repo.full_name.toLowerCase())?.pushedAt === repo.pushed_at)
     .map(repo => repo.full_name.toLowerCase()))
-  const manifests = await loadPackageManifests(newCandidates.filter(repo => !unchangedVerified.has(repo.full_name.toLowerCase())))
+  const manifests = await loadPackageManifests(newCandidates.filter(repo => !unchangedManifestValidated.has(repo.full_name.toLowerCase())))
 
   const metadata = new Map(uniqueRepositories.map(repo => [repo.full_name.toLowerCase(), {
     stargazerCount: repo.stargazers_count,
@@ -192,7 +193,7 @@ async function main() {
   }]))
   const curated = curatedRegistry.plugins.map(plugin => normalizeCurated(plugin, metadata.get(repoKey(plugin.owner, plugin.name))))
   const normalizedCandidates = newCandidates
-    .map(repo => normalizeDiscovered(repo, unchangedVerified.has(repo.full_name.toLowerCase()) || hasBundleManifest(manifests.get(repo.full_name.toLowerCase()))))
+    .map(repo => normalizeDiscovered(repo, unchangedManifestValidated.has(repo.full_name.toLowerCase()) || hasBundleManifest(manifests.get(repo.full_name.toLowerCase()))))
   const blocked = new Map((blocklist.repositories || []).map(entry => [String(entry.repo).toLowerCase(), entry]))
   const candidateQuarantined = normalizedCandidates.filter(plugin => blocked.has(repoKey(plugin.owner, plugin.name))).map(plugin => ({
     id: plugin.id,
@@ -201,8 +202,8 @@ async function main() {
     reason: blocked.get(repoKey(plugin.owner, plugin.name)).reason || 'Blocked by registry maintainers',
   }))
   const eligibleCandidates = normalizedCandidates.filter(plugin => !blocked.has(repoKey(plugin.owner, plugin.name)))
-  const discovered = eligibleCandidates.filter(plugin => plugin.installable)
-  const pendingReview = eligibleCandidates.filter(plugin => !plugin.installable).map(plugin => ({
+  const discovered = eligibleCandidates.filter(plugin => plugin.listingEligible)
+  const pendingReview = eligibleCandidates.filter(plugin => !plugin.listingEligible).map(plugin => ({
     id: plugin.id,
     url: plugin.url,
     trustLevel: 'pending_review',
@@ -210,13 +211,13 @@ async function main() {
     stars: plugin.stars,
   }))
   const governed = applyGovernance(mergePlugins(curated, discovered), blocklist, overrides)
-  const plugins = governed.plugins
+  const plugins = governed.plugins.map(toPublicPlugin)
   const quarantined = [...new Map([...candidateQuarantined, ...governed.quarantined].map(plugin => [plugin.id.toLowerCase(), plugin])).values()]
   const publishedCurated = plugins.filter(plugin => plugin.source === 'curated').length
   const publishedDiscovered = plugins.filter(plugin => plugin.source === 'discovered').length
 
   const document = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     generatedAt: new Date().toISOString(),
     categories: curatedRegistry.categories,
     stats: {

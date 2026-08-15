@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { applyGovernance, hasBundleManifest, inferCategory, mergePlugins, normalizeCurated, normalizeDiscovered, validateHealth } from '../scripts/registry-core.mjs'
+import { applyGovernance, hasBundleManifest, inferCategory, mergePlugins, normalizeCurated, normalizeDiscovered, toPublicPlugin, validateHealth } from '../scripts/registry-core.mjs'
 
-test('only a dsh.bundle with a safe relative patch is installable', () => {
+test('only a dsh.bundle with a safe relative patch passes manifest validation', () => {
   assert.equal(hasBundleManifest('{"dsh":{"bundle":{"patch":"./cordis.patch.yml"}}}'), true)
   assert.equal(hasBundleManifest('{"dsh":{"bundle":{}}}'), false)
   assert.equal(hasBundleManifest('{"dsh":{"bundle":[]}}'), false)
@@ -26,7 +26,8 @@ test('discovered repositories receive stable categories and install commands', (
   }, true)
   assert.equal(inferCategory({ name: plugin.name, description: plugin.description.en }), 'memory')
   assert.equal(plugin.install, 'dsh plugin --profile web add github:acme/dsh-memory')
-  assert.equal(plugin.verified, true)
+  assert.equal(plugin.listingEligible, true)
+  assert.deepEqual(plugin.verification, { manifest: 'shape_validated', installation: 'not_tested' })
   assert.equal(plugin.trustLevel, 'manifest_verified')
   assert.equal(plugin.language, 'TypeScript')
   assert.equal(plugin.icon, 'https://avatars.example/acme.png')
@@ -39,6 +40,16 @@ test('curated entries override discovered duplicates', () => {
   assert.equal(merged.length, 1)
   assert.equal(merged[0].source, 'curated')
   assert.equal(merged[0].trustLevel, 'curated')
+  assert.deepEqual(merged[0].verification, { manifest: 'not_checked', installation: 'not_tested' })
+})
+
+test('public plugins expose verification evidence without internal eligibility flags', () => {
+  const normalized = normalizeDiscovered({ full_name: 'acme/plugin', html_url: 'https://github.com/acme/plugin' }, true)
+  const plugin = toPublicPlugin(normalized)
+  assert.equal('listingEligible' in plugin, false)
+  assert.equal('verified' in plugin, false)
+  assert.equal('installable' in plugin, false)
+  assert.deepEqual(plugin.verification, { manifest: 'shape_validated', installation: 'not_tested' })
 })
 
 test('governance blocks repositories and applies only approved overrides', () => {

@@ -50,7 +50,7 @@
     </div>
     <aside>
       <div class="side-card"><h4>社区数据</h4><div class="metric-pair"><div><b id="plugin-stars">—</b><span>Stars</span></div><div><b id="plugin-forks">—</b><span>Forks</span></div></div></div>
-      <div class="side-card"><h4>信息</h4><div class="kv"><span class="k">维护者</span><span class="v" id="maintainer"></span></div><div class="kv"><span class="k">分类</span><span class="v" id="category"></span></div><div class="kv"><span class="k">来源</span><span class="v" id="source"></span></div><div class="kv"><span class="k">仓库</span><span class="v"><a id="repo-link" target="_blank" rel="noopener">GitHub</a></span></div></div>
+      <div class="side-card"><h4>信息</h4><div class="kv"><span class="k">维护者</span><span class="v" id="maintainer"></span></div><div class="kv"><span class="k">分类</span><span class="v" id="category"></span></div><div class="kv"><span class="k">来源</span><span class="v" id="source"></span></div><div class="kv"><span class="k" id="manifest-label"></span><span class="v" id="manifest-status"></span></div><div class="kv"><span class="k" id="installation-test-label"></span><span class="v" id="installation-test-status"></span></div><div class="kv"><span class="k">仓库</span><span class="v"><a id="repo-link" target="_blank" rel="noopener">GitHub</a></span></div></div>
     </aside>
   </div>
 </main>
@@ -94,11 +94,16 @@ const { findPluginById } = await import('/assets/plugin-detail.js');
   document.getElementById('maintainer').textContent = '@' + plugin.owner;
   document.getElementById('category').textContent = HR.categoryName(plugin.category);
   document.getElementById('source').textContent = plugin.source === 'curated' ? (english ? 'Community catalog' : '社区目录') : (english ? 'GitHub auto-discovery' : 'GitHub 自动发现');
+  var manifestShapeValidated = plugin.verification.manifest === 'shape_validated';
+  document.getElementById('manifest-label').textContent = 'Manifest';
+  document.getElementById('manifest-status').textContent = manifestShapeValidated ? (english ? 'Shape validated' : '结构已验证') : (english ? 'Not checked' : '未检查');
+  document.getElementById('installation-test-label').textContent = english ? 'Installation test' : '安装测试';
+  document.getElementById('installation-test-status').textContent = english ? 'Not performed' : '未执行';
   ['repo-button', 'repo-link'].forEach(function (id) { document.getElementById(id).href = plugin.url; });
-  document.getElementById('evidence-title').textContent = plugin.source === 'curated' ? (english ? 'Imported from the community catalog' : '来自社区目录') : (english ? 'Manifest format verified' : 'Manifest 格式验证通过');
-  document.getElementById('evidence-copy').textContent = plugin.source === 'curated'
-    ? (english ? 'Synced from the public awesome-dsh-plugin catalog. This registry has not independently reviewed its quality or security.' : '同步自 awesome-dsh-plugin 公开目录；本站未单独审核其功能质量或安全性。')
-    : (english ? 'At sync time, the root package.json contained a dsh.bundle object that matched the registry schema. This is not a security audit.' : '同步时，仓库根目录 package.json 的 dsh.bundle 字段符合注册表格式；这不代表安全审计。');
+  document.getElementById('evidence-title').textContent = manifestShapeValidated ? (english ? 'Manifest shape validated' : 'Manifest 结构验证通过') : (english ? 'Imported from the community catalog' : '来自社区目录');
+  document.getElementById('evidence-copy').textContent = manifestShapeValidated
+    ? (english ? 'At sync time, the root package.json contained a valid dsh.bundle shape. The registry did not run the plugin or test installation. This is not a security audit.' : '同步时，仓库根目录 package.json 包含格式有效的 dsh.bundle；本站没有运行插件，也没有测试实际安装。这不代表安全审计。')
+    : (english ? 'Synced from the public awesome-dsh-plugin catalog. The registry did not independently review its quality or security, check its manifest, run the plugin, or test installation.' : '同步自 awesome-dsh-plugin 公开目录；本站未单独审核其功能质量或安全性，也没有检查 Manifest、运行插件或测试实际安装。');
   document.getElementById('topic-list').innerHTML = (plugin.topics || []).map(function (topic) { return '<span class="topic-chip">' + HR.escapeHtml(topic) + '</span>'; }).join('') || '<span class="topic-chip">dsh-plugin</span>';
   document.getElementById('install-btn').addEventListener('click', function () { HR.openInstallDialog(plugin); });
   document.getElementById('copy-btn').addEventListener('click', function () {

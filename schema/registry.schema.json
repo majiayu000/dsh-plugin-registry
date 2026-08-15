@@ -5,7 +5,7 @@
   "type": "object",
   "required": ["schemaVersion", "generatedAt", "categories", "stats", "sources", "plugins"],
   "properties": {
-    "schemaVersion": { "const": 1 },
+    "schemaVersion": { "const": 2 },
     "generatedAt": { "type": "string", "format": "date-time" },
     "categories": {
       "type": "object",
@@ -24,7 +24,13 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "name", "owner", "url", "description", "category", "stars", "forks", "source", "trustLevel", "verified", "installable", "install", "icon"],
+        "required": ["id", "name", "owner", "url", "description", "category", "stars", "forks", "source", "trustLevel", "verification", "install", "icon"],
+        "not": {
+          "anyOf": [
+            { "required": ["verified"] },
+            { "required": ["installable"] }
+          ]
+        },
         "properties": {
           "id": { "type": "string", "pattern": "^[^/]+/[^/#]+(?:#[^/#]+)?$" },
           "name": { "type": "string", "minLength": 1 },
@@ -44,8 +50,15 @@
           "language": { "type": "string" },
           "source": { "enum": ["curated", "discovered"] },
           "trustLevel": { "enum": ["curated", "manifest_verified"] },
-          "verified": { "const": true },
-          "installable": { "const": true },
+          "verification": {
+            "type": "object",
+            "required": ["manifest", "installation"],
+            "additionalProperties": false,
+            "properties": {
+              "manifest": { "enum": ["not_checked", "shape_validated"] },
+              "installation": { "const": "not_tested" }
+            }
+          },
           "install": { "type": "string", "pattern": "^dsh plugin --profile web add [^\\s]+$" },
           "icon": { "type": "string", "pattern": "^https://" }
         }

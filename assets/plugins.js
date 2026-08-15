@@ -152,8 +152,8 @@ import { writeClipboardText } from './clipboard.js'
   }
 
   function sourcePill(plugin) {
-    if (plugin.trustLevel === 'curated' || plugin.source === 'curated') return '<span class="pill pill-official">' + (locale() === 'en' ? 'Community catalog' : '社区目录收录') + '</span>';
-    return '<span class="pill">' + (locale() === 'en' ? 'Manifest verified' : 'Manifest 已验证') + '</span>';
+    if (plugin.verification && plugin.verification.manifest === 'shape_validated') return '<span class="pill">' + (locale() === 'en' ? 'Manifest shape validated' : 'Manifest 结构已验证') + '</span>';
+    return '<span class="pill pill-official">' + (locale() === 'en' ? 'Community catalog' : '社区目录收录') + '</span>';
   }
 
   function detailHref(plugin) {
