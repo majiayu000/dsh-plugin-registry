@@ -23,8 +23,8 @@ test('every page uses the complete registry name and shared logo asset', async (
   const htmlPages = await Promise.all(pages.map(page => readFile(page, 'utf8')))
   htmlPages.forEach(html => {
     assert.match(html, /<title>[^<]*DeepSeek Harness Plugin Registry<\/title>/)
-    assert.match(html, /rel="icon" href="assets\/dsh-registry-logo\.svg"/)
-    assert.match(html, /class="brand-logo" src="assets\/dsh-registry-logo\.svg"/)
+    assert.match(html, /rel="icon" href="assets\/dsh-desk-logo\.png"/)
+    assert.match(html, /class="brand-logo" src="assets\/dsh-desk-logo\.png"/)
     assert.match(html, /<strong>DeepSeek Harness<\/strong><em>Community Registry<\/em>/)
   })
 })
