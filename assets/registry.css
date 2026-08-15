@@ -273,46 +273,6 @@ h1, h2, h3 {
 .section-label h2 { font-size: var(--text-2xl); }
 .section-label h2::before { content: '## '; color: var(--blue); font-family: var(--font-mono); font-weight: 400; font-size: 0.7em; }
 .section-label .sl-note { font: 400 11px/1 var(--font-mono); color: var(--muted); letter-spacing: 0.06em; }
-.section-label-copy { display: flex; align-items: baseline; gap: 16px; min-width: 0; }
-.featured-label { align-items: center; }
-.featured-toggle {
-  margin-left: auto; display: inline-flex; align-items: center; gap: 7px;
-  padding: 7px 11px; border: 0; border-radius: var(--radius-pill);
-  background: var(--surface); color: var(--fg-2); cursor: pointer;
-  font: 500 12px/1 var(--font-body);
-  transition: color var(--motion-fast), background var(--motion-fast);
-}
-.featured-toggle:hover { color: var(--fg); background: var(--surface-warm); }
-.featured-toggle:focus-visible { outline: none; box-shadow: var(--focus-ring); }
-.featured-toggle svg { width: 14px; height: 14px; transition: transform var(--motion-base) var(--ease-standard); }
-.featured-sec.is-collapsed .featured-toggle svg { transform: rotate(-90deg); }
-.featured-sec.is-collapsed .featured { display: none; }
-.featured-sec[hidden] { display: none; }
-
-/* ---------- 精选卡片 ---------- */
-.featured { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-.fcard {
-  padding: 24px 24px 20px; display: flex; flex-direction: column; gap: 14px;
-  border-radius: var(--radius-md);
-  background: var(--bg);
-  box-shadow: var(--elev-ring);
-  transition: box-shadow var(--motion-base) var(--ease-standard), transform var(--motion-base) var(--ease-standard);
-  text-decoration: none; color: var(--fg); position: relative;
-}
-.fcard::before {
-  counter-increment: f;
-  content: '~/featured/' counter(f, decimal-leading-zero);
-  font: 400 11px var(--font-mono); letter-spacing: 0.04em; color: var(--muted);
-  display: block; margin: -6px 0 2px;
-}
-.featured { counter-reset: f; }
-.fcard:hover { box-shadow: var(--elev-ring), rgba(0, 0, 0, 0.06) 0px 12px 28px -8px; transform: translateY(-2px); }
-.fcard-top { display: flex; align-items: center; gap: 12px; }
-.fcard-name { font: 500 16px var(--font-mono); letter-spacing: -0.01em; color: var(--fg); }
-.fcard-desc { font-size: var(--text-sm); color: var(--fg-2); line-height: 1.6; flex: 1; }
-.fcard-meta { display: flex; align-items: center; gap: 14px; font: 11px var(--font-mono); color: var(--muted); border-top: 1px solid var(--border-soft); padding-top: 14px; }
-.fcard-meta b { color: var(--fg); font-weight: 500; }
-
 /* ---------- 插件头像 ---------- */
 .pavatar {
   width: 40px; height: 40px; flex: none; border-radius: 12px;
@@ -329,7 +289,7 @@ h1, h2, h3 {
 .pavatar img { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 180ms var(--ease-standard), transform 240ms var(--ease-standard); }
 .pavatar.has-image img { opacity: 1; }
 .pavatar.has-image { background: var(--surface); box-shadow: var(--elev-ring); }
-.prow:hover .pavatar img, .fcard:hover .pavatar img { transform: scale(1.04); }
+.prow:hover .pavatar img { transform: scale(1.04); }
 
 /* ---------- 插件列表行 ---------- */
 .plist { border-top: 1px solid var(--border-soft); margin-top: 0; }
@@ -357,7 +317,6 @@ h1, h2, h3 {
 .prow-stars svg, .prow-forks svg { width: 13px; height: 13px; color: var(--warn); }
 .prow-forks svg { color: var(--muted); }
 .prow-stars small, .prow-forks small { grid-column: 2; display: block; font: 400 9px var(--font-mono); color: var(--muted); letter-spacing: 0.06em; }
-.fcard-meta svg { width: 12px; height: 12px; margin-right: 5px; vertical-align: -2px; }
 .prow-empty { padding: 64px 0; text-align: center; color: var(--muted); font-size: var(--text-sm); }
 .load-more-wrap { display: flex; justify-content: center; padding: 28px 0 0; }
 .load-more-wrap[hidden] { display: none; }
@@ -568,13 +527,6 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
   .discovery-row { grid-template-columns: 1fr; }
   .prow { grid-template-columns: 40px minmax(0,1fr) 92px 108px; }
   .prow-idx, .prow-meta, .prow-forks { display: none; }
-  .featured {
-    grid-template-columns: repeat(3, minmax(310px, 72vw));
-    overflow-x: auto; overscroll-behavior-inline: contain;
-    scroll-snap-type: inline proximity; scrollbar-width: thin;
-    padding: 1px 2px 14px;
-  }
-  .fcard { scroll-snap-align: start; }
   .kpis { grid-template-columns: 1fr 1fr; }
   .kpi:nth-child(2) { border-right: 0; }
   .kpi:nth-child(1), .kpi:nth-child(2) { border-bottom: 1px solid var(--border-soft); }
@@ -609,16 +561,6 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
   .statstrip .ss { border-right: 0; padding-right: 0; margin-right: 24px; }
   .toolbar-r { margin-left: 0; width: 100%; display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
   .toolbar-r .sel { width: 100%; min-width: 0; padding-inline: 12px; }
-  .featured-sec .section-label { margin-top: 34px; margin-bottom: 14px; }
-  .featured-label { padding: 12px 0; }
-  .section-label-copy { display: block; }
-  .featured-label h2 { font-size: 24px; }
-  .featured-label .sl-note { display: block; margin: 5px 0 0 29px; font-size: 9px; }
-  .featured-toggle { padding: 8px 10px; }
-  .featured { grid-template-columns: repeat(3, minmax(280px, 86vw)); gap: 10px; }
-  .fcard { padding: 18px; gap: 10px; }
-  .fcard-desc { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
-  .fcard-meta { padding-top: 10px; }
   .perm-pick { grid-template-columns: 1fr; }
   .cli-tag { display: none; }
   .prow { grid-template-columns: 36px minmax(0, 1fr) auto; gap: 10px; padding-left: 0; padding-right: 0; }

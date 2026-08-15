@@ -78,20 +78,6 @@
     </div>
   </section>
 
-  <section id="featured-sec" class="featured-sec">
-    <div class="section-label featured-label">
-      <div class="section-label-copy">
-        <h2>热门精选</h2>
-        <span class="sl-note">CURATED · 按 GitHub Stars</span>
-      </div>
-      <button class="featured-toggle" id="featured-toggle" type="button" aria-controls="featured" aria-expanded="true">
-        <span class="featured-toggle-label">收起</span>
-        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m3 6 5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </button>
-    </div>
-    <div class="featured" id="featured"></div>
-  </section>
-
   <section>
     <div class="section-label">
       <h2>全部插件</h2>
@@ -155,40 +141,6 @@ const { createPluginSearchIndex, filterPluginSearchIndex } = await import('/asse
     requestAnimationFrame(step);
   }
 
-  /* 精选卡片 */
-  var feat = document.getElementById('featured');
-  var featuredSec = document.getElementById('featured-sec');
-  var featuredToggle = document.getElementById('featured-toggle');
-  var featuredToggleLabel = featuredToggle.querySelector('.featured-toggle-label');
-
-  function setFeaturedCollapsed(collapsed) {
-    featuredSec.classList.toggle('is-collapsed', collapsed);
-    featuredToggle.setAttribute('aria-expanded', String(!collapsed));
-    featuredToggleLabel.textContent = HRI18N.translateText(collapsed ? '展开精选' : '收起');
-  }
-
-  setFeaturedCollapsed(window.matchMedia('(max-width: 600px)').matches);
-  featuredToggle.addEventListener('click', function () {
-    setFeaturedCollapsed(!featuredSec.classList.contains('is-collapsed'));
-  });
-
-  HR.PLUGINS.filter(function (p) { return p.source === 'curated'; }).slice(0, 3).forEach(function (p) {
-    var a = document.createElement('a');
-    a.className = 'fcard';
-    a.href = HR.detailHref(p);
-    a.innerHTML =
-      '<div class="fcard-top"><span class="fcard-av"></span><div>' +
-        '<div class="fcard-name">' + HR.escapeHtml(p.id) + '</div>' +
-        '<div style="font:12px var(--font-mono);color:var(--faint)">@' + HR.escapeHtml(p.owner) + ' · ' + (window.HRI18N.locale === 'en-US' ? 'Curated' : '精选') + '</div>' +
-      '</div></div>' +
-      '<p class="fcard-desc">' + HR.escapeHtml(HR.description(p)) + '</p>' +
-      '<div class="fcard-meta"><span>' + HR.STAR + '<b>' + p.stars.toLocaleString() + '</b> Stars</span><span>' + HR.FORK + '<b>' + p.forks.toLocaleString() + '</b> Forks</span><span style="margin-left:auto">' + HR.escapeHtml(HR.categoryName(p.category)) + '</span></div>';
-    a.querySelector('.fcard-av').appendChild(HR.avatar(p));
-    a.querySelector('.fcard-meta svg').style.width = '12px';
-    a.querySelector('.fcard-meta svg').style.height = '12px';
-    feat.appendChild(a);
-  });
-
   /* 列表渲染 + 筛选 */
   function apply() {
     var rows = filterPluginSearchIndex(searchIndex, {
@@ -210,7 +162,6 @@ const { createPluginSearchIndex, filterPluginSearchIndex } = await import('/asse
     }
     note.textContent = rows.length + ' 个结果';
     document.getElementById('load-more-wrap').hidden = rows.length <= state.limit;
-    featuredSec.hidden = Boolean(state.q || state.cat !== 'all' || state.curated || state.language !== 'all');
   }
 
   document.getElementById('q').addEventListener('input', function (e) { state.q = e.target.value.trim(); state.limit = 60; apply(); });

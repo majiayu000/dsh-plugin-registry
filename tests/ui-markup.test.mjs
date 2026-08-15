@@ -31,7 +31,8 @@ test('plugin rows expose topics and update dates as decision signals', async () 
   assert.match(script, /plugin\.pushedAt/)
 })
 
-test('language filtering removes unfiltered featured recommendations', async () => {
+test('directory places plugin results directly after the filters', async () => {
   const html = await readFile('index.html', 'utf8')
-  assert.match(html, /state\.language !== 'all'/)
+  assert.doesNotMatch(html, /id="featured-sec"|热门精选|class="fcard"/)
+  assert.match(html, /id="language"[\s\S]*<h2>全部插件<\/h2>/)
 })
