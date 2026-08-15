@@ -75,17 +75,15 @@
 <script type="module">
 await import('/assets/i18n.js');
 const { validateBundleManifest } = await import('/assets/bundle-manifest.js');
+const { evaluateRepository, findRegistryEntry, parseGitHubRepository } = await import('/assets/repository-checker.js');
 (function () {
   'use strict';
-  function parseRepo(value) {
-    return value.trim().replace(/^https?:\/\/github\.com\//i, '').replace(/\.git$/i, '').replace(/\/$/, '').split('/').slice(0, 2).join('/');
-  }
   function setCheck(key, ok) { document.querySelector('[data-check="' + key + '"]').classList.toggle('ok', ok); }
   document.getElementById('check-button').addEventListener('click', async function () {
-    var repo = parseRepo(document.getElementById('repo-input').value);
+    var repo = parseGitHubRepository(document.getElementById('repo-input').value);
     var message = document.getElementById('check-message');
     var results = document.getElementById('check-results');
-    if (!/^[^/]+\/[^/]+$/.test(repo)) { message.textContent = '请输入 owner/repo 或完整 GitHub 仓库地址。'; return; }
+    if (!repo) { message.textContent = '请输入 owner/repo 或完整 GitHub 仓库地址。'; return; }
     this.disabled = true; this.textContent = '检查中…'; results.hidden = false; message.textContent = '';
     ['repo', 'topic', 'bundle', 'status'].forEach(function (key) { setCheck(key, false); });
     try {
@@ -96,12 +94,19 @@ const { validateBundleManifest } = await import('/assets/bundle-manifest.js');
       var packageResponse = await fetch('https://api.github.com/repos/' + repo + '/contents/package.json', { headers: { accept: 'application/vnd.github.raw+json' } });
       var bundleCheck = { valid: false, reason: 'package.json 不存在。' };
       if (packageResponse.ok) bundleCheck = validateBundleManifest(await packageResponse.text());
-      var validBundle = bundleCheck.valid;
-      setCheck('bundle', validBundle);
-      var ready = (data.topics || []).indexOf('dsh-plugin') >= 0 && !data.archived && !data.fork && validBundle;
-      message.textContent = ready
+      var registryEntry = null;
+      try {
+        var registryResponse = await fetch('data/plugins.json');
+        if (registryResponse.ok) registryEntry = findRegistryEntry(await registryResponse.json(), repo);
+      } catch (_) { /* Registry status is supplementary and must not block repository checks. */ }
+      var check = evaluateRepository({ repository: data, bundleCheck: bundleCheck, registryEntry: registryEntry });
+      var checkKeys = { repository_public: 'repo', discovery_topic: 'topic', bundle_manifest: 'bundle', repository_status: 'status' };
+      check.signals.forEach(function (item) { setCheck(checkKeys[item.signal_type], item.signal.passed); });
+      message.textContent = check.auto_discoverable
         ? '检查通过。这个仓库会在下一轮同步中被自动发现。'
-        : (!validBundle ? 'Manifest 未通过：' + bundleCheck.reason : '还有项目未通过，请按上面的契约修复后重新检查。');
+        : (check.listing.listed && check.listing.source === 'curated'
+          ? '这个仓库已通过精选目录收录，但还不符合自动发现契约。现有收录不会受影响。'
+          : (!bundleCheck.valid ? 'Manifest 未通过：' + bundleCheck.reason : '还有项目未通过，请按上面的契约修复后重新检查。'));
     } catch (error) { message.textContent = '检查失败：' + error.message; }
     finally { this.disabled = false; this.textContent = '重新检查'; }
   });
