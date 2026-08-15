@@ -58,12 +58,14 @@ import { writeClipboardText } from './clipboard.js'
   function copyText(button, command) {
     var original = button.textContent;
     button.setAttribute('aria-live', 'polite');
-    writeClipboardText(command).then(function () {
+    return writeClipboardText(command).then(function () {
       button.textContent = locale() === 'en' ? 'Copied ✓' : '已复制 ✓';
       button.classList.add('done');
+      return true;
     }).catch(function () {
       button.textContent = locale() === 'en' ? 'Copy failed' : '复制失败';
       button.classList.add('error');
+      return false;
     }).finally(function () {
       setTimeout(function () {
         button.textContent = original;
@@ -72,15 +74,79 @@ import { writeClipboardText } from './clipboard.js'
     });
   }
 
+  var activeInstallPlugin = null;
+
+  function ensureInstallDialog() {
+    var existing = document.getElementById('install-dialog');
+    if (existing) return existing;
+    var english = locale() === 'en';
+    var dialog = document.createElement('dialog');
+    dialog.id = 'install-dialog';
+    dialog.className = 'install-dialog';
+    dialog.setAttribute('aria-labelledby', 'install-dialog-title');
+    dialog.innerHTML =
+      '<div class="install-dialog-card">' +
+        '<header class="install-dialog-head">' +
+          '<div><span class="install-dialog-kicker">DSH PLUGIN INSTALL</span><h2 id="install-dialog-title"></h2></div>' +
+          '<button class="install-dialog-close" type="button" data-install-close aria-label="' + (english ? 'Close install guide' : '关闭安装说明') + '">×</button>' +
+        '</header>' +
+        '<p class="install-dialog-intro">' + (english ? 'Copying the command does not install the plugin. Run it in a terminal on the computer where DeepSeek Harness is installed.' : '复制命令不会自动安装。请在运行 DeepSeek Harness 的电脑上打开终端并执行。') + '</p>' +
+        '<ol class="install-steps">' +
+          '<li><span>01</span><div><b>' + (english ? 'Open a terminal' : '打开终端') + '</b><p>' + (english ? 'Use the computer where DeepSeek Harness is installed.' : '在已经安装 DeepSeek Harness 的电脑上操作。') + '</p></div></li>' +
+          '<li><span>02</span><div><b>' + (english ? 'Copy the command below' : '复制下面的命令') + '</b><p>' + (english ? 'The button only writes the command to your clipboard.' : '按钮只会把命令写入剪贴板，不会直接执行。') + '</p></div></li>' +
+          '<li><span>03</span><div><b>' + (english ? 'Paste and press Enter' : '粘贴并按 Enter') + '</b><p>' + (english ? 'Wait for DSH to report the result, then follow any plugin-specific setup in its README.' : '等待 DSH 输出安装结果；如插件需要额外配置，请继续查看仓库 README。') + '</p></div></li>' +
+        '</ol>' +
+        '<div class="install-dialog-command"><span>$</span><code data-install-command></code></div>' +
+        '<button class="btn btn-primary install-dialog-copy" type="button" data-install-copy autofocus>' + (english ? 'Copy install command' : '复制安装命令') + '</button>' +
+        '<p class="install-dialog-status" data-install-status aria-live="polite">' + (english ? 'Nothing is executed until you paste the command into a terminal.' : '只有粘贴到终端并执行后，安装才会开始。') + '</p>' +
+        '<aside class="install-dialog-safety"><b>' + (english ? 'Before you install' : '安装前请确认') + '</b><p>' + (english ? 'Plugins are third-party code from GitHub. Review the repository before running the command. Manifest format verification is not a security audit.' : '插件是来自 GitHub 的第三方代码。执行前请检查仓库内容；Manifest 格式验证不代表安全审计。') + '</p></aside>' +
+        '<footer class="install-dialog-links"><a data-install-repo target="_blank" rel="noopener">' + (english ? 'Review GitHub source' : '查看 GitHub 源码') + '</a><a href="https://github.com/deepseek-ai/deepseek-harness" target="_blank" rel="noopener">' + (english ? 'Need DeepSeek Harness?' : '还没安装 DeepSeek Harness？') + '</a></footer>' +
+      '</div>';
+    document.body.appendChild(dialog);
+
+    dialog.querySelector('[data-install-close]').addEventListener('click', function () { dialog.close(); });
+    dialog.querySelector('[data-install-copy]').addEventListener('click', function () {
+      if (!activeInstallPlugin) return;
+      var status = dialog.querySelector('[data-install-status]');
+      copyText(this, activeInstallPlugin.install).then(function (copied) {
+        status.textContent = copied
+          ? (english ? 'Command copied. The plugin is not installed yet. Switch to your terminal, paste the command, and press Enter.' : '命令已复制，插件尚未安装。请切换到终端，粘贴命令并按 Enter。')
+          : (english ? 'Copy failed. Select the command above and copy it manually.' : '复制失败，请选中上方命令手动复制。');
+      });
+    });
+    dialog.addEventListener('click', function (event) { if (event.target === dialog) dialog.close(); });
+    dialog.addEventListener('close', function () {
+      document.documentElement.classList.remove('modal-open');
+      activeInstallPlugin = null;
+    });
+    return dialog;
+  }
+
+  function openInstallDialog(plugin) {
+    activeInstallPlugin = plugin;
+    var english = locale() === 'en';
+    var dialog = ensureInstallDialog();
+    dialog.querySelector('#install-dialog-title').textContent = english ? 'How to install ' + plugin.name : '安装 ' + plugin.name + ' 的步骤';
+    dialog.querySelector('[data-install-command]').textContent = plugin.install;
+    dialog.querySelector('[data-install-repo]').href = plugin.url;
+    var copyButton = dialog.querySelector('[data-install-copy]');
+    copyButton.textContent = english ? 'Copy install command' : '复制安装命令';
+    copyButton.classList.remove('done', 'error');
+    dialog.querySelector('[data-install-status]').textContent = english ? 'Nothing is executed until you paste the command into a terminal.' : '只有粘贴到终端并执行后，安装才会开始。';
+    document.documentElement.classList.add('modal-open');
+    if (!dialog.open) dialog.showModal();
+    copyButton.focus();
+  }
+
   function installBtn(plugin) {
     var button = document.createElement('button');
     button.className = 'btn btn-sm';
-    button.textContent = locale() === 'en' ? 'Install' : '安装';
-    button.title = (locale() === 'en' ? 'Copy install command: ' : '复制安装命令：') + plugin.install;
+    button.textContent = locale() === 'en' ? 'Install steps' : '安装步骤';
+    button.title = locale() === 'en' ? 'Open install guide' : '打开安装说明';
     button.addEventListener('click', function (event) {
       event.preventDefault();
       event.stopPropagation();
-      copyText(button, plugin.install);
+      openInstallDialog(plugin);
     });
     return button;
   }
@@ -150,6 +216,7 @@ import { writeClipboardText } from './clipboard.js'
     categoryName: categoryName,
     avatar: avatar,
     copyText: copyText,
+    openInstallDialog: openInstallDialog,
     installBtn: installBtn,
     sourcePill: sourcePill,
     detailHref: detailHref,

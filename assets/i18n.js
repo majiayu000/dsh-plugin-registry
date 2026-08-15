@@ -31,7 +31,7 @@
     '周下载 Top 5 · 环比变化': 'Top 5 weekly installs · change', '作者榜': 'Author ranking',
     '按全部插件的周下载合计': 'Total weekly installs across plugins', '插件数': 'Plugins', '周下载': 'Weekly installs', '环比': 'Change',
     '30 天前': '30 days ago', '20 天前': '20 days ago', '10 天前': '10 days ago', '今天': 'Today',
-    '复制安装命令': 'Copy install command', '复制命令': 'Copy command', '收藏': 'Favorite',
+    '复制安装命令': 'Copy install command', '安装步骤': 'Install steps', '复制命令': 'Copy command', '收藏': 'Favorite',
     '官方认证': 'Verified', '需要 Harness CLI': 'Requires Harness CLI', '还没装 CLI？先运行': 'Need the CLI? Run',
     'README': 'README', '版本记录': 'Versions', '权限': 'Permissions', '依赖': 'Dependencies',
     '它能做什么': 'What it does', '三分钟上手': 'Get started in three minutes', '新手常见问题': 'Common questions',

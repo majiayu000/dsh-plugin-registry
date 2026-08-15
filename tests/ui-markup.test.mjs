@@ -36,3 +36,18 @@ test('directory places plugin results directly after the filters', async () => {
   assert.doesNotMatch(html, /id="featured-sec"|热门精选|class="fcard"/)
   assert.match(html, /id="language"[\s\S]*<h2>全部插件<\/h2>/)
 })
+
+test('install actions open an accessible shared guide instead of silently copying', async () => {
+  const shared = await readFile('assets/plugins.js', 'utf8')
+  const detail = await readFile('plugin-detail.html', 'utf8')
+  assert.match(shared, /document\.createElement\('dialog'\)/)
+  assert.match(shared, /aria-labelledby/)
+  assert.match(shared, /dialog\.showModal\(\)/)
+  assert.match(shared, /Manifest 格式验证不代表安全审计/)
+  assert.match(shared, /插件尚未安装/)
+  assert.match(shared, /Install steps.*安装步骤/)
+  assert.match(shared, /openInstallDialog\(plugin\)/)
+  assert.match(detail, /HR\.openInstallDialog\(plugin\)/)
+  assert.match(detail, /id="install-btn">安装步骤<\/button>/)
+  assert.match(detail, /id="copy-btn"/)
+})
