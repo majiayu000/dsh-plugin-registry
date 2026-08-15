@@ -19,6 +19,8 @@ test('mobile styles keep primary navigation available', async () => {
 test('plugin detail describes only verifiable registry signals', async () => {
   const html = await readFile('plugin-detail.html', 'utf8')
   assert.doesNotMatch(html, /为什么被收录|人工精选且可安装|已通过社区精选库/)
+  assert.doesNotMatch(html, />README</)
+  assert.match(html, />插件信息</)
   assert.match(html, /验证范围/)
   assert.match(html, /这不代表安全审计/)
   assert.match(html, /本站未单独审核其功能质量或安全性/)

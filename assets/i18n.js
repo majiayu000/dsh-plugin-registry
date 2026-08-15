@@ -33,7 +33,7 @@
     '30 天前': '30 days ago', '20 天前': '20 days ago', '10 天前': '10 days ago', '今天': 'Today',
     '复制安装命令': 'Copy install command', '安装步骤': 'Install steps', '复制命令': 'Copy command', '收藏': 'Favorite',
     '官方认证': 'Verified', '需要 Harness CLI': 'Requires Harness CLI', '还没装 CLI？先运行': 'Need the CLI? Run',
-    'README': 'README', '版本记录': 'Versions', '权限': 'Permissions', '依赖': 'Dependencies',
+    '插件信息': 'Plugin information', '版本记录': 'Versions', '权限': 'Permissions', '依赖': 'Dependencies',
     '它能做什么': 'What it does', '三分钟上手': 'Get started in three minutes', '新手常见问题': 'Common questions',
     '维护者': 'Maintainer', '官方团队 · 已验证域名 dsh.dev': 'Official team · verified dsh.dev domain',
     '周下载趋势': 'Weekly install trend', '本周': 'This week', '信息': 'Information', '许可证': 'License',
