@@ -65,7 +65,7 @@ GitHub topic ─────┘                              └──── aud
 
 Curated repositories receive the `curated` trust level. Automatically discovered repositories are published only when their root `package.json` contains a valid `dsh.bundle`; these receive `manifest_verified`. Blocked, malformed, and pending repositories are excluded from the installable list. The full policy is documented in [registry governance](docs/registry-governance.md).
 
-The scheduled GitHub Actions workflow refreshes the snapshot every eight hours. A health gate prevents an unauthenticated partial discovery run or an unexpectedly smaller complete snapshot from replacing healthy data.
+The scheduled GitHub Actions workflow refreshes the snapshot every two hours. When the registry changes, the same workflow commits the snapshot and deploys its verified build artifact to GitHub Pages, so sync commits created with `GITHUB_TOKEN` do not depend on a second `push` event. A health gate prevents an unauthenticated partial discovery run or an unexpectedly smaller complete snapshot from replacing healthy data.
 
 ## Add a plugin
 

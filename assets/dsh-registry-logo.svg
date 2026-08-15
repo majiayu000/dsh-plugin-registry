@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-labelledby="title description">
+  <title id="title">DeepSeek Harness Plugin Registry</title>
+  <desc id="description">A branching harness circuit inside a rounded square.</desc>
+  <rect width="48" height="48" rx="13" fill="#181411"/>
+  <path d="M13.5 13.5v21M13.5 17.5h10.25c3.3 0 5.25-1.95 5.25-5.25M13.5 24H29M13.5 30.5h10.25c3.3 0 5.25 1.95 5.25 5.25" fill="none" stroke="#F5F2EF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="29" cy="11.5" r="3.5" fill="#60A5FA"/>
+  <circle cx="31.5" cy="24" r="3.5" fill="#F5F2EF"/>
+  <circle cx="29" cy="36.5" r="3.5" fill="#60A5FA"/>
+</svg>

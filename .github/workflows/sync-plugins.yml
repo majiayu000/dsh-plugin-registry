@@ -3,10 +3,7 @@ name: Sync plugin registry
 on:
   workflow_dispatch:
   schedule:
-    - cron: '17 */8 * * *'
-
-permissions:
-  contents: write
+    - cron: '17 */2 * * *'
 
 concurrency:
   group: plugin-registry-sync
@@ -15,6 +12,10 @@ concurrency:
 jobs:
   sync:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      registry_changed: ${{ steps.registry_changes.outputs.changed }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -27,10 +28,12 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: npm test
       - run: npm run validate:registry
-      - run: npm run build
+      - run: npm run build -- --base /dsh-plugin-registry/
       - name: Commit changed registry snapshot
+        id: registry_changes
         run: |
           if git diff --quiet -- public/data/plugins.json public/data/registry-audit.json; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           git config user.name github-actions[bot]
@@ -38,3 +41,24 @@ jobs:
           git add public/data/plugins.json public/data/registry-audit.json
           git commit -m "chore: refresh DSH plugin registry"
           git push
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+      - name: Upload verified Pages artifact
+        if: steps.registry_changes.outputs.changed == 'true'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: sync
+    if: needs.sync.outputs.registry_changed == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy synchronized registry to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>收录规范 — DeepSeek Harness Plugin Registry</title>
+<meta name="description" content="DeepSeek Harness Plugin Registry 本站执行的插件自动发现、Manifest 校验、状态与移除规范。" />
+<link rel="icon" href="assets/dsh-registry-logo.svg" type="image/svg+xml" />
+<link rel="stylesheet" href="assets/registry.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="wrap topbar-in">
+    <a class="brand" href="index.html"><img class="brand-logo" src="assets/dsh-registry-logo.svg" width="34" height="34" alt="" /><span class="brand-word"><strong>DeepSeek Harness</strong><em>Plugin Registry</em></span></a>
+    <nav class="nav"><a href="index.html">浏览插件</a><a href="publish.html">发布</a><a href="policy.html" class="on">规范</a><a href="dashboard.html">统计</a></nav>
+    <div class="topbar-r"><span class="cli-tag">REGISTRY POLICY</span></div>
+  </div>
+</header>
+
+<main class="wrap policy-page">
+  <section class="page-head">
+    <p class="eyebrow rise">收录 · 本站规则</p>
+    <h1 class="page-title rise rise-1">怎样进入公开列表。</h1>
+    <p class="page-sub rise rise-2">这里说明 Harness Registry 自己执行的发现、验证和治理规则。本页就是本站完整规范，所有入口均在站内完成。</p>
+  </section>
+
+  <div class="policy-layout rise rise-3">
+    <article class="policy-content">
+      <section class="policy-section" id="requirements">
+        <span class="policy-index" aria-hidden="true">01</span>
+        <div>
+          <h2>自动收录条件</h2>
+          <p class="policy-lead">仓库必须同时满足以下条件，缺少任何一项都不会进入公开插件列表。</p>
+          <ol class="policy-requirements">
+            <li><strong>公开且可访问</strong><span>同步任务必须能读取仓库元数据和根目录 package.json。</span></li>
+            <li><strong>带有发现标记</strong><span>仓库需声明 <code>dsh-plugin</code> Topic，供定时任务发现。</span></li>
+            <li><strong>声明可安装 bundle</strong><span>根目录 package.json 的 <code>dsh.bundle.patch</code> 必须是安全的相对路径。</span></li>
+            <li><strong>状态符合要求</strong><span>已归档仓库和 Fork 不会自动进入公开列表。</span></li>
+          </ol>
+        </div>
+      </section>
+
+      <section class="policy-section" id="manifest">
+        <span class="policy-index" aria-hidden="true">02</span>
+        <div>
+          <h2>Manifest 最低契约</h2>
+          <p class="policy-lead">patch 路径不能是绝对路径，也不能通过 <code>..</code> 跳出仓库目录。对应文件需要随仓库一同维护。</p>
+          <pre class="codeblock"><code>{
+  <span class="k">"dsh"</span>: {
+    <span class="k">"bundle"</span>: {
+      <span class="k">"patch"</span>: <span class="k">"./cordis.patch.yml"</span>
+    }
+  }
+}</code></pre>
+        </div>
+      </section>
+
+      <section class="policy-section" id="statuses">
+        <span class="policy-index" aria-hidden="true">03</span>
+        <div>
+          <h2>本站显示的状态</h2>
+          <p class="policy-lead">状态说明的是本站验证到了什么，不代表对插件代码作出安全背书。</p>
+          <dl class="policy-statuses">
+            <div><dt><span class="pill pill-success">Manifest 已验证</span></dt><dd>自动发现，并通过根目录 bundle 格式校验；可进入公开列表。</dd></div>
+            <div><dt><span class="pill pill-official">精选</span></dt><dd>由 Registry 维护流程标记的收录项；仍不代表功能质量或安全性已经审核。</dd></div>
+            <div><dt><span class="pill pill-warn">待审查</span></dt><dd>仓库已被发现，但尚未满足可安装契约，不出现在公开安装列表。</dd></div>
+            <div><dt><span class="pill pill-danger">已隔离</span></dt><dd>因误收录、重复、风险或治理决定被排除，不出现在公开列表。</dd></div>
+          </dl>
+        </div>
+      </section>
+
+      <section class="policy-section" id="boundary">
+        <span class="policy-index" aria-hidden="true">04</span>
+        <div>
+          <h2>验证边界</h2>
+          <p>本站只检查公开元数据和 manifest 结构，不运行插件代码，不验证安装后的行为，也不持续监控权限变化。</p>
+          <p>复制安装命令只代表命令已进入剪贴板，不代表插件已经安装。安装前请自行检查仓库内容、依赖和所需权限。</p>
+        </div>
+      </section>
+
+      <section class="policy-section" id="sync">
+        <span class="policy-index" aria-hidden="true">05</span>
+        <div>
+          <h2>同步与移除</h2>
+          <p>公开数据按计划定时刷新。新仓库不会立即出现，元数据也可能在下一轮同步前保持旧值。</p>
+          <p>不再满足条件、已归档或被隔离的插件会从公开列表移除。为避免异常同步覆盖健康数据，数量大幅下降或发现不完整时会停止发布新快照。</p>
+        </div>
+      </section>
+    </article>
+
+    <aside class="policy-aside" aria-label="页面目录">
+      <p class="policy-aside-label">ON THIS PAGE</p>
+      <a href="#requirements">01 自动收录条件</a>
+      <a href="#manifest">02 Manifest 契约</a>
+      <a href="#statuses">03 状态说明</a>
+      <a href="#boundary">04 验证边界</a>
+      <a href="#sync">05 同步与移除</a>
+      <a class="btn btn-primary" href="publish.html">检查我的仓库</a>
+    </aside>
+  </div>
+</main>
+
+<footer class="footer"><div class="wrap footer-in"><a href="index.html">返回插件列表</a><a href="publish.html">发布你的插件</a><span class="fr">本站收录规则</span></div></footer>
+
+<script type="module" src="assets/i18n.js"></script>
+</body>
+</html>

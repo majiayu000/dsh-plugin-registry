@@ -7,8 +7,8 @@
   var locale = saved || (navigator.language && navigator.language.toLowerCase().indexOf('zh') === 0 ? 'zh-CN' : 'en-US');
 
   var en = {
-    '浏览插件': 'Browse', '发布': 'Publish', '统计': 'Stats', '返回插件列表': 'Back to plugins',
-    '发布你的插件': 'Publish your plugin', '审核规范': 'Review policy', 'API 文档': 'API docs',
+    '浏览插件': 'Browse', '发布': 'Publish', '统计': 'Stats', '规范': 'Policy', '返回插件列表': 'Back to plugins',
+    '发布你的插件': 'Publish your plugin', '审核规范': 'Review policy', '收录规范': 'Listing policy', 'API 文档': 'API docs',
     'DeepSeek Harness': 'DeepSeek Harness', '数据接口 API': 'Data API', '返回插件库': 'Back to registry',
     '举报此插件': 'Report plugin', '作者协议': 'Author agreement',
     '给 Harness 装上能力。': 'Give Harness new capabilities.',
@@ -82,12 +82,12 @@
     '数据来自社区目录与 GitHub dsh-plugin Topic。这里不制造下载量或评分，只展示可以被验证的公开指标。': 'Data comes from the community catalog and the GitHub dsh-plugin topic. No fabricated installs or ratings — only verifiable public metrics.',
     '已收录仓库合计': 'Across listed repositories', '可安装插件': 'Installable plugins', '按 GitHub owner 去重': 'Unique GitHub owners',
     'manifest 验证通过': 'Manifest verified', '可直接安装': 'Ready to install', '按可安装插件数量': 'By installable plugin count', '来源构成': 'Source composition', '可信等级': 'Trust levels',
-    '精选与自动发现': 'Curated and auto-discovered', '发布列表与审计队列': 'Published registry and audit queue', '待审查': 'Pending review', '已隔离': 'Quarantined', '数据生成于：': 'Generated: ', '按收录插件的 Stars 合计': 'Total Stars across listed plugins',
-    '每 8 小时自动同步': 'Auto-sync every 8 hours', '每 8 小时自动发现': 'Auto-discovery every 8 hours',
+    '社区目录与自动发现': 'Community catalog and auto-discovered', '发布列表与审计队列': 'Published registry and audit queue', '待审查': 'Pending review', '已隔离': 'Quarantined', '数据生成于：': 'Generated: ', '按收录插件的 Stars 合计': 'Total Stars across listed plugins',
+    '每 2 小时自动同步': 'Auto-sync every 2 hours', '每 2 小时自动发现': 'Auto-discovery every 2 hours',
     '提交仓库，公开走完审核。': 'Submit your repository. Keep the review public.',
     '先运行仓库预检，再创建带检查结果的 GitHub Issue。维护者反馈、修复记录和最终结论都留在 GitHub；满足契约的仓库仍会自动发现。': 'Run the repository pre-check, then create a GitHub issue with the results. Maintainer feedback, fixes, and the final decision stay on GitHub; eligible repositories are still auto-discovered.',
     'GitHub 提交流程': 'GitHub submission flow', '检查仓库': 'Check repository', '公开元数据': 'Public metadata', '预填提交': 'Prefill submission', '检查结果': 'Check results', 'GitHub 审核': 'GitHub review', 'Issue 可追踪': 'Trackable issue', '进入列表': 'Get listed', '合并后同步': 'Sync after approval',
-    '自动发现要求根目录 package.json 声明 dsh.bundle。': 'Auto-discovery requires dsh.bundle in the root package.json.',
+    '每 2 小时': 'Every 2 hours', '无需提交表单': 'No submission form', '自动发现最低契约': 'Minimum auto-discovery contract', '自动发现要求根目录 package.json 声明 dsh.bundle。': 'Auto-discovery requires dsh.bundle in the root package.json.',
     '让自动发现生效': 'Enable auto-discovery', '在根目录 package.json 中声明可安装的 bundle。': 'Declare an installable bundle in the root package.json.',
     '在 GitHub 仓库设置中添加': 'Add the', 'Topic。': 'topic.', '保持仓库公开且未归档；Fork 默认不会收录。': 'Keep the repository public and unarchived; forks are excluded by default.',
     '等待下一次定时同步，或在下面立即检查。': 'Wait for the next scheduled sync or check it below.', '查看完整收录规范': 'View the full listing policy',
@@ -101,7 +101,25 @@
     '浏览 GitHub Topic': 'Browse GitHub topic', '检查中…': 'Checking…', '重新检查': 'Check again',
     '检查通过。这个仓库会在下一轮同步中被自动发现。': 'Checks passed. This repository will be discovered during the next sync.',
     '还有项目未通过，请按上面的契约修复后重新检查。': 'Some checks failed. Fix the repository contract above and check again.'
-    , '加载更多': 'Load more'
+    , '加载更多': 'Load more',
+    '收录 · 本站规则': 'Listing · Registry policy', '怎样进入公开列表。': 'How plugins enter the public registry.',
+    '这里说明 Harness Registry 自己执行的发现、验证和治理规则。本页就是本站完整规范，所有入口均在站内完成。': 'This page documents the discovery, verification, and governance rules enforced by Harness Registry. This is the complete policy, and every entry point stays within this site.',
+    '自动收录条件': 'Automatic listing requirements', '仓库必须同时满足以下条件，缺少任何一项都不会进入公开插件列表。': 'A repository must meet every requirement below before it can enter the public plugin list.',
+    '公开且可访问': 'Public and accessible', '同步任务必须能读取仓库元数据和根目录 package.json。': 'The sync job must be able to read repository metadata and the root package.json.',
+    '带有发现标记': 'Discovery marker present', '仓库需声明 dsh-plugin Topic，供定时任务发现。': 'The repository must declare the dsh-plugin topic so the scheduled job can discover it.',
+    '声明可安装 bundle': 'Installable bundle declared', '根目录 package.json 的 dsh.bundle.patch 必须是安全的相对路径。': 'The root package.json must provide dsh.bundle.patch as a safe relative path.',
+    '状态符合要求': 'Repository status eligible', '已归档仓库和 Fork 不会自动进入公开列表。': 'Archived repositories and forks are not automatically listed.',
+    'Manifest 最低契约': 'Minimum manifest contract', 'patch 路径不能是绝对路径，也不能通过 .. 跳出仓库目录。对应文件需要随仓库一同维护。': 'The patch path cannot be absolute or escape the repository with ... The referenced file must be maintained in the repository.',
+    '本站显示的状态': 'Statuses shown by this registry', '状态说明的是本站验证到了什么，不代表对插件代码作出安全背书。': 'Statuses describe what this registry verified; they are not a security endorsement of plugin code.',
+    'Manifest 已验证': 'Manifest verified', '自动发现，并通过根目录 bundle 格式校验；可进入公开列表。': 'Automatically discovered and passed the root bundle shape check; eligible for the public list.',
+    '精选': 'Curated', '由 Registry 维护流程标记的收录项；仍不代表功能质量或安全性已经审核。': 'An entry selected through the Registry maintenance process; this still does not mean its quality or security was audited.',
+    '待审查': 'Pending review', '仓库已被发现，但尚未满足可安装契约，不出现在公开安装列表。': 'The repository was discovered but does not yet meet the installable contract, so it is excluded from the public install list.',
+    '已隔离': 'Quarantined', '因误收录、重复、风险或治理决定被排除，不出现在公开列表。': 'Excluded for misclassification, duplication, risk, or a governance decision; not shown in the public list.',
+    '验证边界': 'Verification boundary', '本站只检查公开元数据和 manifest 结构，不运行插件代码，不验证安装后的行为，也不持续监控权限变化。': 'The Registry checks public metadata and manifest shape only. It does not run plugin code, verify post-install behavior, or continuously monitor permission changes.',
+    '复制安装命令只代表命令已进入剪贴板，不代表插件已经安装。安装前请自行检查仓库内容、依赖和所需权限。': 'Copying an install command only places it on the clipboard; it does not install the plugin. Review the repository, dependencies, and requested permissions before installation.',
+    '同步与移除': 'Sync and removal', '公开数据按计划定时刷新。新仓库不会立即出现，元数据也可能在下一轮同步前保持旧值。': 'Public data refreshes on a schedule. New repositories do not appear immediately, and metadata may remain stale until the next sync.',
+    '不再满足条件、已归档或被隔离的插件会从公开列表移除。为避免异常同步覆盖健康数据，数量大幅下降或发现不完整时会停止发布新快照。': 'Plugins that no longer qualify, are archived, or are quarantined are removed from the public list. A new snapshot is withheld when discovery is incomplete or counts drop unexpectedly.',
+    '检查我的仓库': 'Check my repository', '返回插件列表': 'Back to plugins'
   };
 
   var placeholders = {
@@ -170,11 +188,12 @@
   function translateTitle() {
     if (locale !== 'en-US') return;
     var titles = {
-      '/': 'Harness Registry — DeepSeek Plugins',
-      '/index.html': 'Harness Registry — DeepSeek Plugins',
-      '/dashboard.html': 'Stats — Harness Registry',
-      '/plugin-detail.html': 'mcp-bridge — Harness Registry',
-      '/publish.html': 'Publish Plugin — Harness Registry'
+      '/': 'DeepSeek Harness Plugin Registry',
+      '/index.html': 'DeepSeek Harness Plugin Registry',
+      '/dashboard.html': 'Stats — DeepSeek Harness Plugin Registry',
+      '/plugin-detail.html': 'Plugin Details — DeepSeek Harness Plugin Registry',
+      '/publish.html': 'Publish Plugin — DeepSeek Harness Plugin Registry'
+      , '/policy.html': 'Listing Policy — DeepSeek Harness Plugin Registry'
     };
     document.title = titles[location.pathname] || document.title;
   }

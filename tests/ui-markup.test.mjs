@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 
-const pages = ['index.html', 'dashboard.html', 'plugin-detail.html', 'publish.html']
+const pages = ['index.html', 'dashboard.html', 'plugin-detail.html', 'publish.html', 'policy.html']
 
 test('preview pages do not claim a deployment or a signed-in user', async () => {
   const html = (await Promise.all(pages.map(page => readFile(page, 'utf8')))).join('\n')
@@ -14,6 +14,16 @@ test('mobile styles keep primary navigation available', async () => {
   const css = await readFile('assets/registry.css', 'utf8')
   assert.doesNotMatch(css, /\.nav\s*\{\s*display:\s*none/)
   assert.match(css, /\.nav\s*\{[\s\S]*display:\s*flex;\s*order:\s*3;/)
+})
+
+test('every page uses the complete registry name and shared logo asset', async () => {
+  const htmlPages = await Promise.all(pages.map(page => readFile(page, 'utf8')))
+  htmlPages.forEach(html => {
+    assert.match(html, /<title>[^<]*DeepSeek Harness Plugin Registry<\/title>/)
+    assert.match(html, /rel="icon" href="assets\/dsh-registry-logo\.svg"/)
+    assert.match(html, /class="brand-logo" src="assets\/dsh-registry-logo\.svg"/)
+    assert.match(html, /<strong>DeepSeek Harness<\/strong><em>Plugin Registry<\/em>/)
+  })
 })
 
 test('plugin detail describes only verifiable registry signals', async () => {
@@ -54,4 +64,15 @@ test('install actions open an accessible shared guide instead of silently copyin
   assert.match(detail, /id="copy-btn"/)
   assert.match(detail, /id="install-copy-status" role="status"/)
   assert.match(detail, /命令已复制，插件尚未安装/)
+})
+
+test('listing policy stays inside the registry site', async () => {
+  const index = await readFile('index.html', 'utf8')
+  const publish = await readFile('publish.html', 'utf8')
+  const policy = await readFile('policy.html', 'utf8')
+  assert.match(index, /href="policy\.html">收录规范<\/a>/)
+  assert.match(publish, /href="policy\.html">查看完整收录规范<\/a>/)
+  assert.doesNotMatch(index + publish + policy, /awesome-dsh-plugin\/awesome-dsh-plugin\/blob\/main\/contributing\.md/)
+  assert.doesNotMatch(policy, /https?:\/\//)
+  assert.doesNotMatch(policy, /其他插件网站|awesome-dsh-plugin/)
 })

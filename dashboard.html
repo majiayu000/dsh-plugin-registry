@@ -3,8 +3,9 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>统计 — Harness Registry</title>
+<title>统计 — DeepSeek Harness Plugin Registry</title>
 <meta name="description" content="查看 DeepSeek Harness 插件注册表的公开覆盖数据、分类分布、可信等级和 GitHub 社区指标。" />
+<link rel="icon" href="assets/dsh-registry-logo.svg" type="image/svg+xml" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Inter:wght@400;500;600&family=Noto+Sans+SC:wght@300;400;500&display=swap" rel="stylesheet">
@@ -13,7 +14,7 @@
 <body>
 <header class="topbar">
   <div class="wrap topbar-in">
-    <a class="brand" href="index.html"><span class="brand-word">Harness <em>Registry</em></span></a>
+    <a class="brand" href="index.html"><img class="brand-logo" src="assets/dsh-registry-logo.svg" width="34" height="34" alt="" /><span class="brand-word"><strong>DeepSeek Harness</strong><em>Plugin Registry</em></span></a>
     <nav class="nav"><a href="index.html">浏览插件</a><a href="publish.html">发布</a><a href="dashboard.html" class="on">统计</a></nav>
     <div class="topbar-r"><span class="cli-tag">SNAPSHOT DATA</span></div>
   </div>
@@ -55,7 +56,7 @@
   </div>
 </main>
 
-<footer class="footer"><div class="wrap footer-in"><a href="index.html">浏览插件</a><a href="publish.html">发布你的插件</a><a href="data/plugins.json">数据接口 API</a><span class="fr">每 8 小时自动同步</span></div></footer>
+<footer class="footer"><div class="wrap footer-in"><a href="index.html">浏览插件</a><a href="publish.html">发布你的插件</a><a href="data/plugins.json">数据接口 API</a><span class="fr">每 2 小时自动同步</span></div></footer>
 
 <script type="module">
 await import('/assets/i18n.js');

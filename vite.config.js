@@ -8,6 +8,7 @@ export default defineConfig({
         registry: resolve(import.meta.dirname, 'index.html'),
         detail: resolve(import.meta.dirname, 'plugin-detail.html'),
         publish: resolve(import.meta.dirname, 'publish.html'),
+        policy: resolve(import.meta.dirname, 'policy.html'),
         dashboard: resolve(import.meta.dirname, 'dashboard.html'),
       },
     },
