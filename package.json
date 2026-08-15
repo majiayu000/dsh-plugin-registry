@@ -5,7 +5,7 @@
   "description": "Searchable DeepSeek Harness plugin registry with curated listings and manifest-verified GitHub discovery.",
   "private": true,
   "type": "module",
-  "homepage": "https://github.com/majiayu000/dsh-plugin-registry#readme",
+  "homepage": "https://majiayu000.github.io/dsh-plugin-registry/",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/majiayu000/dsh-plugin-registry.git"

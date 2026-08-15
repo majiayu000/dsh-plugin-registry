@@ -10,7 +10,7 @@
 - Verification date: 2026-08-15
 - Recommendation: improve before launch
 
-The project has a working local registry UI, a validated schema, a real data snapshot, an MIT License, and a support path. Public launch remains blocked by the unverified production access path.
+The project has a deployed registry UI, a validated schema, a real data snapshot, an MIT License, and a support path. The GitHub Pages access path is verified; formal launch readiness still depends on a release strategy and social preview.
 
 ## Status legend
 
@@ -25,7 +25,7 @@ The project has a working local registry UI, a validated schema, a real data sna
 | Check | Status | Evidence | Next action |
 |---|---|---|---|
 | Target user named | verified | README names DSH users and plugin authors | Validate wording with initial users |
-| Install/access path works | verified locally | `npm ci` and local Vite access | Deploy and verify a production URL before public launch |
+| Install/access path works | verified | GitHub Pages and the public registry JSON return HTTP 200 | Monitor the Pages deployment workflow |
 | Quickstart works | verified locally | `npm run dev -- --host 127.0.0.1` served the registry | Recheck from a clean clone before release |
 | Real proof asset exists | verified | [`docs/assets/harness-registry.png`](assets/harness-registry.png) uses the current registry snapshot | Keep it current when the UI changes materially |
 | License is present | verified locally | MIT License selected by the repository owner and recorded in `LICENSE` and `package.json` | Push and verify GitHub license detection |
@@ -45,7 +45,7 @@ The project has a working local registry UI, a validated schema, a real data sna
 
 | Check | Status | Evidence | Next action |
 |---|---|---|---|
-| Platform-specific copy | blocked | No copy prepared because hosted access remains unverified | Draft only after hosted access is ready |
+| Platform-specific copy | unverified | Hosted access is ready, but no launch copy has been reviewed | Draft after the release goal and audience are confirmed |
 | Social image or preview | missing | Real UI proof exists, but it is not a 1280×640 social preview | Create and upload a dedicated preview |
 | Second-wave channels | unverified | No launch goal or audience channel confirmed | Decide only after first-wave proof and feedback plan |
 
@@ -71,8 +71,8 @@ These are point-in-time repository facts from `public/data/plugins.json`, not ma
 - Potential later platforms: Hacker News or X only after people can use the hosted site
 - Rejected for now: Product Hunt and broad community posting without deployment or social preview
 - Official source docs checked: ShipWise GitHub source guide and linked GitHub documentation
-- Launch blockers: missing production deployment, missing release, missing social preview
-- Review date: after the deployment decision
+- Remaining readiness gaps: missing release strategy and social preview
+- Review date: after the release decision
 
 ## Verification commands
 
@@ -88,9 +88,10 @@ Expected outcome: dependency install succeeds; tests, registry validation, and V
 
 ## Decision
 
-- Launch: no
-- Reason: the repository has no verified production access path
-- Next action: deploy the built static site, then re-run this report from a clean clone
+- Hosted preview: yes — <https://majiayu000.github.io/dsh-plugin-registry/>
+- Formal launch: no
+- Reason: the production access path is verified, but the release strategy and social preview remain open
+- Next action: choose a release strategy and prepare the repository social preview
 
 ## Non-goals
 
