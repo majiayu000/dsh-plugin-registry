@@ -91,10 +91,14 @@ import { writeClipboardText } from './clipboard.js'
           '<button class="install-dialog-close" type="button" data-install-close aria-label="' + (english ? 'Close install guide' : '关闭安装说明') + '">×</button>' +
         '</header>' +
         '<p class="install-dialog-intro">' + (english ? 'Copying the command does not install the plugin. Run it in a terminal on the computer where DeepSeek Harness is installed.' : '复制命令不会自动安装。请在运行 DeepSeek Harness 的电脑上打开终端并执行。') + '</p>' +
+        '<section class="install-dialog-context" aria-label="' + (english ? 'Installation environment' : '安装环境') + '">' +
+          '<div><span>' + (english ? 'Install target' : '安装目标') + '</span><b data-install-profile></b><small>' + (english ? 'Selected by ' : '由命令中的 ') + '<code data-install-profile-flag></code>' + (english ? '' : ' 指定') + '</small></div>' +
+          '<div><span>' + (english ? 'Run from' : '执行位置') + '</span><b>' + (english ? 'A local terminal' : '本机终端') + '</b><small>' + (english ? 'Any directory; dsh and pnpm must be available' : '任意目录；需能运行 dsh 和 pnpm') + '</small></div>' +
+        '</section>' +
         '<ol class="install-steps">' +
-          '<li><span>01</span><div><b>' + (english ? 'Open a terminal' : '打开终端') + '</b><p>' + (english ? 'Use the computer where DeepSeek Harness is installed.' : '在已经安装 DeepSeek Harness 的电脑上操作。') + '</p></div></li>' +
-          '<li><span>02</span><div><b>' + (english ? 'Copy the command below' : '复制下面的命令') + '</b><p>' + (english ? 'The button only writes the command to your clipboard.' : '按钮只会把命令写入剪贴板，不会直接执行。') + '</p></div></li>' +
-          '<li><span>03</span><div><b>' + (english ? 'Paste and press Enter' : '粘贴并按 Enter') + '</b><p>' + (english ? 'Wait for DSH to report the result, then follow any plugin-specific setup in its README.' : '等待 DSH 输出安装结果；如插件需要额外配置，请继续查看仓库 README。') + '</p></div></li>' +
+          '<li><span>01</span><div><b>' + (english ? 'Check the terminal environment' : '确认终端环境') + '</b><p>' + (english ? 'Use the computer where DeepSeek Harness is installed. You do not need to enter a project directory.' : '在安装了 DeepSeek Harness 的电脑上操作，不需要进入某个项目目录。') + '</p></div></li>' +
+          '<li><span>02</span><div><b>' + (english ? 'Copy, paste, and run' : '复制、粘贴并执行') + '</b><p>' + (english ? 'The button only copies the command. Paste it into the terminal, press Enter, and wait for the command to finish.' : '按钮只负责复制。请粘贴到终端、按 Enter，并等待命令执行结束。') + '</p></div></li>' +
+          '<li><span>03</span><div><b>' + (english ? 'Confirm the installation' : '确认安装结果') + '</b><p>' + (english ? 'After the install command finishes without errors, run ' : '安装命令无报错结束后，运行 ') + '<code data-install-verify-command></code>' + (english ? ' to inspect this profile, then start dsh web and verify the plugin feature.' : ' 检查该 Profile，再启动 dsh web 验证插件功能。') + '</p></div></li>' +
         '</ol>' +
         '<div class="install-dialog-command"><span>$</span><code data-install-command></code></div>' +
         '<button class="btn btn-primary install-dialog-copy" type="button" data-install-copy autofocus>' + (english ? 'Copy install command' : '复制安装命令') + '</button>' +
@@ -126,7 +130,12 @@ import { writeClipboardText } from './clipboard.js'
     activeInstallPlugin = plugin;
     var english = locale() === 'en';
     var dialog = ensureInstallDialog();
+    var profileMatch = plugin.install.match(/--profile\s+([^\s]+)/);
+    var profile = profileMatch ? profileMatch[1] : 'web';
     dialog.querySelector('#install-dialog-title').textContent = english ? 'How to install ' + plugin.name : '安装 ' + plugin.name + ' 的步骤';
+    dialog.querySelector('[data-install-profile]').textContent = profile === 'web' ? 'Web Profile' : profile + ' Profile';
+    dialog.querySelector('[data-install-profile-flag]').textContent = '--profile ' + profile;
+    dialog.querySelector('[data-install-verify-command]').textContent = 'dsh plugin --profile ' + profile + ' list --depth 0';
     dialog.querySelector('[data-install-command]').textContent = plugin.install;
     dialog.querySelector('[data-install-repo]').href = plugin.url;
     var copyButton = dialog.querySelector('[data-install-copy]');
