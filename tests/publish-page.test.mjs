@@ -4,7 +4,7 @@ import test from 'node:test'
 
 test('publish flow uses semantic steps, code, and heading order', async () => {
   const html = await readFile('publish.html', 'utf8')
-  assert.match(html, /<ol class="stepper[^>]+aria-label="自动发现流程"/)
+  assert.match(html, /<ol class="stepper[^>]+aria-label="GitHub 提交流程"/)
   assert.match(html, /class="step-t"[\s\S]*class="step-d"/)
   assert.match(html, /<pre class="codeblock"><code>/)
   assert.doesNotMatch(html, /<main[\s\S]*<h3>/)
@@ -18,6 +18,11 @@ test('repository checker is an accessible keyboard-submittable form', async () =
   assert.match(html, /aria-invalid/)
   assert.match(html, /role="status" aria-live="polite"/)
   assert.match(html, /class="check-state"/)
+  assert.match(html, /id="github-submit"[^>]+aria-disabled="true"/)
+  assert.match(html, /buildGitHubSubmissionUrl/)
+  assert.match(html, /enableSubmission\(repo, check\)/)
+  assert.match(html, /addEventListener\('input', disableSubmission\)/)
+  assert.match(html, /issues\/new\?template=plugin_submission\.yml/)
 })
 
 test('repository field and result states have matching styles', async () => {
@@ -27,4 +32,6 @@ test('repository field and result states have matching styles', async () => {
   assert.match(css, /\.repo-checker \.check-row\.fail/)
   assert.match(css, /\.check-state\s*\{/)
   assert.match(css, /\.pub-grid > \* \{ min-width: 0; \}/)
+  assert.match(css, /\.github-submit\.is-disabled/)
+  assert.match(css, /\.github-route\s*\{/)
 })

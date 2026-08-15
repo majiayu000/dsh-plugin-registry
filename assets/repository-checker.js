@@ -70,6 +70,9 @@ const CHECKER_COPY = {
     repositoryMissing: '找不到这个公开仓库。请检查地址，或确认仓库不是私有仓库。',
     rateLimited: 'GitHub 暂时限制了检查频率，请稍后再试。',
     unavailable: '暂时无法读取 GitHub 仓库，请稍后再试。',
+    submitAfterCheck: '先检查仓库，GitHub 提交会自动带上预检结果。',
+    submitReady: '预检已通过。可以等待自动发现，也可以提交到 GitHub 获得可追踪的确认。',
+    submitWithWarnings: '仍有未通过项目。你可以先修复，或提交到 GitHub 记录问题并获取审核反馈。',
   },
   'en-US': {
     pending: 'Pending', passed: 'Passed', failed: 'Failed', checking: 'Checking…', checkAgain: 'Check again',
@@ -86,6 +89,9 @@ const CHECKER_COPY = {
     repositoryMissing: 'This public repository could not be found. Check the URL or confirm that the repository is not private.',
     rateLimited: 'GitHub has temporarily rate-limited checks. Try again later.',
     unavailable: 'The GitHub repository cannot be read right now. Try again later.',
+    submitAfterCheck: 'Check the repository first. The GitHub submission will include the pre-check results.',
+    submitReady: 'Pre-checks passed. Wait for auto-discovery or submit to GitHub for a trackable confirmation.',
+    submitWithWarnings: 'Some checks failed. Fix them first, or submit to GitHub to record the problem and get review feedback.',
   },
 }
 

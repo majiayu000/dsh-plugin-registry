@@ -21,21 +21,47 @@
 
 <main class="wrap">
   <section class="page-head">
-    <p class="eyebrow rise">Publish · GitHub-native</p>
-    <h1 class="page-title rise rise-1">不用填表，让 Registry 找到你。</h1>
-    <p class="page-sub rise rise-2">插件仍由你自己的 GitHub 仓库托管。声明可安装的 DSH bundle，再添加 dsh-plugin Topic，Registry 会在下一次同步时自动发现。</p>
+    <p class="eyebrow rise">Publish · GitHub review</p>
+    <h1 class="page-title rise rise-1">提交仓库，公开走完审核。</h1>
+    <p class="page-sub rise rise-2">先运行仓库预检，再创建带检查结果的 GitHub Issue。维护者反馈、修复记录和最终结论都留在 GitHub；满足契约的仓库仍会自动发现。</p>
   </section>
 
-  <ol class="stepper rise rise-3" aria-label="自动发现流程">
-    <li class="step"><span class="step-n" aria-hidden="true">01</span><span class="step-copy"><strong class="step-t">声明 bundle</strong><span class="step-d">package.json</span></span></li>
-    <li class="step"><span class="step-n" aria-hidden="true">02</span><span class="step-copy"><strong class="step-t">添加 Topic</strong><span class="step-d">dsh-plugin</span></span></li>
-    <li class="step"><span class="step-n" aria-hidden="true">03</span><span class="step-copy"><strong class="step-t">自动验证</strong><span class="step-d">每 8 小时</span></span></li>
-    <li class="step"><span class="step-n" aria-hidden="true">04</span><span class="step-copy"><strong class="step-t">进入列表</strong><span class="step-d">无需提交表单</span></span></li>
+  <ol class="stepper rise rise-3" aria-label="GitHub 提交流程">
+    <li class="step"><span class="step-n" aria-hidden="true">01</span><span class="step-copy"><strong class="step-t">检查仓库</strong><span class="step-d">公开元数据</span></span></li>
+    <li class="step"><span class="step-n" aria-hidden="true">02</span><span class="step-copy"><strong class="step-t">预填提交</strong><span class="step-d">检查结果</span></span></li>
+    <li class="step"><span class="step-n" aria-hidden="true">03</span><span class="step-copy"><strong class="step-t">GitHub 审核</strong><span class="step-d">Issue 可追踪</span></span></li>
+    <li class="step"><span class="step-n" aria-hidden="true">04</span><span class="step-copy"><strong class="step-t">进入列表</strong><span class="step-d">合并后同步</span></span></li>
   </ol>
 
   <div class="pub-grid rise rise-4">
-    <section class="panel publish-guide">
-      <h2 class="panel-title">自动发现最低契约</h2>
+    <section class="panel repo-checker publish-primary" aria-labelledby="repo-checker-title">
+      <div class="github-route">
+        <span class="github-route-mark" aria-hidden="true">GH</span>
+        <div><strong>GitHub 是正式提交通道</strong><p>每次提交都会创建公开 Issue，用于自动检查、维护者反馈和最终结论。</p></div>
+        <a href="https://github.com/majiayu000/dsh-plugin-registry/issues?q=is%3Aissue+label%3Aplugin-submission" target="_blank" rel="noopener">查看提交队列</a>
+      </div>
+      <h2 class="panel-title" id="repo-checker-title">提交插件仓库</h2>
+      <p class="psub">输入公开 GitHub 仓库，先完成预检，再生成带结果的正式提交。</p>
+      <form id="repo-checker-form" novalidate>
+        <label class="field" for="repo-input"><span class="field-label">GitHub 仓库</span><input type="text" id="repo-input" placeholder="owner/repo 或 GitHub URL" autocomplete="url" autocapitalize="none" spellcheck="false" aria-describedby="repo-help check-message"></label>
+        <p class="field-help" id="repo-help">例如：owner/repo</p>
+        <button class="btn repo-check-button" id="check-button" type="submit">检查仓库</button>
+        <ul class="check-list" id="check-results" hidden aria-label="自动发现检查结果">
+          <li class="check-row" data-check="repo"><span class="check-ic" aria-hidden="true">—</span><span class="check-label">公开仓库存在</span><span class="check-state">待检查</span></li>
+          <li class="check-row" data-check="topic"><span class="check-ic" aria-hidden="true">—</span><span class="check-label">包含 dsh-plugin Topic</span><span class="check-state">待检查</span></li>
+          <li class="check-row" data-check="bundle"><span class="check-ic" aria-hidden="true">—</span><span class="check-label">声明有效的 dsh.bundle</span><span class="check-state">待检查</span></li>
+          <li class="check-row" data-check="status"><span class="check-ic" aria-hidden="true">—</span><span class="check-label">仓库未归档且不是 Fork</span><span class="check-state">待检查</span></li>
+        </ul>
+        <p class="form-hint" id="check-message" role="status" aria-live="polite" tabindex="-1"></p>
+        <div class="submission-actions">
+          <a class="btn btn-primary github-submit is-disabled" id="github-submit" aria-disabled="true" target="_blank" rel="noopener"><span>提交到 GitHub</span><span aria-hidden="true">↗</span></a>
+          <p id="submission-help" aria-live="polite">先检查仓库，GitHub 提交会自动带上预检结果。</p>
+        </div>
+      </form>
+    </section>
+
+    <aside class="panel publish-guide" aria-labelledby="publish-guide-title">
+      <h2 class="panel-title" id="publish-guide-title">发布前准备</h2>
       <p class="psub">自动发现要求根目录 package.json 声明 dsh.bundle。</p>
       <pre class="codeblock"><code>{
   <span class="k">"dsh"</span>: {
@@ -44,31 +70,17 @@
     }
   }
 }</code></pre>
-      <h2 class="panel-title">让自动发现生效</h2>
+      <h2 class="panel-title">提交后会发生什么</h2>
       <ol class="publish-list">
-        <li>在根目录 package.json 中声明可安装的 bundle。</li>
-        <li>在 GitHub 仓库设置中添加 <code>dsh-plugin</code> Topic。</li>
-        <li>保持仓库公开且未归档；Fork 默认不会收录。</li>
-        <li>等待下一次定时同步，或在下面立即检查。</li>
+        <li>GitHub 创建公开提交 Issue。</li>
+        <li>预检结果和维护者反馈集中记录。</li>
+        <li>按评论修复仓库后，在同一 Issue 跟进。</li>
+        <li>审核完成后进入目录同步。</li>
       </ol>
-      <a class="btn" href="https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/blob/main/contributing.md" target="_blank" rel="noopener">查看完整收录规范</a>
-    </section>
-
-    <aside class="panel repo-checker" aria-labelledby="repo-checker-title">
-      <h2 class="panel-title" id="repo-checker-title">检查自动发现资格</h2>
-      <p class="psub">检查公开元数据、Topic 与根目录 package.json；不会运行代码，也不代表安全审计。</p>
-      <form id="repo-checker-form" novalidate>
-        <label class="field" for="repo-input"><span class="field-label">GitHub 仓库</span><input type="text" id="repo-input" placeholder="owner/repo 或 GitHub URL" autocomplete="url" autocapitalize="none" spellcheck="false" aria-describedby="repo-help check-message"></label>
-        <p class="field-help" id="repo-help">例如：owner/repo</p>
-        <button class="btn btn-primary" id="check-button" type="submit">开始检查</button>
-        <ul class="check-list" id="check-results" hidden aria-label="自动发现检查结果">
-          <li class="check-row" data-check="repo"><span class="check-ic" aria-hidden="true">—</span><span class="check-label">公开仓库存在</span><span class="check-state">待检查</span></li>
-          <li class="check-row" data-check="topic"><span class="check-ic" aria-hidden="true">—</span><span class="check-label">包含 dsh-plugin Topic</span><span class="check-state">待检查</span></li>
-          <li class="check-row" data-check="bundle"><span class="check-ic" aria-hidden="true">—</span><span class="check-label">声明有效的 dsh.bundle</span><span class="check-state">待检查</span></li>
-          <li class="check-row" data-check="status"><span class="check-ic" aria-hidden="true">—</span><span class="check-label">仓库未归档且不是 Fork</span><span class="check-state">待检查</span></li>
-        </ul>
-        <p class="form-hint" id="check-message" role="status" aria-live="polite" tabindex="-1"></p>
-      </form>
+      <div class="publish-guide-links">
+        <a class="btn" href="https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/blob/main/contributing.md" target="_blank" rel="noopener">查看完整收录规范</a>
+        <a href="https://github.com/majiayu000/dsh-plugin-registry/issues/new?template=plugin_submission.yml" target="_blank" rel="noopener">直接填写 GitHub 表单</a>
+      </div>
     </aside>
   </div>
 </main>
@@ -78,11 +90,27 @@
 <script type="module">
 await import('/assets/i18n.js');
 const { validateBundleManifest } = await import('/assets/bundle-manifest.js');
+const { buildGitHubSubmissionUrl } = await import('/assets/github-submission.js');
 const { evaluateRepository, findRegistryEntry, githubFailureMessage, manifestFailureMessage, parseGitHubRepository, repositoryCheckerCopy } = await import('/assets/repository-checker.js');
 (function () {
   'use strict';
   var locale = window.HRI18N && window.HRI18N.locale === 'en-US' ? 'en-US' : 'zh-CN';
   var copy = repositoryCheckerCopy(locale);
+  var submitLink = document.getElementById('github-submit');
+  var submissionHelp = document.getElementById('submission-help');
+  function disableSubmission() {
+    submitLink.removeAttribute('href');
+    submitLink.classList.add('is-disabled');
+    submitLink.setAttribute('aria-disabled', 'true');
+    submissionHelp.textContent = copy.submitAfterCheck;
+  }
+  function enableSubmission(repository, check) {
+    submitLink.href = buildGitHubSubmissionUrl({ registryRepository: 'majiayu000/dsh-plugin-registry', repository: repository, check: check, locale: locale });
+    submitLink.classList.remove('is-disabled');
+    submitLink.setAttribute('aria-disabled', 'false');
+    submissionHelp.textContent = check.auto_discoverable ? copy.submitReady : copy.submitWithWarnings;
+  }
+  document.getElementById('repo-input').addEventListener('input', disableSubmission);
   function setCheck(key, ok) {
     var row = document.querySelector('[data-check="' + key + '"]');
     row.classList.toggle('ok', ok);
@@ -111,6 +139,7 @@ const { evaluateRepository, findRegistryEntry, githubFailureMessage, manifestFai
       return;
     }
     input.removeAttribute('aria-invalid');
+    disableSubmission();
     button.disabled = true; button.textContent = copy.checking; results.hidden = false; message.textContent = '';
     this.setAttribute('aria-busy', 'true');
     resetChecks();
@@ -130,6 +159,7 @@ const { evaluateRepository, findRegistryEntry, githubFailureMessage, manifestFai
       var check = evaluateRepository({ repository: data, bundleCheck: bundleCheck, registryEntry: registryEntry });
       var checkKeys = { repository_public: 'repo', discovery_topic: 'topic', bundle_manifest: 'bundle', repository_status: 'status' };
       check.signals.forEach(function (item) { setCheck(checkKeys[item.signal_type], item.signal.passed); });
+      enableSubmission(repo, check);
       message.textContent = check.auto_discoverable
         ? copy.ready
         : (check.listing.listed && check.listing.source === 'curated'

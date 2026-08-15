@@ -1,0 +1,58 @@
+name: Submit a plugin
+description: Submit a public GitHub repository for review and listing in Harness Registry.
+title: "[Plugin submission]: "
+labels: [plugin-submission]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Submit the repository that owns and maintains the plugin. Automated checks and maintainer feedback will remain visible in this issue.
+
+  - type: input
+    id: repository
+    attributes:
+      label: Plugin repository
+      description: Use the canonical public GitHub repository URL.
+      placeholder: https://github.com/owner/repository
+    validations:
+      required: true
+
+  - type: dropdown
+    id: request
+    attributes:
+      label: Request type
+      options:
+        - New plugin listing
+        - Re-review after fixing automatic discovery
+        - Restore a previously listed plugin
+    validations:
+      required: true
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: What does this plugin add?
+      description: Briefly describe the user problem and the plugin capability.
+      placeholder: This plugin helps Harness users…
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: readiness
+    attributes:
+      label: Submission checklist
+      options:
+        - label: I am the repository owner or a major contributor authorized to submit it.
+          required: true
+        - label: The repository is public and contains the plugin source code and usage documentation.
+          required: true
+        - label: I reviewed the Registry listing policy and understand that format validation is not a security endorsement.
+          required: true
+        - label: This issue contains no credentials, private repository data, or undisclosed vulnerability details.
+          required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional context
+      description: Add migration notes, known limitations, or links that help reviewers.
