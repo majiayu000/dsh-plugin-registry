@@ -91,10 +91,16 @@ export async function discoverGitHubRepositories({
       onProgress({ type: 'page', range, totalCount, fetched: repositories.length, page, rateLimit: next.rateLimit })
     }
 
-    if (repositories.length !== totalCount) {
-      throw new Error(`GitHub discovery returned ${repositories.length}/${totalCount} repositories for ${range}. Refusing to publish an incomplete window.`)
+    const uniqueRepositories = [...new Map(repositories.map(repository => [repository.full_name.toLowerCase(), repository])).values()]
+    const missing = totalCount - uniqueRepositories.length
+    const allowedDrift = totalCount >= 100 ? Math.max(5, Math.ceil(totalCount * 0.01)) : 0
+    if (missing > allowedDrift) {
+      throw new Error(`GitHub discovery returned ${uniqueRepositories.length}/${totalCount} unique repositories for ${range}. Refusing to publish an incomplete window.`)
     }
-    return repositories
+    if (uniqueRepositories.length !== totalCount) {
+      onProgress({ type: 'drift', range, totalCount, fetched: uniqueRepositories.length, allowedDrift })
+    }
+    return uniqueRepositories
   }
 
   return discoverWindow(new Date(from), new Date(to))

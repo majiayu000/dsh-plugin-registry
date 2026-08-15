@@ -41,6 +41,20 @@ test('repository discovery refuses a partial page sequence', async () => {
   }), /incomplete window/i)
 })
 
+test('repository discovery tolerates small live-index drift in large windows', async () => {
+  const progress = []
+  const repositories = await discoverGitHubRepositories({
+    from: new Date('2026-08-14T00:00:00Z'),
+    to: new Date('2026-08-14T00:00:01Z'),
+    async searchPage() {
+      return page(100, Array.from({ length: 101 }, (_, index) => `acme/plugin-${index}`))
+    },
+    onProgress(entry) { progress.push(entry) },
+  })
+  assert.equal(repositories.length, 101)
+  assert.ok(progress.some(entry => entry.type === 'drift' && entry.allowedDrift === 5))
+})
+
 test('GraphQL repositories map to the registry normalization contract', () => {
   assert.deepEqual(mapGraphqlRepository({
     nameWithOwner: 'acme/plugin',

@@ -143,8 +143,10 @@ async function discoverRepositories() {
       const remaining = progress.rateLimit?.remaining ?? '?'
       if (progress.type === 'window') {
         console.log(`Discovery window ${progress.range}: ${progress.totalCount} repositories (depth ${progress.depth}, rate limit ${remaining} remaining).`)
-      } else {
+      } else if (progress.type === 'page') {
         console.log(`Discovery page ${progress.page}: ${progress.fetched}/${progress.totalCount} for ${progress.range} (rate limit ${remaining} remaining).`)
+      } else {
+        console.warn(`Discovery index drift for ${progress.range}: fetched ${progress.fetched}, initially reported ${progress.totalCount}; accepting within tolerance ${progress.allowedDrift}.`)
       }
     },
   })
