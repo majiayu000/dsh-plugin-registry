@@ -6,6 +6,7 @@ const plugins = [
   { id: 'acme/memory', category: 'memory', source: 'curated', verification: { manifest: 'not_checked' } },
   { id: 'acme/terminal', category: 'ui', source: 'discovered', verification: { manifest: 'shape_validated' } },
   { id: 'other/notifier', category: 'notify', source: 'discovered', verification: { manifest: 'shape_validated' } },
+  { id: 'candidate/no-bundle', category: '', source: 'discovered', trustLevel: 'pending_review', verification: { manifest: 'not_validated' } },
 ]
 
 test('searchable text is normalized once when the index is created', () => {
@@ -30,4 +31,5 @@ test('category and curated filters compose with text search', () => {
   assert.deepEqual(filterPluginSearchIndex(index, { source: 'discovered' }), plugins.slice(1))
   assert.deepEqual(filterPluginSearchIndex(index, { manifest: 'not_checked' }), [plugins[0]])
   assert.deepEqual(filterPluginSearchIndex(index, { source: 'discovered', manifest: 'shape_validated', query: 'acme terminal' }), [plugins[1]])
+  assert.deepEqual(filterPluginSearchIndex(index, { manifest: 'not_validated' }), [plugins[3]])
 })

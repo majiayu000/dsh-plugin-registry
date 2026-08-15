@@ -5,9 +5,9 @@ Registry 的公开列表只包含两种可信等级：
 - `curated`：来自社区精选源，并满足可安装契约。
 - `manifest_verified`：由 GitHub Topic 自动发现，且根目录 `package.json` 声明了有效的 `dsh.bundle`。
 
-另外两种状态保存在 `public/data/registry-audit.json`，不会进入公开安装列表：
+另外两种状态保存在 `public/data/registry-audit.json`，不会进入可安装插件列表：
 
-- `pending_review`：候选仓库存在，但尚未通过 manifest 契约。
+- `pending_review`：候选仓库存在，但尚未通过 manifest 契约；网页仍会展示仓库并链接 GitHub，但不会提供安装命令。
 - `quarantined`：被维护者明确隔离。
 
 ## 人工治理

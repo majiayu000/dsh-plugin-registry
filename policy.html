@@ -21,7 +21,7 @@
 <main class="wrap policy-page" id="main-content">
   <section class="page-head">
     <p class="eyebrow rise">收录 · 本站规则</p>
-    <h1 class="page-title rise rise-1">怎样进入公开列表。</h1>
+    <h1 class="page-title rise rise-1">怎样进入可安装列表。</h1>
     <p class="page-sub rise rise-2">这里说明 Harness Registry 自己执行的发现、验证和治理规则。本页就是本站完整规范，所有入口均在站内完成。</p>
   </section>
 
@@ -31,7 +31,7 @@
         <span class="policy-index" aria-hidden="true">01</span>
         <div>
           <h2>自动收录条件</h2>
-          <p class="policy-lead">仓库必须同时满足以下条件，缺少任何一项都不会进入公开插件列表。</p>
+          <p class="policy-lead">仓库必须同时满足以下条件，才能进入可安装插件列表；缺少有效 dsh.bundle 的候选仓库仍会公开展示并标注状态。</p>
           <ol class="policy-requirements">
             <li><strong>公开且可访问</strong><span>同步任务必须能读取仓库元数据和根目录 package.json。</span></li>
             <li><strong>带有发现标记</strong><span>仓库需声明 <code>dsh-plugin</code> Topic，供定时任务发现。</span></li>
@@ -64,7 +64,7 @@
           <dl class="policy-statuses">
             <div><dt><span class="pill pill-manifest">Manifest 格式检查通过</span></dt><dd>自动发现，并通过根目录 bundle 格式校验；可进入公开列表。</dd></div>
             <div><dt><span class="pill pill-source">来源：社区目录</span></dt><dd>从社区维护的公开目录同步；本站没有检查其 Manifest、功能质量或安全性。</dd></div>
-            <div><dt><span class="pill pill-warn">待审查</span></dt><dd>仓库已被发现，但尚未满足可安装契约，不出现在公开安装列表。</dd></div>
+            <div><dt><span class="pill pill-pending">缺少有效 dsh.bundle</span></dt><dd>仓库已被发现并显示在浏览列表中，但不提供安装命令；补充有效声明后会自动转为可安装状态。</dd></div>
             <div><dt><span class="pill pill-danger">已隔离</span></dt><dd>因误收录、重复、风险或治理决定被排除，不出现在公开列表。</dd></div>
           </dl>
         </div>

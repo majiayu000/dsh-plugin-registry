@@ -37,7 +37,7 @@
   <section class="page-head">
     <p class="eyebrow rise">DeepSeek Harness · Plugin Registry</p>
     <h1 class="page-title rise rise-1">给 Harness 装上能力。<span class="caret"></span></h1>
-    <p class="page-sub rise rise-2">路由、检索、评测、通知 —— 社区插件都在这里。先看数据来源和 Manifest 状态，再到仓库确认依赖与配置。</p>
+    <p class="page-sub rise rise-2">路由、检索、评测、通知 —— 社区插件和 GitHub 候选仓库都在这里。先看数据来源和 Manifest 状态，再到仓库确认依赖与配置。</p>
 
     <div class="discovery-row rise rise-3">
       <div class="searchbar">
@@ -63,7 +63,7 @@
       <button type="button" data-intent="记忆">记忆</button>
     </div>
 
-    <div class="statstrip rise rise-4">      <div class="ss"><b class="num" id="st-count">—</b><span>收录插件</span></div>
+    <div class="statstrip rise rise-4">      <div class="ss"><b class="num" id="st-count">—</b><span>可浏览仓库</span></div>
       <div class="ss"><b class="num" id="st-stars">—</b><span>GitHub Stars</span></div>
       <div class="ss"><b class="num" id="st-author">—</b><span>插件作者</span></div>
       <div class="ss"><b class="num" id="st-auto">—</b><span>Manifest 格式检查</span></div>
@@ -87,6 +87,7 @@
           <option value="all">全部 Manifest 状态</option>
           <option value="shape_validated">格式检查通过</option>
           <option value="not_checked">未检查</option>
+          <option value="not_validated">缺少有效 dsh.bundle</option>
         </select>
         <label class="sr-only" for="language">编程语言</label>
         <select class="sel" id="language" aria-label="编程语言">
@@ -106,7 +107,7 @@
 
   <section>
     <div class="section-label">
-      <h2>全部插件</h2>
+      <h2>插件与候选仓库</h2>
       <span class="sl-note" id="list-note"></span>
     </div>
     <div class="plist" id="list"></div>
@@ -192,7 +193,11 @@ const { createPluginSearchIndex, filterPluginSearchIndex } = await import('/asse
     } else {
       rows.slice(0, state.limit).forEach(function (p, i) { list.appendChild(HR.row(p, i)); });
     }
-    note.textContent = rows.length + ' 个结果';
+    var pendingCount = rows.filter(HR.pendingReview).length;
+    var english = window.HRI18N.locale === 'en-US';
+    note.textContent = rows.length + (english ? ' results' : ' 个结果') + (pendingCount
+      ? ' · ' + pendingCount + (english ? ' need a valid dsh.bundle' : ' 个待补充 dsh.bundle')
+      : '');
     document.getElementById('load-more-wrap').hidden = rows.length <= state.limit;
   }
 

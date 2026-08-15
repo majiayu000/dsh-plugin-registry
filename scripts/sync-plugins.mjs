@@ -231,11 +231,19 @@ async function main() {
   const discovered = eligibleCandidates.filter(plugin => plugin.listingEligible)
   const pendingReview = eligibleCandidates.filter(plugin => !plugin.listingEligible).map(plugin => ({
     id: plugin.id,
+    name: plugin.name,
+    owner: plugin.owner,
     url: plugin.url,
+    description: plugin.description,
+    category: plugin.category,
     trustLevel: 'pending_review',
     reason: 'package.json does not declare a valid dsh.bundle object',
     stars: plugin.stars,
+    forks: plugin.forks,
+    language: plugin.language,
     pushedAt: plugin.pushedAt,
+    topics: plugin.topics,
+    icon: plugin.icon,
   }))
   const governed = applyGovernance(mergePlugins(curated, discovered), blocklist, overrides)
   const plugins = governed.plugins.map(toPublicPlugin)

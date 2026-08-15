@@ -60,10 +60,24 @@ test('plugin rows expose topics and update dates as decision signals', async () 
   assert.match(script, /plugin\.pushedAt/)
 })
 
+test('pending GitHub candidates remain visible without exposing an install action', async () => {
+  const [html, script, css] = await Promise.all([
+    readFile('index.html', 'utf8'),
+    readFile('assets/plugins.js', 'utf8'),
+    readFile('assets/registry.css', 'utf8'),
+  ])
+  assert.match(script, /data\/registry-audit\.json/)
+  assert.match(script, /pending_review/)
+  assert.match(script, /缺少有效 dsh\.bundle/)
+  assert.match(script, /查看仓库/)
+  assert.match(html, /value="not_validated">缺少有效 dsh\.bundle/)
+  assert.match(css, /\.prow-pending/)
+})
+
 test('directory places plugin results directly after the filters', async () => {
   const html = await readFile('index.html', 'utf8')
   assert.doesNotMatch(html, /id="featured-sec"|热门精选|class="fcard"/)
-  assert.match(html, /id="language"[\s\S]*<h2>全部插件<\/h2>/)
+  assert.match(html, /id="language"[\s\S]*<h2>插件与候选仓库<\/h2>/)
 })
 
 test('install actions open an accessible shared guide instead of silently copying', async () => {

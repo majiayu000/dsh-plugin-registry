@@ -247,6 +247,7 @@ html.modal-open, html.modal-open body { overflow: hidden; }
 .pill-source { background: var(--surface); color: var(--fg-2); box-shadow: var(--elev-ring); }
 .pill-manifest { background: var(--blue-soft); color: var(--blue); box-shadow: 0 0 0 1px var(--blue-ring); }
 .pill-unchecked { background: rgba(234, 179, 8, 0.1); color: #854d0e; box-shadow: 0 0 0 1px rgba(234, 179, 8, 0.18); }
+.pill-pending { background: rgba(234, 179, 8, 0.13); color: #713f12; box-shadow: 0 0 0 1px rgba(202, 138, 4, 0.28); }
 .pill-success { color: var(--success); background: rgba(22, 163, 74, 0.08); }
 .pill-warn { color: #a16207; background: rgba(234, 179, 8, 0.12); }
 .pill-danger { color: var(--danger); background: rgba(220, 38, 38, 0.08); }
@@ -376,6 +377,10 @@ html.modal-open, html.modal-open body { overflow: hidden; }
   transition: background var(--motion-fast) var(--ease-standard);
 }
 .prow:hover { background: var(--surface); }
+.prow-pending { background: linear-gradient(90deg, rgba(234, 179, 8, 0.055), transparent 38%); }
+.prow-pending:hover { background: linear-gradient(90deg, rgba(234, 179, 8, 0.1), var(--surface) 46%); }
+.prow-pending .pavatar { filter: saturate(.72); }
+.btn-repository { text-decoration: none; justify-content: center; }
 .prow-idx { font: 400 12px var(--font-mono); color: var(--muted); }
 .prow-main { min-width: 0; }
 .prow-name { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }

@@ -80,13 +80,19 @@ import { writeClipboardText } from './clipboard.js'
     return Boolean(plugin && plugin.verification && plugin.verification.manifest === 'shape_validated');
   }
 
+  function pendingReview(plugin) {
+    return Boolean(plugin && plugin.trustLevel === 'pending_review');
+  }
+
   function sourceLabel(plugin) {
     if (plugin.source === 'curated') return locale() === 'en' ? 'Source: community catalog' : '来源：社区目录';
+    if (pendingReview(plugin)) return locale() === 'en' ? 'Source: GitHub candidate' : '来源：GitHub 候选';
     return locale() === 'en' ? 'Source: GitHub discovery' : '来源：GitHub 自动发现';
   }
 
   function manifestLabel(plugin) {
     if (manifestShapeValidated(plugin)) return locale() === 'en' ? 'Manifest format checked' : 'Manifest 格式检查通过';
+    if (pendingReview(plugin)) return locale() === 'en' ? 'Valid dsh.bundle missing' : '缺少有效 dsh.bundle';
     return locale() === 'en' ? 'Manifest not checked' : 'Manifest 未检查';
   }
 
@@ -165,6 +171,18 @@ import { writeClipboardText } from './clipboard.js'
   }
 
   function installBtn(plugin) {
+    if (pendingReview(plugin)) {
+      var link = document.createElement('a');
+      link.className = 'btn btn-sm btn-repository';
+      link.href = plugin.url;
+      link.target = '_blank';
+      link.rel = 'noopener';
+      link.textContent = locale() === 'en' ? 'View repository' : '查看仓库';
+      link.title = locale() === 'en'
+        ? 'This candidate has no verified install command; review it on GitHub'
+        : '该候选项没有经过验证的安装命令，请前往 GitHub 查看';
+      return link;
+    }
     var button = document.createElement('button');
     button.className = 'btn btn-sm';
     button.textContent = installActionLabel(plugin);
@@ -180,7 +198,7 @@ import { writeClipboardText } from './clipboard.js'
   }
 
   function sourcePill(plugin) {
-    var manifestClass = manifestShapeValidated(plugin) ? 'pill-manifest' : 'pill-unchecked';
+    var manifestClass = manifestShapeValidated(plugin) ? 'pill-manifest' : (pendingReview(plugin) ? 'pill-pending' : 'pill-unchecked');
     return '<span class="pill pill-source">' + escapeHtml(sourceLabel(plugin)) + '</span>' +
       '<span class="pill ' + manifestClass + '">' + escapeHtml(manifestLabel(plugin)) + '</span>';
   }
@@ -207,36 +225,79 @@ import { writeClipboardText } from './clipboard.js'
 
   function row(plugin, index) {
     var element = document.createElement('div');
-    element.className = 'prow';
+    var isPending = pendingReview(plugin);
+    var nameHref = isPending ? plugin.url : detailHref(plugin);
+    var nameTarget = isPending ? ' target="_blank" rel="noopener"' : '';
+    var category = plugin.category ? categoryName(plugin.category) : (locale() === 'en' ? 'Category pending' : '分类待确认');
+    element.className = 'prow' + (isPending ? ' prow-pending' : '');
     element.innerHTML =
       '<span class="prow-idx">' + String(index + 1).padStart(3, '0') + '</span>' +
       '<span class="prow-av"></span>' +
       '<div class="prow-main">' +
-        '<div class="prow-name"><a href="' + detailHref(plugin) + '">' + escapeHtml(plugin.name) + '</a>' + sourcePill(plugin) + '</div>' +
-        '<div class="prow-desc">' + escapeHtml(description(plugin) || (locale() === 'en' ? 'No description provided. Review the GitHub source before installing.' : '作者未提供简介；安装前请先查看 GitHub 源码。')) + '</div>' +
+        '<div class="prow-name"><a href="' + escapeHtml(nameHref) + '"' + nameTarget + '>' + escapeHtml(plugin.name) + '</a>' + sourcePill(plugin) + '</div>' +
+        '<div class="prow-desc">' + escapeHtml(description(plugin) || (isPending
+          ? (locale() === 'en' ? 'GitHub found this repository, but it has no recognizable plugin install entry yet.' : 'GitHub 已发现该仓库，但它还没有可识别的插件安装入口。')
+          : (locale() === 'en' ? 'No description provided. Review the GitHub source before installing.' : '作者未提供简介；安装前请先查看 GitHub 源码。'))) + '</div>' +
         '<div class="prow-signals">' + topicSignals(plugin) + (updatedLabel(plugin.pushedAt) ? '<span class="prow-updated">' + updatedLabel(plugin.pushedAt) + '</span>' : '') + '</div>' +
       '</div>' +
-      '<div class="prow-meta"><b>@' + escapeHtml(plugin.owner) + '</b><br>' + escapeHtml(categoryName(plugin.category)) + '</div>' +
+      '<div class="prow-meta"><b>@' + escapeHtml(plugin.owner) + '</b><br>' + escapeHtml(category) + '</div>' +
       '<div class="prow-stars">' + STAR + '<b>' + fmtNumber(plugin.stars) + '</b><small>Stars</small></div>' +
-      '<div class="prow-forks">' + FORK + '<b>' + fmtNumber(plugin.forks) + '</b><small>Forks</small></div>' +
+      '<div class="prow-forks">' + (plugin.forks == null ? '<b>—</b>' : FORK + '<b>' + fmtNumber(plugin.forks) + '</b>') + '<small>Forks</small></div>' +
       '<div class="prow-act"></div>';
     element.querySelector('.prow-av').appendChild(avatar(plugin));
     element.querySelector('.prow-act').appendChild(installBtn(plugin));
     return element;
   }
 
+  function normalizePendingPlugin(entry) {
+    var parts = String(entry.id || '').split('/');
+    var owner = entry.owner || parts.shift() || '';
+    var name = entry.name || parts.join('/') || entry.id;
+    return {
+      id: entry.id,
+      name: name,
+      owner: owner,
+      url: entry.url,
+      description: entry.description || { zh: '', en: '' },
+      category: entry.category || '',
+      stars: Number(entry.stars) || 0,
+      forks: entry.forks == null ? null : Number(entry.forks) || 0,
+      language: entry.language || '',
+      pushedAt: entry.pushedAt || null,
+      addedAt: null,
+      source: 'discovered',
+      trustLevel: 'pending_review',
+      verification: { manifest: 'not_validated', installation: 'not_tested' },
+      topics: entry.topics || ['dsh-plugin'],
+      icon: entry.icon || (owner ? 'https://github.com/' + encodeURIComponent(owner) + '.png?size=96' : '')
+    };
+  }
+
   async function loadRegistry() {
-    var response = await fetch('data/plugins.json', { cache: 'no-cache' });
+    var responses = await Promise.all([
+      fetch('data/plugins.json', { cache: 'no-cache' }),
+      fetch('data/registry-audit.json', { cache: 'no-cache' }).catch(function () { return null; })
+    ]);
+    var response = responses[0];
     if (!response.ok) throw new Error('Registry HTTP ' + response.status);
     var registry = await response.json();
     if (!Array.isArray(registry.plugins)) throw new Error('Invalid registry document');
+    var audit = responses[1] && responses[1].ok ? await responses[1].json() : { pendingReview: [] };
+    var publishedIds = new Set(registry.plugins.map(function (plugin) { return plugin.id.toLowerCase(); }));
+    var candidates = Array.isArray(audit.pendingReview)
+      ? audit.pendingReview.filter(function (entry) { return entry && entry.id && entry.url && !publishedIds.has(entry.id.toLowerCase()); }).map(normalizePendingPlugin)
+      : [];
     HR.registry = registry;
-    HR.PLUGINS = registry.plugins;
+    HR.PUBLISHED = registry.plugins;
+    HR.PENDING = candidates;
+    HR.PLUGINS = registry.plugins.concat(candidates);
     return registry;
   }
 
   var HR = window.HR = {
     PLUGINS: [],
+    PUBLISHED: [],
+    PENDING: [],
     registry: { categories: {}, stats: {} },
     STAR: STAR,
     FORK: FORK,
@@ -248,6 +309,7 @@ import { writeClipboardText } from './clipboard.js'
     openInstallDialog: openInstallDialog,
     installBtn: installBtn,
     manifestShapeValidated: manifestShapeValidated,
+    pendingReview: pendingReview,
     sourceLabel: sourceLabel,
     manifestLabel: manifestLabel,
     installActionLabel: installActionLabel,
