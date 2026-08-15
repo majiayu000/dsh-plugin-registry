@@ -9,15 +9,16 @@
 <link rel="stylesheet" href="assets/registry.css">
 </head>
 <body>
+<a class="skip-link" href="#main-content">跳到主要内容</a>
 <header class="topbar">
   <div class="wrap topbar-in">
-    <a class="brand" href="index.html"><img class="brand-logo" src="assets/dsh-registry-logo.svg" width="34" height="34" alt="" /><span class="brand-word"><strong>DeepSeek Harness</strong><em>Plugin Registry</em></span></a>
-    <nav class="nav"><a href="index.html">浏览插件</a><a href="publish.html">发布</a><a href="policy.html" class="on">规范</a><a href="dashboard.html">统计</a></nav>
+    <a class="brand" href="index.html"><img class="brand-logo" src="assets/dsh-registry-logo.svg" width="34" height="34" alt="" /><span class="brand-word"><strong>DeepSeek Harness</strong><em>Community Registry</em></span></a>
+    <nav class="nav" aria-label="主要导航"><a href="index.html">浏览插件</a><a href="publish.html">发布</a><a href="policy.html" class="on" aria-current="page">规范</a><a href="dashboard.html">统计</a></nav>
     <div class="topbar-r"><span class="cli-tag">REGISTRY POLICY</span></div>
   </div>
 </header>
 
-<main class="wrap policy-page">
+<main class="wrap policy-page" id="main-content">
   <section class="page-head">
     <p class="eyebrow rise">收录 · 本站规则</p>
     <h1 class="page-title rise rise-1">怎样进入公开列表。</h1>
@@ -61,8 +62,8 @@
           <h2>本站显示的状态</h2>
           <p class="policy-lead">状态说明的是本站验证到了什么，不代表对插件代码作出安全背书。</p>
           <dl class="policy-statuses">
-            <div><dt><span class="pill pill-success">Manifest 已验证</span></dt><dd>自动发现，并通过根目录 bundle 格式校验；可进入公开列表。</dd></div>
-            <div><dt><span class="pill pill-official">精选</span></dt><dd>由 Registry 维护流程标记的收录项；仍不代表功能质量或安全性已经审核。</dd></div>
+            <div><dt><span class="pill pill-manifest">Manifest 格式检查通过</span></dt><dd>自动发现，并通过根目录 bundle 格式校验；可进入公开列表。</dd></div>
+            <div><dt><span class="pill pill-source">来源：社区目录</span></dt><dd>从社区维护的公开目录同步；本站没有检查其 Manifest、功能质量或安全性。</dd></div>
             <div><dt><span class="pill pill-warn">待审查</span></dt><dd>仓库已被发现，但尚未满足可安装契约，不出现在公开安装列表。</dd></div>
             <div><dt><span class="pill pill-danger">已隔离</span></dt><dd>因误收录、重复、风险或治理决定被排除，不出现在公开列表。</dd></div>
           </dl>

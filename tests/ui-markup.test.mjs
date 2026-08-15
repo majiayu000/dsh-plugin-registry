@@ -7,13 +7,16 @@ const pages = ['index.html', 'dashboard.html', 'plugin-detail.html', 'publish.ht
 test('preview pages do not claim a deployment or a signed-in user', async () => {
   const html = (await Promise.all(pages.map(page => readFile(page, 'utf8')))).join('\n')
   assert.doesNotMatch(html, /REGISTRY LIVE|LIVE DATA|已登录：lifcc|registry\.deepseek-harness\.dev/)
-  assert.match(html, /REGISTRY PREVIEW/)
+  assert.match(html, /COMMUNITY PREVIEW/)
 })
 
 test('mobile styles keep primary navigation available', async () => {
   const css = await readFile('assets/registry.css', 'utf8')
   assert.doesNotMatch(css, /\.nav\s*\{\s*display:\s*none/)
   assert.match(css, /\.nav\s*\{[\s\S]*display:\s*flex;\s*order:\s*3;/)
+  assert.match(css, /\.installbox\s*\{\s*flex-wrap:\s*wrap;/)
+  assert.match(css, /\.statstrip\s*\{\s*display:\s*grid;\s*grid-template-columns:\s*1fr 1fr;/)
+  assert.match(css, /\.chips\s*\{[^}]*overflow-x:\s*auto;/)
 })
 
 test('every page uses the complete registry name and shared logo asset', async () => {
@@ -22,8 +25,21 @@ test('every page uses the complete registry name and shared logo asset', async (
     assert.match(html, /<title>[^<]*DeepSeek Harness Plugin Registry<\/title>/)
     assert.match(html, /rel="icon" href="assets\/dsh-registry-logo\.svg"/)
     assert.match(html, /class="brand-logo" src="assets\/dsh-registry-logo\.svg"/)
-    assert.match(html, /<strong>DeepSeek Harness<\/strong><em>Plugin Registry<\/em>/)
+    assert.match(html, /<strong>DeepSeek Harness<\/strong><em>Community Registry<\/em>/)
   })
+})
+
+test('primary pages expose keyboard and assistive-technology navigation', async () => {
+  const htmlPages = await Promise.all(pages.map(page => readFile(page, 'utf8')))
+  htmlPages.forEach(html => {
+    assert.match(html, /class="skip-link" href="#main-content"/)
+    assert.match(html, /<main[^>]+id="main-content"/)
+    assert.match(html, /<nav class="nav" aria-label="主要导航">/)
+  })
+  const index = htmlPages[0]
+  assert.match(index, /<label class="sr-only" for="q">/)
+  assert.match(index, /id="sort" aria-label="排序方式"/)
+  assert.match(index, /aria-pressed/)
 })
 
 test('plugin detail describes only verifiable registry signals', async () => {
@@ -32,8 +48,9 @@ test('plugin detail describes only verifiable registry signals', async () => {
   assert.doesNotMatch(html, />README</)
   assert.match(html, />插件信息</)
   assert.match(html, /验证范围/)
-  assert.match(html, /这不代表安全审计/)
-  assert.match(html, /本站未单独审核其功能质量或安全性/)
+  assert.match(html, /本站不审计插件安全性/)
+  assert.match(html, /本站没有检查 Manifest/)
+  assert.match(html, /安装前请确认/)
 })
 
 test('plugin rows expose topics and update dates as decision signals', async () => {
@@ -55,9 +72,11 @@ test('install actions open an accessible shared guide instead of silently copyin
   assert.match(shared, /document\.createElement\('dialog'\)/)
   assert.match(shared, /aria-labelledby/)
   assert.match(shared, /dialog\.showModal\(\)/)
-  assert.match(shared, /Manifest 格式验证不代表安全审计/)
+  assert.match(shared, /本站不审计插件安全性/)
   assert.match(shared, /插件尚未安装/)
   assert.match(shared, /Install steps.*安装步骤/)
+  assert.match(shared, /View install method.*查看安装方式/)
+  assert.match(shared, /Manifest 未检查/)
   assert.match(shared, /openInstallDialog\(plugin\)/)
   assert.match(detail, /HR\.openInstallDialog\(plugin\)/)
   assert.match(detail, /id="install-btn">安装步骤<\/button>/)

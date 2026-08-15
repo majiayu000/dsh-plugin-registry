@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>统计 — DeepSeek Harness Plugin Registry</title>
-<meta name="description" content="查看 DeepSeek Harness 插件注册表的公开覆盖数据、分类分布、可信等级和 GitHub 社区指标。" />
+<meta name="description" content="查看 DeepSeek Harness 插件注册表的公开覆盖数据、来源构成、Manifest 格式检查和 GitHub 社区指标。" />
 <link rel="icon" href="assets/dsh-registry-logo.svg" type="image/svg+xml" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,15 +12,16 @@
 <link rel="stylesheet" href="assets/registry.css">
 </head>
 <body>
+<a class="skip-link" href="#main-content">跳到主要内容</a>
 <header class="topbar">
   <div class="wrap topbar-in">
-    <a class="brand" href="index.html"><img class="brand-logo" src="assets/dsh-registry-logo.svg" width="34" height="34" alt="" /><span class="brand-word"><strong>DeepSeek Harness</strong><em>Plugin Registry</em></span></a>
-    <nav class="nav"><a href="index.html">浏览插件</a><a href="publish.html">发布</a><a href="dashboard.html" class="on">统计</a></nav>
+    <a class="brand" href="index.html"><img class="brand-logo" src="assets/dsh-registry-logo.svg" width="34" height="34" alt="" /><span class="brand-word"><strong>DeepSeek Harness</strong><em>Community Registry</em></span></a>
+    <nav class="nav" aria-label="主要导航"><a href="index.html">浏览插件</a><a href="publish.html">发布</a><a href="dashboard.html" class="on" aria-current="page">统计</a></nav>
     <div class="topbar-r"><span class="cli-tag">SNAPSHOT DATA</span></div>
   </div>
 </header>
 
-<main class="wrap">
+<main class="wrap" id="main-content">
   <section class="page-head">
     <p class="eyebrow rise">Stats · 公开数据</p>
     <h1 class="page-title rise rise-1">Registry 的脉搏。</h1>
@@ -29,17 +30,17 @@
 
   <div class="kpis rise rise-3">
     <div class="kpi"><div class="kl">GitHub Stars</div><div class="kv2" id="k-stars">—</div><div class="kd">已收录仓库合计</div></div>
-    <div class="kpi"><div class="kl">收录插件</div><div class="kv2" id="k-count">—</div><div class="kd">可安装插件</div></div>
+    <div class="kpi"><div class="kl">收录插件</div><div class="kv2" id="k-count">—</div><div class="kd">公开列表条目</div></div>
     <div class="kpi"><div class="kl">插件作者</div><div class="kv2" id="k-author">—</div><div class="kd">按 GitHub owner 去重</div></div>
-    <div class="kpi"><div class="kl">Manifest 已验证</div><div class="kv2" id="k-auto">—</div><div class="kd">可直接安装</div></div>
+    <div class="kpi"><div class="kl">Manifest 格式检查</div><div class="kv2" id="k-auto">—</div><div class="kd">格式检查通过</div></div>
   </div>
 
   <div class="dash-grid rise rise-4">
     <div class="panel">
-      <h3>分类分布</h3><div class="psub">按可安装插件数量</div><div id="cats"></div>
+      <h3>分类分布</h3><div class="psub">按公开列表条目数量</div><div id="cats"></div>
     </div>
     <div class="panel">
-      <h3>可信等级</h3><div class="psub">发布列表与审计队列</div><div id="sources"></div>
+      <h3>来源构成</h3><div class="psub">公开列表中的数据来源</div><div id="sources"></div>
       <p class="registry-updated" id="updated"></p>
     </div>
   </div>
@@ -87,9 +88,7 @@ await import('/assets/plugins.js');
   var english = window.HRI18N.locale === 'en-US';
   bars('sources', [
     { name: english ? 'Community catalog' : '社区目录', value: curated },
-    { name: english ? 'Manifest shape validated' : 'Manifest 结构已验证', value: plugins.length - curated },
-    { name: english ? 'Pending review' : '待审查', value: HR.registry.stats.pendingReview || 0 },
-    { name: english ? 'Quarantined' : '已隔离', value: HR.registry.stats.quarantined || 0 }
+    { name: english ? 'GitHub discovery' : 'GitHub 自动发现', value: plugins.length - curated }
   ]);
   document.getElementById('updated').textContent = (window.HRI18N.locale === 'en-US' ? 'Generated: ' : '数据生成于：') + new Date(HR.registry.generatedAt).toLocaleString();
 

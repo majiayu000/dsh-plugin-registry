@@ -7,11 +7,15 @@
   var locale = saved || (navigator.language && navigator.language.toLowerCase().indexOf('zh') === 0 ? 'zh-CN' : 'en-US');
 
   var en = {
+    '跳到主要内容': 'Skip to main content', '主要导航': 'Primary navigation',
     '浏览插件': 'Browse', '发布': 'Publish', '统计': 'Stats', '规范': 'Policy', '返回插件列表': 'Back to plugins',
     '发布你的插件': 'Publish your plugin', '审核规范': 'Review policy', '收录规范': 'Listing policy', 'API 文档': 'API docs',
     'DeepSeek Harness': 'DeepSeek Harness', '数据接口 API': 'Data API', '返回插件库': 'Back to registry',
     '举报此插件': 'Report plugin', '作者协议': 'Author agreement',
     '给 Harness 装上能力。': 'Give Harness new capabilities.',
+    '路由、检索、评测、通知 —— 社区插件都在这里。先看数据来源和 Manifest 状态，再到仓库确认依赖与配置。': 'Routing, retrieval, evaluation, and notifications — community plugins in one place. Check the data source and Manifest status, then confirm dependencies and setup in the repository.',
+    '描述你想让 Harness 做什么…': 'Describe what you want Harness to do…',
+    '试试': 'Try', '终端界面': 'Terminal UI', '消息通知': 'Notifications', '网页搜索': 'Web search', '工作流': 'Workflows',
     '路由、检索、评测、安全 —— 社区维护的插件都在这里。新手不必读懂源码：复制一行命令，回车，装好了。': 'Routing, retrieval, evaluation, and security — community-maintained plugins in one place. Copy one command, press Enter, and you are ready.',
     '搜索插件、作者或能力关键词…': 'Search plugins, authors, or capabilities…',
     '收录插件': 'Plugins', '本周下载': 'Weekly installs', '认证作者': 'Verified authors', '兼容 CLI 版本': 'Compatible CLI',
@@ -72,15 +76,23 @@
     'ID 只能包含小写字母、数字和连字符，且至少 3 个字符。': 'Use lowercase letters, numbers, and hyphens; minimum 3 characters.',
     '遵循语义化版本，例如 0.1.0。': 'Use semantic versioning, such as 0.1.0.',
     '给用户看的名字': 'Name shown to users', '用户在列表里只会看到这一句，说清楚它解决什么问题。': 'This is the one sentence users see in the list. Explain the problem it solves.'
-    , '插件作者': 'Plugin authors', '自动发现': 'Auto-discovered', 'Manifest 已验证': 'Manifest verified', '仅看社区目录': 'Community catalog only',
+    , '插件作者': 'Plugin authors', '自动发现': 'Auto-discovered', 'Manifest 已验证': 'Manifest verified', 'Manifest 格式检查': 'Manifest format checks', '仅看社区目录': 'Community catalog only',
+    '全部来源': 'All sources', '插件来源': 'Plugin source', '社区目录': 'Community catalog', 'GitHub 自动发现': 'GitHub discovery',
+    'Manifest 状态': 'Manifest status', '全部 Manifest 状态': 'All Manifest statuses', '格式检查通过': 'Format checked', '未检查': 'Not checked',
+    '排序方式': 'Sort order', 'Manifest 格式通过优先': 'Manifest format checked first', '按最近收录': 'Recently listed',
     '按 Stars': 'By Stars', '按 Forks': 'By Forks',
     '全部语言': 'All languages', '编程语言': 'Programming language', '语言数据待同步': 'Language data pending',
     '插件数据暂时无法加载，请稍后重试。': 'Plugin data is temporarily unavailable. Please try again later.',
     '插件数据暂时无法加载。': 'Plugin data is temporarily unavailable.', '作者暂未提供简介。': 'No description provided.',
     '社区目录收录': 'Community catalog', '查看 GitHub': 'View on GitHub', '验证范围': 'Verification scope', '社区数据': 'Community data',
+    '来源': 'Source', '安装测试': 'Installation test', '未执行': 'Not performed', '它能做什么': 'What it does', '安装前请确认': 'Before installing',
+    '查看 GitHub 仓库中的 README、依赖和额外配置。': 'Review the README, dependencies, and additional setup in the GitHub repository.',
+    '本站不审计插件安全性，也没有执行安装测试。': 'This registry does not audit plugin security or perform installation tests.',
+    '本站收录': 'Listed here', '同类插件': 'Similar plugins', '报告条目信息问题 ↗': 'Report listing data ↗',
     '插件数据加载失败': 'Unable to load plugin data', '没有找到这个插件': 'Plugin not found',
     '数据来自社区目录与 GitHub dsh-plugin Topic。这里不制造下载量或评分，只展示可以被验证的公开指标。': 'Data comes from the community catalog and the GitHub dsh-plugin topic. No fabricated installs or ratings — only verifiable public metrics.',
-    '已收录仓库合计': 'Across listed repositories', '可安装插件': 'Installable plugins', '按 GitHub owner 去重': 'Unique GitHub owners',
+    '已收录仓库合计': 'Across listed repositories', '可安装插件': 'Installable plugins', '公开列表条目': 'Public listing entries', '按 GitHub owner 去重': 'Unique GitHub owners',
+    'Manifest 格式检查': 'Manifest format checks', '格式检查通过': 'Format checked', '公开列表中的数据来源': 'Data sources in the public list', '按公开列表条目数量': 'By public listing entries',
     'manifest 验证通过': 'Manifest verified', '可直接安装': 'Ready to install', '按可安装插件数量': 'By installable plugin count', '来源构成': 'Source composition', '可信等级': 'Trust levels',
     '社区目录与自动发现': 'Community catalog and auto-discovered', '发布列表与审计队列': 'Published registry and audit queue', '待审查': 'Pending review', '已隔离': 'Quarantined', '数据生成于：': 'Generated: ', '按收录插件的 Stars 合计': 'Total Stars across listed plugins',
     '每 2 小时自动同步': 'Auto-sync every 2 hours', '每 2 小时自动发现': 'Auto-discovery every 2 hours',
@@ -111,6 +123,7 @@
     '状态符合要求': 'Repository status eligible', '已归档仓库和 Fork 不会自动进入公开列表。': 'Archived repositories and forks are not automatically listed.',
     'Manifest 最低契约': 'Minimum manifest contract', 'patch 路径不能是绝对路径，也不能通过 .. 跳出仓库目录。对应文件需要随仓库一同维护。': 'The patch path cannot be absolute or escape the repository with ... The referenced file must be maintained in the repository.',
     '本站显示的状态': 'Statuses shown by this registry', '状态说明的是本站验证到了什么，不代表对插件代码作出安全背书。': 'Statuses describe what this registry verified; they are not a security endorsement of plugin code.',
+    'Manifest 格式检查通过': 'Manifest format checked', '来源：社区目录': 'Source: community catalog', '从社区维护的公开目录同步；本站没有检查其 Manifest、功能质量或安全性。': 'Synchronized from a community-maintained public catalog; this registry did not check its Manifest, functionality, quality, or security.',
     'Manifest 已验证': 'Manifest verified', '自动发现，并通过根目录 bundle 格式校验；可进入公开列表。': 'Automatically discovered and passed the root bundle shape check; eligible for the public list.',
     '精选': 'Curated', '由 Registry 维护流程标记的收录项；仍不代表功能质量或安全性已经审核。': 'An entry selected through the Registry maintenance process; this still does not mean its quality or security was audited.',
     '待审查': 'Pending review', '仓库已被发现，但尚未满足可安装契约，不出现在公开安装列表。': 'The repository was discovered but does not yet meet the installable contract, so it is excluded from the public install list.',
@@ -123,7 +136,7 @@
   };
 
   var placeholders = {
-    '搜索插件、作者或能力关键词…': 'Search plugins, authors, or capabilities…',
+    '搜索插件、作者或能力关键词…': 'Search plugins, authors, or capabilities…', '描述你想让 Harness 做什么…': 'Describe what you want Harness to do…',
     '例如：git-scribe（小写字母、数字、连字符）': 'e.g. git-scribe (lowercase letters, numbers, hyphens)',
     '给用户看的名字': 'Name shown to users',
     '用户在列表里只会看到这一句，说清楚它解决什么问题。': 'Explain the problem this plugin solves.'

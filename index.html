@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>DeepSeek Harness Plugin Registry</title>
-<meta name="description" content="搜索、筛选并比较 DeepSeek Harness 社区插件，查看可信等级、GitHub 数据和可复制的 DSH 安装命令。" />
+<meta name="description" content="搜索、筛选并比较 DeepSeek Harness 社区插件，查看数据来源、Manifest 格式状态、GitHub 数据和安装方式。" />
 <link rel="icon" href="assets/dsh-registry-logo.svg" type="image/svg+xml" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13,48 +13,60 @@
 </head>
 <body>
 
+<a class="skip-link" href="#main-content">跳到主要内容</a>
+
 <header class="topbar">
   <div class="wrap topbar-in">
     <a class="brand" href="index.html">
       <img class="brand-logo" src="assets/dsh-registry-logo.svg" width="34" height="34" alt="" />
-      <span class="brand-word"><strong>DeepSeek Harness</strong><em>Plugin Registry</em></span>
+      <span class="brand-word"><strong>DeepSeek Harness</strong><em>Community Registry</em></span>
     </a>
-    <nav class="nav">
-      <a href="index.html" class="on">浏览插件</a>
+    <nav class="nav" aria-label="主要导航">
+      <a href="index.html" class="on" aria-current="page">浏览插件</a>
       <a href="publish.html">发布</a>
       <a href="dashboard.html">统计</a>
     </nav>
     <div class="topbar-r">
-      <span class="cli-tag">REGISTRY PREVIEW</span>
+      <span class="cli-tag">COMMUNITY PREVIEW</span>
     </div>
   </div>
 </header>
 
-<main class="wrap">
+<main class="wrap" id="main-content">
 
   <section class="page-head">
     <p class="eyebrow rise">DeepSeek Harness · Plugin Registry</p>
     <h1 class="page-title rise rise-1">给 Harness 装上能力。<span class="caret"></span></h1>
-    <p class="page-sub rise rise-2">路由、检索、评测、安全 —— 社区维护的插件都在这里。新手不必读懂源码：复制一行命令，回车，装好了。</p>
+    <p class="page-sub rise rise-2">路由、检索、评测、通知 —— 社区插件都在这里。先看数据来源和 Manifest 状态，再到仓库确认依赖与配置。</p>
 
     <div class="discovery-row rise rise-3">
       <div class="searchbar">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-        <input id="q" type="text" placeholder="搜索插件、作者或能力关键词…" autocomplete="off">
+        <label class="sr-only" for="q">搜索插件</label>
+        <input id="q" type="search" placeholder="描述你想让 Harness 做什么…" autocomplete="off">
         <span class="kbd">⌘K</span>
       </div>
 
-      <div class="termline">
+      <div class="termline" aria-hidden="true">
         <span class="tl-prompt">$</span>
         <span id="typer"></span>
         <span class="caret"></span>
       </div>
     </div>
 
+    <div class="intent-row rise rise-4" aria-label="常见需求">
+      <span>试试</span>
+      <button type="button" data-intent="终端界面">终端界面</button>
+      <button type="button" data-intent="通知">消息通知</button>
+      <button type="button" data-intent="网页搜索">网页搜索</button>
+      <button type="button" data-intent="工作流">工作流</button>
+      <button type="button" data-intent="记忆">记忆</button>
+    </div>
+
     <div class="statstrip rise rise-4">      <div class="ss"><b class="num" id="st-count">—</b><span>收录插件</span></div>
       <div class="ss"><b class="num" id="st-stars">—</b><span>GitHub Stars</span></div>
       <div class="ss"><b class="num" id="st-author">—</b><span>插件作者</span></div>
-      <div class="ss"><b class="num" id="st-auto">—</b><span>Manifest 已验证</span></div>
+      <div class="ss"><b class="num" id="st-auto">—</b><span>Manifest 格式检查</span></div>
     </div>
   </section>
 
@@ -64,14 +76,29 @@
         <button class="chip on" data-cat="all">全部 <span class="chip-count" id="all-count">—</span></button>
       </div>
       <div class="toolbar-r">
-        <label class="switch"><input type="checkbox" id="curatedOnly"><span class="sw"></span>仅看社区目录</label>
+        <label class="sr-only" for="source">插件来源</label>
+        <select class="sel filter-source" id="source" aria-label="插件来源">
+          <option value="all">全部来源</option>
+          <option value="curated">社区目录</option>
+          <option value="discovered">GitHub 自动发现</option>
+        </select>
+        <label class="sr-only" for="manifest">Manifest 状态</label>
+        <select class="sel" id="manifest" aria-label="Manifest 状态">
+          <option value="all">全部 Manifest 状态</option>
+          <option value="shape_validated">格式检查通过</option>
+          <option value="not_checked">未检查</option>
+        </select>
+        <label class="sr-only" for="language">编程语言</label>
         <select class="sel" id="language" aria-label="编程语言">
           <option value="all">全部语言</option>
         </select>
-        <select class="sel" id="sort">
+        <label class="sr-only" for="sort">排序方式</label>
+        <select class="sel" id="sort" aria-label="排序方式">
           <option value="stars">按 Stars</option>
+          <option value="manifest">Manifest 格式通过优先</option>
           <option value="forks">按 Forks</option>
           <option value="new">按最近更新</option>
+          <option value="added">按最近收录</option>
         </select>
       </div>
     </div>
@@ -104,7 +131,7 @@ await import('/assets/plugins.js');
 const { createPluginSearchIndex, filterPluginSearchIndex } = await import('/assets/registry-search.js');
 (async function () {
   'use strict';
-  var state = { q: '', cat: 'all', curated: false, language: 'all', sort: 'stars', limit: 60 };
+  var state = { q: '', cat: 'all', source: 'all', manifest: 'all', language: 'all', sort: 'stars', limit: 60 };
   var list = document.getElementById('list');
   var note = document.getElementById('list-note');
 
@@ -144,13 +171,19 @@ const { createPluginSearchIndex, filterPluginSearchIndex } = await import('/asse
   function apply() {
     var rows = filterPluginSearchIndex(searchIndex, {
       category: state.cat,
-      curatedOnly: state.curated,
+      source: state.source,
+      manifest: state.manifest,
       query: state.q,
     });
     if (state.language !== 'all') rows = rows.filter(function (plugin) { return plugin.language === state.language; });
     rows.sort(function (a, b) {
       if (state.sort === 'forks') return b.forks - a.forks;
       if (state.sort === 'new') return String(b.pushedAt || '').localeCompare(String(a.pushedAt || ''));
+      if (state.sort === 'added') return String(b.addedAt || '').localeCompare(String(a.addedAt || ''));
+      if (state.sort === 'manifest') {
+        var manifestDelta = Number(b.verification && b.verification.manifest === 'shape_validated') - Number(a.verification && a.verification.manifest === 'shape_validated');
+        if (manifestDelta) return manifestDelta;
+      }
       return b.stars - a.stars;
     });
     list.innerHTML = '';
@@ -164,7 +197,8 @@ const { createPluginSearchIndex, filterPluginSearchIndex } = await import('/asse
   }
 
   document.getElementById('q').addEventListener('input', function (e) { state.q = e.target.value.trim(); state.limit = 60; apply(); });
-  document.getElementById('curatedOnly').addEventListener('change', function (e) { state.curated = e.target.checked; state.limit = 60; apply(); });
+  document.getElementById('source').addEventListener('change', function (e) { state.source = e.target.value; state.limit = 60; apply(); });
+  document.getElementById('manifest').addEventListener('change', function (e) { state.manifest = e.target.value; state.limit = 60; apply(); });
   document.getElementById('language').addEventListener('change', function (e) { state.language = e.target.value; state.limit = 60; apply(); });
   document.getElementById('sort').addEventListener('change', function (e) { state.sort = e.target.value; state.limit = 60; apply(); });
   document.getElementById('load-more').addEventListener('click', function () { state.limit += 60; apply(); });
@@ -173,6 +207,7 @@ const { createPluginSearchIndex, filterPluginSearchIndex } = await import('/asse
     if (!c) return;
     document.querySelectorAll('#chips .chip').forEach(function (x) { x.classList.remove('on'); });
     c.classList.add('on');
+    document.querySelectorAll('#chips .chip').forEach(function (x) { x.setAttribute('aria-pressed', String(x === c)); });
     state.cat = c.dataset.cat;
     state.limit = 60;
     apply();
@@ -181,6 +216,8 @@ const { createPluginSearchIndex, filterPluginSearchIndex } = await import('/asse
   Object.keys(HR.registry.categories || {}).forEach(function (key) {
     var chip = document.createElement('button');
     chip.className = 'chip';
+    chip.type = 'button';
+    chip.setAttribute('aria-pressed', 'false');
     chip.dataset.cat = key;
     var count = HR.PLUGINS.filter(function (plugin) { return plugin.category === key; }).length;
     chip.appendChild(document.createTextNode(HR.categoryName(key) + ' '));
@@ -191,6 +228,7 @@ const { createPluginSearchIndex, filterPluginSearchIndex } = await import('/asse
     document.getElementById('chips').appendChild(chip);
   });
   document.getElementById('all-count').textContent = HR.PLUGINS.length.toLocaleString();
+  document.querySelector('#chips .chip').setAttribute('aria-pressed', 'true');
   var languageSelect = document.getElementById('language');
   var languageCounts = HR.PLUGINS.reduce(function (counts, plugin) {
     if (plugin.language) counts[plugin.language] = (counts[plugin.language] || 0) + 1;
@@ -209,9 +247,19 @@ const { createPluginSearchIndex, filterPluginSearchIndex } = await import('/asse
   document.addEventListener('keydown', function (e) {
     if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); document.getElementById('q').focus(); }
   });
+  document.querySelector('.intent-row').addEventListener('click', function (event) {
+    var button = event.target.closest('[data-intent]');
+    if (!button) return;
+    var input = document.getElementById('q');
+    input.value = button.dataset.intent;
+    state.q = button.dataset.intent;
+    state.limit = 60;
+    apply();
+    input.focus();
+  });
 
   /* 终端打字循环 */
-  var examples = HR.PLUGINS.slice(0, 3).map(function (p) { return p.install; });
+  var examples = HR.PLUGINS.filter(HR.manifestShapeValidated).slice(0, 3).map(function (p) { return p.install; });
   var CMDS = examples.length ? examples : ['dsh plugin --profile web add github:owner/plugin'];
   var typer = document.getElementById('typer');
   var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;

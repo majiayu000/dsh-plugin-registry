@@ -76,6 +76,25 @@ import { writeClipboardText } from './clipboard.js'
 
   var activeInstallPlugin = null;
 
+  function manifestShapeValidated(plugin) {
+    return Boolean(plugin && plugin.verification && plugin.verification.manifest === 'shape_validated');
+  }
+
+  function sourceLabel(plugin) {
+    if (plugin.source === 'curated') return locale() === 'en' ? 'Source: community catalog' : '来源：社区目录';
+    return locale() === 'en' ? 'Source: GitHub discovery' : '来源：GitHub 自动发现';
+  }
+
+  function manifestLabel(plugin) {
+    if (manifestShapeValidated(plugin)) return locale() === 'en' ? 'Manifest format checked' : 'Manifest 格式检查通过';
+    return locale() === 'en' ? 'Manifest not checked' : 'Manifest 未检查';
+  }
+
+  function installActionLabel(plugin) {
+    if (manifestShapeValidated(plugin)) return locale() === 'en' ? 'Install steps' : '安装步骤';
+    return locale() === 'en' ? 'View install method' : '查看安装方式';
+  }
+
   function ensureInstallDialog() {
     var existing = document.getElementById('install-dialog');
     if (existing) return existing;
@@ -91,6 +110,7 @@ import { writeClipboardText } from './clipboard.js'
           '<button class="install-dialog-close" type="button" data-install-close aria-label="' + (english ? 'Close install guide' : '关闭安装说明') + '">×</button>' +
         '</header>' +
         '<p class="install-dialog-intro">' + (english ? 'Copying the command does not install the plugin. Run it in a terminal on the computer where DeepSeek Harness is installed.' : '复制命令不会自动安装。请在运行 DeepSeek Harness 的电脑上打开终端并执行。') + '</p>' +
+        '<aside class="install-dialog-evidence" data-install-evidence></aside>' +
         '<ol class="install-steps">' +
           '<li><span>01</span><div><b>' + (english ? 'Open a terminal' : '打开终端') + '</b><p>' + (english ? 'Use the computer where DeepSeek Harness is installed.' : '在已经安装 DeepSeek Harness 的电脑上操作。') + '</p></div></li>' +
           '<li><span>02</span><div><b>' + (english ? 'Copy the command below' : '复制下面的命令') + '</b><p>' + (english ? 'The button only writes the command to your clipboard.' : '按钮只会把命令写入剪贴板，不会直接执行。') + '</p></div></li>' +
@@ -99,7 +119,7 @@ import { writeClipboardText } from './clipboard.js'
         '<div class="install-dialog-command"><span>$</span><code data-install-command></code></div>' +
         '<button class="btn btn-primary install-dialog-copy" type="button" data-install-copy autofocus>' + (english ? 'Copy install command' : '复制安装命令') + '</button>' +
         '<p class="install-dialog-status" data-install-status aria-live="polite">' + (english ? 'Nothing is executed until you paste the command into a terminal.' : '只有粘贴到终端并执行后，安装才会开始。') + '</p>' +
-        '<aside class="install-dialog-safety"><b>' + (english ? 'Before you install' : '安装前请确认') + '</b><p>' + (english ? 'Plugins are third-party code from GitHub. Review the repository before running the command. Manifest format verification is not a security audit.' : '插件是来自 GitHub 的第三方代码。执行前请检查仓库内容；Manifest 格式验证不代表安全审计。') + '</p></aside>' +
+        '<aside class="install-dialog-safety"><b>' + (english ? 'Registry boundary' : '本站验证边界') + '</b><p>' + (english ? 'Plugins are third-party code from GitHub. This registry does not audit plugin security or test installation. Review the repository before running the command.' : '插件是来自 GitHub 的第三方代码。本站不审计插件安全性，也不测试实际安装；执行命令前请先检查仓库。') + '</p></aside>' +
         '<footer class="install-dialog-links"><a data-install-repo target="_blank" rel="noopener">' + (english ? 'Review GitHub source' : '查看 GitHub 源码') + '</a><a href="https://github.com/deepseek-ai/deepseek-harness" target="_blank" rel="noopener">' + (english ? 'Need DeepSeek Harness?' : '还没安装 DeepSeek Harness？') + '</a></footer>' +
       '</div>';
     document.body.appendChild(dialog);
@@ -126,9 +146,15 @@ import { writeClipboardText } from './clipboard.js'
     activeInstallPlugin = plugin;
     var english = locale() === 'en';
     var dialog = ensureInstallDialog();
-    dialog.querySelector('#install-dialog-title').textContent = english ? 'How to install ' + plugin.name : '安装 ' + plugin.name + ' 的步骤';
+    var manifestChecked = manifestShapeValidated(plugin);
+    dialog.querySelector('#install-dialog-title').textContent = manifestChecked
+      ? (english ? 'How to install ' + plugin.name : '安装 ' + plugin.name + ' 的步骤')
+      : (english ? 'Install information for ' + plugin.name : plugin.name + ' 的安装信息');
     dialog.querySelector('[data-install-command]').textContent = plugin.install;
     dialog.querySelector('[data-install-repo]').href = plugin.url;
+    dialog.querySelector('[data-install-evidence]').innerHTML = '<b>' + escapeHtml(manifestLabel(plugin)) + '</b><p>' + (manifestChecked
+      ? (english ? 'The root package.json matched the dsh.bundle format when the registry synchronized it. Installation was not run or tested.' : '同步时，仓库根目录 package.json 符合 dsh.bundle 格式；本站没有运行或测试安装。')
+      : (english ? 'This command came from the community catalog. The registry did not check the repository manifest or confirm that the command installs successfully.' : '这条命令来自社区目录；本站没有检查仓库 Manifest，也没有确认命令能够成功安装。')) + '</p>';
     var copyButton = dialog.querySelector('[data-install-copy]');
     copyButton.textContent = english ? 'Copy install command' : '复制安装命令';
     copyButton.classList.remove('done', 'error');
@@ -141,8 +167,10 @@ import { writeClipboardText } from './clipboard.js'
   function installBtn(plugin) {
     var button = document.createElement('button');
     button.className = 'btn btn-sm';
-    button.textContent = locale() === 'en' ? 'Install steps' : '安装步骤';
-    button.title = locale() === 'en' ? 'Open install guide' : '打开安装说明';
+    button.textContent = installActionLabel(plugin);
+    button.title = manifestShapeValidated(plugin)
+      ? (locale() === 'en' ? 'Open install guide' : '打开安装说明')
+      : (locale() === 'en' ? 'Review an unchecked install method' : '查看未经 Manifest 检查的安装方式');
     button.addEventListener('click', function (event) {
       event.preventDefault();
       event.stopPropagation();
@@ -152,8 +180,9 @@ import { writeClipboardText } from './clipboard.js'
   }
 
   function sourcePill(plugin) {
-    if (plugin.verification && plugin.verification.manifest === 'shape_validated') return '<span class="pill">' + (locale() === 'en' ? 'Manifest shape validated' : 'Manifest 结构已验证') + '</span>';
-    return '<span class="pill pill-official">' + (locale() === 'en' ? 'Community catalog' : '社区目录收录') + '</span>';
+    var manifestClass = manifestShapeValidated(plugin) ? 'pill-manifest' : 'pill-unchecked';
+    return '<span class="pill pill-source">' + escapeHtml(sourceLabel(plugin)) + '</span>' +
+      '<span class="pill ' + manifestClass + '">' + escapeHtml(manifestLabel(plugin)) + '</span>';
   }
 
   function detailHref(plugin) {
@@ -218,6 +247,10 @@ import { writeClipboardText } from './clipboard.js'
     copyText: copyText,
     openInstallDialog: openInstallDialog,
     installBtn: installBtn,
+    manifestShapeValidated: manifestShapeValidated,
+    sourceLabel: sourceLabel,
+    manifestLabel: manifestLabel,
+    installActionLabel: installActionLabel,
     sourcePill: sourcePill,
     detailHref: detailHref,
     row: row,

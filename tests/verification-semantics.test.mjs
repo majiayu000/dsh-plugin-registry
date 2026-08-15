@@ -34,6 +34,6 @@ test('plugin details expose both manifest and installation-test status', async (
   ])
   assert.match(html, /id="manifest-status"/)
   assert.match(html, /id="installation-test-status"/)
-  assert.match(html, /没有测试实际安装/)
-  assert.match(shared + dashboard, /Manifest 结构已验证/)
+  assert.match(html, /没有运行插件、测试安装或审计安全性/)
+  assert.match(shared + dashboard, /Manifest 格式检查通过/)
 })

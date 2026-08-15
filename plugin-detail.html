@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>插件详情 — DeepSeek Harness Plugin Registry</title>
-<meta name="description" content="查看 DeepSeek Harness 插件的功能简介、可信来源、GitHub 指标和 DSH 安装命令。" />
+<meta name="description" content="查看 DeepSeek Harness 插件的功能简介、数据来源、Manifest 格式状态、GitHub 指标和安装方式。" />
 <link rel="icon" href="assets/dsh-registry-logo.svg" type="image/svg+xml" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,15 +12,17 @@
 <link rel="stylesheet" href="assets/registry.css">
 </head>
 <body>
+<a class="skip-link" href="#main-content">跳到主要内容</a>
 <header class="topbar">
   <div class="wrap topbar-in">
-    <a class="brand" href="index.html"><img class="brand-logo" src="assets/dsh-registry-logo.svg" width="34" height="34" alt="" /><span class="brand-word"><strong>DeepSeek Harness</strong><em>Plugin Registry</em></span></a>
-    <nav class="nav"><a href="index.html" class="on">浏览插件</a><a href="publish.html">发布</a><a href="dashboard.html">统计</a></nav>
-    <div class="topbar-r"><span class="cli-tag">REGISTRY PREVIEW</span></div>
+    <a class="brand" href="index.html"><img class="brand-logo" src="assets/dsh-registry-logo.svg" width="34" height="34" alt="" /><span class="brand-word"><strong>DeepSeek Harness</strong><em>Community Registry</em></span></a>
+    <nav class="nav" aria-label="主要导航"><a href="index.html" class="on" aria-current="page">浏览插件</a><a href="publish.html">发布</a><a href="dashboard.html">统计</a></nav>
+    <div class="topbar-r"><span class="cli-tag">COMMUNITY PREVIEW</span></div>
   </div>
 </header>
 
-<main class="wrap" id="detail-root">
+<main class="wrap" id="main-content">
+<div id="detail-root">
   <a class="crumb rise" href="index.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 6l-6 6 6 6"/></svg>返回插件列表</a>
   <section class="detail-head rise rise-1">
     <div id="avatar-slot"></div>
@@ -32,6 +34,12 @@
     <div class="detail-cta"><a class="btn" id="repo-button" target="_blank" rel="noopener">查看 GitHub</a><button class="btn btn-primary" id="install-btn">安装步骤</button></div>
   </section>
 
+  <section class="detail-evidence-summary rise rise-2" aria-label="本站掌握的信息">
+    <div><span>来源</span><strong id="evidence-source">—</strong></div>
+    <div><span>Manifest</span><strong id="evidence-manifest">—</strong></div>
+    <div><span>安装测试</span><strong id="evidence-installation">未执行</strong></div>
+  </section>
+
   <div class="installbox rise rise-2"><span class="dollar">$</span><code id="install-command"></code><button class="copy" id="copy-btn">复制命令</button></div>
   <p class="install-note" id="install-copy-status" role="status"></p>
 
@@ -39,21 +47,34 @@
     <div>
       <div class="tabs"><span class="tab on">插件信息</span></div>
       <div class="tabpane on readme registry-readme">
+        <h3>它能做什么</h3>
         <p id="readme-desc"></p>
+        <h3>安装前请确认</h3>
+        <ul class="decision-list">
+          <li id="manifest-decision"></li>
+          <li>查看 GitHub 仓库中的 README、依赖和额外配置。</li>
+          <li>本站不审计插件安全性，也没有执行安装测试。</li>
+        </ul>
         <h3>验证范围</h3>
         <div class="evidence-card">
-          <span class="evidence-check">✓</span>
+          <span class="evidence-check" aria-hidden="true">i</span>
           <div><b id="evidence-title"></b><p id="evidence-copy"></p></div>
         </div>
         <h3>GitHub Topics</h3>
         <div class="topic-list" id="topic-list"></div>
+        <section class="related-section" id="related-section" hidden>
+          <h3>同类插件</h3>
+          <div class="related-list" id="related-list"></div>
+        </section>
       </div>
     </div>
     <aside>
       <div class="side-card"><h4>社区数据</h4><div class="metric-pair"><div><b id="plugin-stars">—</b><span>Stars</span></div><div><b id="plugin-forks">—</b><span>Forks</span></div></div></div>
-      <div class="side-card"><h4>信息</h4><div class="kv"><span class="k">维护者</span><span class="v" id="maintainer"></span></div><div class="kv"><span class="k">分类</span><span class="v" id="category"></span></div><div class="kv"><span class="k" id="language-label"></span><span class="v" id="language-status"></span></div><div class="kv"><span class="k" id="updated-label"></span><time class="v" id="updated-status"></time></div><div class="kv"><span class="k">来源</span><span class="v" id="source"></span></div><div class="kv"><span class="k" id="manifest-label"></span><span class="v" id="manifest-status"></span></div><div class="kv"><span class="k" id="installation-test-label"></span><span class="v" id="installation-test-status"></span></div><div class="kv"><span class="k">仓库</span><span class="v"><a id="repo-link" target="_blank" rel="noopener">GitHub</a></span></div></div>
+      <div class="side-card"><h4>信息</h4><div class="kv"><span class="k">维护者</span><span class="v" id="maintainer"></span></div><div class="kv"><span class="k">分类</span><span class="v" id="category"></span></div><div class="kv"><span class="k" id="language-label"></span><span class="v" id="language-status"></span></div><div class="kv"><span class="k" id="updated-label"></span><time class="v" id="updated-status"></time></div><div class="kv"><span class="k" id="added-label">本站收录</span><time class="v" id="added-status"></time></div><div class="kv"><span class="k">来源</span><span class="v" id="source"></span></div><div class="kv"><span class="k" id="manifest-label"></span><span class="v" id="manifest-status"></span></div><div class="kv"><span class="k" id="installation-test-label"></span><span class="v" id="installation-test-status"></span></div><div class="kv"><span class="k">仓库</span><span class="v"><a id="repo-link" target="_blank" rel="noopener">GitHub</a></span></div></div>
+      <a class="detail-report" href="https://github.com/majiayu000/dsh-plugin-registry/issues/new?template=registry_correction.yml" target="_blank" rel="noopener">报告条目信息问题 ↗</a>
     </aside>
   </div>
+</div>
 </main>
 
 <footer class="footer"><div class="wrap footer-in"><a href="index.html">浏览插件</a><a href="publish.html">发布你的插件</a><span class="fr">预发布版本</span></div></footer>
@@ -106,19 +127,45 @@ const { findPluginById } = await import('/assets/plugin-detail.js');
     updatedStatus.dateTime = plugin.pushedAt;
     updatedStatus.title = english ? 'Last push to the GitHub repository' : 'GitHub 仓库最后推送时间';
   }
-  document.getElementById('source').textContent = plugin.source === 'curated' ? (english ? 'Community catalog' : '社区目录') : (english ? 'GitHub auto-discovery' : 'GitHub 自动发现');
-  var manifestShapeValidated = plugin.verification.manifest === 'shape_validated';
+  var addedStatus = document.getElementById('added-status');
+  var hasValidAddedAt = typeof plugin.addedAt === 'string' && !Number.isNaN(Date.parse(plugin.addedAt));
+  addedStatus.textContent = hasValidAddedAt ? plugin.addedAt.slice(0, 10) : missingMetadata;
+  if (hasValidAddedAt) addedStatus.dateTime = plugin.addedAt;
+  document.getElementById('source').textContent = HR.sourceLabel(plugin).replace(/^来源：|^Source:\s*/, '');
+  var manifestShapeValidated = HR.manifestShapeValidated(plugin);
   document.getElementById('manifest-label').textContent = 'Manifest';
-  document.getElementById('manifest-status').textContent = manifestShapeValidated ? (english ? 'Shape validated' : '结构已验证') : (english ? 'Not checked' : '未检查');
+  document.getElementById('manifest-status').textContent = HR.manifestLabel(plugin).replace(/^Manifest\s*/, '');
   document.getElementById('installation-test-label').textContent = english ? 'Installation test' : '安装测试';
   document.getElementById('installation-test-status').textContent = english ? 'Not performed' : '未执行';
+  document.getElementById('evidence-source').textContent = plugin.source === 'curated' ? (english ? 'Community catalog' : '社区目录') : (english ? 'GitHub discovery' : 'GitHub 自动发现');
+  document.getElementById('evidence-manifest').textContent = manifestShapeValidated ? (english ? 'Format checked' : '格式检查通过') : (english ? 'Not checked' : '未检查');
+  document.getElementById('evidence-installation').textContent = english ? 'Not performed' : '未执行';
+  document.getElementById('manifest-decision').textContent = manifestShapeValidated
+    ? (english ? 'The repository manifest matched the dsh.bundle format at synchronization time.' : '同步时，仓库 Manifest 符合 dsh.bundle 格式。')
+    : (english ? 'The registry has not checked this repository manifest; confirm its installation instructions in the repository.' : '本站没有检查这个仓库的 Manifest，请先在仓库中确认安装说明。');
   ['repo-button', 'repo-link'].forEach(function (id) { document.getElementById(id).href = plugin.url; });
-  document.getElementById('evidence-title').textContent = manifestShapeValidated ? (english ? 'Manifest shape validated' : 'Manifest 结构验证通过') : (english ? 'Imported from the community catalog' : '来自社区目录');
+  document.getElementById('install-btn').textContent = HR.installActionLabel(plugin);
+  document.getElementById('install-btn').classList.toggle('btn-primary', manifestShapeValidated);
+  document.getElementById('repo-button').classList.toggle('btn-primary', !manifestShapeValidated);
+  document.getElementById('evidence-title').textContent = manifestShapeValidated ? (english ? 'Manifest format checked' : 'Manifest 格式检查通过') : (english ? 'Source recorded as community catalog' : '来源记录为社区目录');
   document.getElementById('evidence-copy').textContent = manifestShapeValidated
-    ? (english ? 'At sync time, the root package.json contained a valid dsh.bundle shape. The registry did not run the plugin or test installation. This is not a security audit.' : '同步时，仓库根目录 package.json 包含格式有效的 dsh.bundle；本站没有运行插件，也没有测试实际安装。这不代表安全审计。')
-    : (english ? 'Synced from the public awesome-dsh-plugin catalog. The registry did not independently review its quality or security, check its manifest, run the plugin, or test installation.' : '同步自 awesome-dsh-plugin 公开目录；本站未单独审核其功能质量或安全性，也没有检查 Manifest、运行插件或测试实际安装。');
+    ? (english ? 'At sync time, the root package.json matched the dsh.bundle format. The registry did not run the plugin, test installation, or audit security.' : '同步时，仓库根目录 package.json 符合 dsh.bundle 格式；本站没有运行插件、测试安装或审计安全性。')
+    : (english ? 'The entry was synchronized from a public community catalog. The registry did not check its manifest, run the plugin, test installation, or audit security.' : '该条目同步自公开社区目录；本站没有检查 Manifest、运行插件、测试安装或审计安全性。');
   document.getElementById('topic-list').innerHTML = (plugin.topics || []).map(function (topic) { return '<span class="topic-chip">' + HR.escapeHtml(topic) + '</span>'; }).join('') || '<span class="topic-chip">dsh-plugin</span>';
   document.getElementById('install-btn').addEventListener('click', function () { HR.openInstallDialog(plugin); });
+  var related = HR.PLUGINS.filter(function (candidate) { return candidate.id !== plugin.id && candidate.category === plugin.category; })
+    .sort(function (a, b) { return b.stars - a.stars; })
+    .slice(0, 3);
+  if (related.length) {
+    document.getElementById('related-section').hidden = false;
+    related.forEach(function (candidate) {
+      var link = document.createElement('a');
+      link.className = 'related-item';
+      link.href = HR.detailHref(candidate);
+      link.innerHTML = '<span><b>' + HR.escapeHtml(candidate.name) + '</b><small>@' + HR.escapeHtml(candidate.owner) + '</small></span><strong>' + HR.fmtNumber(candidate.stars) + ' ★</strong>';
+      document.getElementById('related-list').appendChild(link);
+    });
+  }
   document.getElementById('copy-btn').addEventListener('click', function () {
     HR.copyText(this, plugin.install).then(function (copied) {
       installCopyStatus.textContent = copied
