@@ -69,9 +69,9 @@ export function validateRegistry(registry) {
     if (Object.hasOwn(plugin || {}, 'verified') || Object.hasOwn(plugin || {}, 'installable')) {
       errors.push(`${label} must not use the ambiguous verified or installable fields.`)
     }
-    const expectedManifest = plugin?.source === 'curated' ? 'not_checked' : 'shape_validated'
-    if (plugin?.verification?.manifest !== expectedManifest) errors.push(`${label}.verification.manifest must be ${expectedManifest}.`)
-    const allowedPatchStatuses = plugin?.source === 'curated' ? ['not_checked'] : ['not_checked', 'exists', 'missing']
+    const allowedManifestStatuses = plugin?.source === 'curated' ? ['not_checked', 'shape_validated'] : ['shape_validated']
+    if (!allowedManifestStatuses.includes(plugin?.verification?.manifest)) errors.push(`${label}.verification.manifest is invalid for ${plugin?.source}.`)
+    const allowedPatchStatuses = plugin?.verification?.manifest === 'shape_validated' ? ['not_checked', 'exists', 'missing'] : ['not_checked']
     if (!allowedPatchStatuses.includes(plugin?.verification?.patch)) errors.push(`${label}.verification.patch is invalid.`)
     if (plugin?.verification?.installation !== 'not_tested') errors.push(`${label}.verification.installation must be not_tested.`)
     if (!INSTALL_PATTERN.test(String(plugin?.install || ''))) errors.push(`${label}.install is invalid.`)

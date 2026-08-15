@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { createPluginSearchIndex, filterPluginSearchIndex } from '../assets/registry-search.js'
+import { compareDefaultPluginOrder, createPluginSearchIndex, filterPluginSearchIndex } from '../assets/registry-search.js'
 
 const plugins = [
   { id: 'acme/memory', category: 'memory', source: 'curated', verification: { manifest: 'not_checked' } },
@@ -43,4 +43,13 @@ test('search ranks exact names ahead of popular description-only matches', () =>
     return plugin.id + ' ' + plugin.description.en
   })
   assert.deepEqual(filterPluginSearchIndex(index, { query: 'terminal' }), [ranked[1], ranked[0]])
+})
+
+test('default order ranks published plugins by stars and keeps GitHub candidates last', () => {
+  const candidate = { id: 'popular/candidate', stars: 12_000, trustLevel: 'pending_review', source: 'discovered', verification: { manifest: 'not_validated' } }
+  const curated = { id: 'curated/plugin', stars: 2_000, trustLevel: 'curated', source: 'curated', verification: { manifest: 'not_checked' } }
+  const verified = { id: 'verified/plugin', stars: 500, trustLevel: 'manifest_verified', source: 'discovered', verification: { manifest: 'shape_validated' } }
+  const recommended = { id: 'recommended/plugin', stars: 1, special: true, trustLevel: 'manifest_verified', source: 'discovered', verification: { manifest: 'shape_validated' } }
+
+  assert.deepEqual([candidate, curated, verified, recommended].sort(compareDefaultPluginOrder), [curated, verified, recommended, candidate])
 })

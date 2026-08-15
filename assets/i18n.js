@@ -81,7 +81,7 @@
     '全部来源': 'All sources', '插件来源': 'Plugin source', '社区目录': 'Community catalog', 'GitHub 自动发现': 'GitHub discovery',
     'Manifest 状态': 'Manifest status', '全部 Manifest 状态': 'All Manifest statuses', '格式检查通过': 'Format checked', '未检查': 'Not checked',
     '排序方式': 'Sort order', 'Manifest 格式通过优先': 'Manifest format checked first', '按最近收录': 'Recently listed',
-    '按 Stars': 'By Stars', '按 Forks': 'By Forks',
+    '按 Stars（正式优先）': 'By Stars (published first)', '按 Stars（含候选）': 'By Stars (including candidates)', '按 Stars': 'By Stars', '按 Forks': 'By Forks',
     '全部语言': 'All languages', '编程语言': 'Programming language', '语言数据待同步': 'Language data pending',
     '插件数据暂时无法加载，请稍后重试。': 'Plugin data is temporarily unavailable. Please try again later.',
     '插件数据暂时无法加载。': 'Plugin data is temporarily unavailable.', '作者暂未提供简介。': 'No description provided.',

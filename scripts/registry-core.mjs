@@ -1,26 +1,73 @@
 import { validateBundleManifest } from '../assets/bundle-manifest.js'
 
+export const REGISTRY_CATEGORIES = {
+  ui: { en: 'UI Enhancements', zh: 'UI 增强' },
+  theme: { en: 'Themes & Appearance', zh: '主题与外观' },
+  client: { en: 'Clients & Runtime Interfaces', zh: '客户端与运行界面' },
+  model: { en: 'Models & Providers', zh: '模型与账号接入' },
+  session: { en: 'Sessions & Messages', zh: '会话与消息' },
+  memory: { en: 'Memory', zh: '记忆' },
+  tools: { en: 'Tools & Capabilities', zh: '工具与能力' },
+  skill: { en: 'Skills', zh: '技能包' },
+  workflow: { en: 'Workflow & Automation', zh: '工作流与自动化' },
+  notify: { en: 'Notifications & Integrations', zh: '通知与集成' },
+  dev: { en: 'Development & Runtime', zh: '开发与运行时' },
+  market: { en: 'Plugin Markets & Managers', zh: '插件市场与管理' },
+  resource: { en: 'Resources, Guides & Directories', zh: '资源、教程与导航' },
+  fun: { en: 'Just for Fun', zh: '娱乐' },
+}
+
 const CATEGORY_RULES = [
-  ['market', /market(?:place)?|plugin[ ._-]?(?:manager|browser|catalog|store)|registry|插件(?:市场|商店|管理器)/i],
-  ['session', /session|conversation|chat[ ._-]?history|message[ ._-]?history|会话|对话|聊天记录|消息历史/i],
-  ['fun', /desktop[ ._-]?pet|\bpet\b|wallpaper|music|game|emoji|桌宠|壁纸|音乐|娱乐/i],
-  ['theme', /theme|skin|appearance|pixel|主题|皮肤/i],
-  ['ui', /\bui\b|sidebar|desktop|tui|webview|界面|侧边栏|桌面/i],
-  ['memory', /memory|recall|knowledge.graph|记忆|知识图谱/i],
-  ['notify', /notif|message|integration|webhook|通知|集成/i],
-  ['model', /model|provider|router|token|模型|路由/i],
-  ['workflow', /workflow|automat|schedule|orchestrat|agent.team|工作流|自动化|编排/i],
+  ['memory', /memory|recall|knowledge[ ._-]?graph|context[ ._-]?(?:store|manager)|记忆|知识图谱|上下文存储/i],
+  ['notify', /notif|webhook|\bchannel\b|slack|discord|telegram|feishu|lark|dingtalk|email|ntfy|push[ ._-]?(?:message|service)|通知|推送|飞书|钉钉/i],
+  ['session', /session[ ._-]?(?:manager|management|history|browser|search|export|backup|delete|cleanup|analytics|share|sync|archive|tool)|conversation[ ._-]?(?:history|manager|search|export)|chat[ ._-]?history|message[ ._-]?history|transcript|会话(?:管理|历史|搜索|导出|删除|清理|分析|分享|同步|归档)|对话历史|聊天记录|消息历史/i],
+  ['model', /model|provider|router|gateway|token|quota|pricing|billing|模型|供应商|路由|令牌|额度|计费/i],
+  ['workflow', /workflow|automat|schedule|orchestrat|agent[ ._-]?team|pipeline|工作流|自动化|编排|定时任务/i],
   ['skill', /\bskill|技能/i],
-  ['dev', /runtime|debug|develop|sandbox|test|profile|开发|调试|沙箱/i],
+  ['dev', /runtime|debug|develop|sandbox|test|profile|benchmark|observab|开发|调试|沙箱|测试/i],
+  ['ui', /\bui\b|sidebar|panel|dashboard|webview|frontend|界面|侧边栏|面板/i],
 ]
 
-export function inferCategory(repository) {
-  const haystack = [
-    repository.name,
-    repository.description,
-    ...(repository.topics || []),
-  ].filter(Boolean).join(' ')
-  return CATEGORY_RULES.find(([, pattern]) => pattern.test(haystack))?.[0] || 'tools'
+function descriptionText(description) {
+  if (!description || typeof description === 'string') return description || ''
+  return Object.values(description).filter(value => typeof value === 'string').join(' ')
+}
+
+export function mergeRegistryCategories(categories = {}) {
+  return Object.fromEntries(Object.entries(REGISTRY_CATEGORIES).map(([key, labels]) => [
+    key,
+    { ...categories[key], ...labels },
+  ]))
+}
+
+export function inferCategory(repository, fallback = 'tools') {
+  const identity = String(repository.id || repository.name || '')
+  const name = String(repository.name || identity).toLowerCase()
+  const description = descriptionText(repository.description).toLowerCase()
+  const topics = (repository.topics || []).map(topic => String(topic).toLowerCase())
+  const haystack = [identity, name, description, ...topics].filter(Boolean).join(' ')
+  const isQualifiedEntry = identity.includes('#') || name.includes('#')
+
+  const resourceName = /^(?:awesome[-_.](?:deepseek[-_.](?:harness|skills)|dsh)(?:[-_.](?:plugin|plugins|bridges))?|dsh[-_.](?:resources?|tutorial|handbook|course))$|from[-_.]?scratch|plugin[-_.]?(?:dev[-_.]?)?guide$/i.test(name)
+  const resourceDescription = /curated (?:list|directory)|awesome list|plugin (?:directory|catalog)|development guide|beginner(?:'s)? guide|getting started guide|学习资料|入门教程|开发教程|插件(?:目录|指南)|精选.{0,6}(?:列表|目录)|资源(?:导航|推荐|合集)/i.test(description)
+  if (!isQualifiedEntry && resourceName) return 'resource'
+
+  if (/market(?:place)?|plugin[ ._-]?(?:manager|browser|catalog|store|search)|registry|插件(?:市场|商店|管理器)/i.test(haystack)) return 'market'
+  if (!isQualifiedEntry && resourceDescription) return 'resource'
+  if (/theme|skin|appearance|customi[sz](?:ation|er)|主题|皮肤|外观/i.test(haystack)) return 'theme'
+  if (/desktop[ ._-]?pet|(?:^|[ ._-])pet(?:$|[ ._-])|wallpaper|music|game|emoji|桌宠|壁纸|音乐|娱乐/i.test(haystack)) return 'fun'
+
+  const clientName = /(?:^|[-_.])(desktop|tui|launcher)(?:$|[-_.])/i.test(name)
+  const clientTopic = topics.some(topic => ['desktop-app', 'desktop-client', 'desktop-application', 'tui', 'launcher'].includes(topic))
+  const clientDescription = /terminal (?:ui|client|front door)|standalone (?:client|desktop|tui)|local-first desktop workspace|ai agent desktop app|终端(?:界面|客户端)/i.test(description)
+  const modelSpecificName = /(?:^|[-_.])(pricing|quota|billing|token|model|provider|router)(?:$|[-_.])/i.test(name)
+  if (modelSpecificName) return 'model'
+  if ((clientName || clientTopic || clientDescription) && !modelSpecificName) return 'client'
+
+  const fallbackAliases = { skin: 'theme', channel: 'notify' }
+  const canonicalFallback = fallbackAliases[fallback] || fallback
+  return CATEGORY_RULES.find(([, pattern]) => pattern.test(haystack))?.[0]
+    || (Object.hasOwn(REGISTRY_CATEGORIES, canonicalFallback) ? canonicalFallback : 'tools')
 }
 
 export function hasBundleManifest(text) {
@@ -56,16 +103,18 @@ export function normalizeCurated(plugin, metadata = {}) {
   const identity = curatedIdentity(plugin)
   const owner = identity.owner
   const name = plugin.name
+  const topics = metadata.repositoryTopics?.nodes?.map(node => node.topic.name) || plugin.topics || []
+  const description = {
+    zh: plugin.description?.zh || plugin.description?.en || '',
+    en: plugin.description?.en || plugin.description?.zh || '',
+  }
   return {
     id: identity.id,
     name,
     owner,
     url: plugin.url || `https://github.com/${owner}/${name}`,
-    description: {
-      zh: plugin.description?.zh || plugin.description?.en || '',
-      en: plugin.description?.en || plugin.description?.zh || '',
-    },
-    category: plugin.category || 'tools',
+    description,
+    category: inferCategory({ id: identity.id, name, description, topics }, plugin.category || 'tools'),
     stars: metadata.stargazerCount ?? plugin.stars ?? 0,
     forks: metadata.forkCount ?? 0,
     language: metadata.language || plugin.language || '',
@@ -83,7 +132,7 @@ export function normalizeCurated(plugin, metadata = {}) {
     },
     install: plugin.install || `dsh plugin --profile web add github:${owner}/${name}`,
     archived: Boolean(metadata.isArchived),
-    topics: metadata.repositoryTopics?.nodes?.map(node => node.topic.name) || [],
+    topics,
     icon: plugin.icon || metadata.avatarUrl || `https://github.com/${owner}.png?size=96`,
   }
 }

@@ -27,6 +27,16 @@ function relevanceScore(entry, terms) {
   }, 0)
 }
 
+function defaultTier(plugin) {
+  return plugin.trustLevel === 'pending_review' ? 1 : 0
+}
+
+export function compareDefaultPluginOrder(a, b) {
+  return defaultTier(a) - defaultTier(b)
+    || (b.stars || 0) - (a.stars || 0)
+    || String(a.id || '').localeCompare(String(b.id || ''))
+}
+
 export function filterPluginSearchIndex(index, options = {}) {
   const category = options.category || 'all'
   const query = String(options.query || '').trim().toLowerCase()

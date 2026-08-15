@@ -8,6 +8,22 @@ test('search ranks exact plugin names and persists the query in the URL', async 
   await expect(page).toHaveURL(/q=dsh-at-file/)
 })
 
+test('default directory ranks published plugins by stars instead of promoting candidates', async ({ page }) => {
+  await page.goto('/')
+  const first = page.locator('#list .prow').first()
+  await expect(first).toBeVisible()
+  const order = await page.evaluate(() => {
+    const expected = HR.PLUGINS
+      .filter(plugin => plugin.trustLevel !== 'pending_review')
+      .sort((a, b) => b.stars - a.stars || a.id.localeCompare(b.id))[0]
+    const href = document.querySelector('#list .prow .prow-name a')?.getAttribute('href') || ''
+    return { expected: expected.id, actual: new URL(href, location.href).searchParams.get('plugin') }
+  })
+  expect(order.actual).toBe(order.expected)
+  await expect(first.locator('.pill-pending')).toHaveCount(0)
+  await expect(first).not.toContainText(/Manifest 未检查|Manifest not checked/)
+})
+
 test('special listing is visible with its repository-approved install command', async ({ page }) => {
   await page.goto('/?q=dsh-mini-tui')
   const row = page.locator('#list .prow').filter({ hasText: 'dsh-mini-tui' }).first()
@@ -16,6 +32,16 @@ test('special listing is visible with its repository-approved install command', 
   await expect(row.locator('.pill-source')).toHaveText(/来源：X 推荐|Source: X recommendation/)
   const install = await page.evaluate(() => HR.PLUGINS.find(plugin => plugin.id === 'boxeryao/dsh-mini-tui').install)
   expect(install).toBe('dsh plugin --profile tui add dsh-mini-tui@latest')
+})
+
+test('dsh-TUI is classified as a client with confirmed manifest evidence', async ({ page }) => {
+  await page.goto('/?q=dsh-TUI')
+  const row = page.locator('#list .prow').first()
+  await expect(row).toBeVisible()
+  await expect(row.locator('.prow-name')).toContainText('dsh-TUI')
+  await expect(row.locator('.prow-meta')).toContainText(/客户端与运行界面|Clients & Runtime Interfaces/)
+  await expect(row.locator('.pill-manifest')).toContainText(/Manifest 格式检查通过|Manifest format checked/)
+  await expect(row).not.toContainText(/Manifest 未检查|Manifest not checked/)
 })
 
 test('plugin details expose manifest, patch, and installation evidence', async ({ page }) => {

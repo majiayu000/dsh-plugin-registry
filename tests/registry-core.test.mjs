@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { applyGovernance, hasBundleManifest, inferCategory, mergePlugins, normalizeCurated, normalizeDiscovered, repositoryKey, toPublicPlugin, validateHealth } from '../scripts/registry-core.mjs'
+import { applyGovernance, hasBundleManifest, inferCategory, mergePlugins, mergeRegistryCategories, normalizeCurated, normalizeDiscovered, repositoryKey, toPublicPlugin, validateHealth } from '../scripts/registry-core.mjs'
 
 test('only a dsh.bundle with a safe relative patch passes manifest validation', () => {
   assert.equal(hasBundleManifest('{"dsh":{"bundle":{"patch":"./cordis.patch.yml"}}}'), true)
@@ -37,6 +37,24 @@ test('automatic discovery can classify every public category family', () => {
   assert.equal(inferCategory({ name: 'dsh-session-export' }), 'session')
   assert.equal(inferCategory({ name: 'dsh-plugin-market' }), 'market')
   assert.equal(inferCategory({ name: 'dsh-desktop-pet' }), 'fun')
+  assert.equal(inferCategory({ name: 'dsh-desktop-client' }), 'client')
+  assert.equal(inferCategory({ name: 'dsh-TUI', description: 'Claude Code 风格全屏终端 UI：像素鲸鱼顶栏。', topics: ['tui'] }), 'client')
+  assert.equal(inferCategory({ name: 'awesome-dsh-plugins' }), 'resource')
+  assert.equal(inferCategory({ name: 'dsh-client-pricing' }), 'model')
+  assert.equal(inferCategory({ name: 'dsh-gui-customization', description: 'Theme workshop' }), 'theme')
+  assert.equal(inferCategory({ id: 'acme/dsh-suite#plugin-notify', name: 'dsh-suite#plugin-notify', description: 'Notifications' }), 'notify')
+  assert.equal(inferCategory({ name: 'dsh-guide-dog', description: 'Image helper' }), 'tools')
+  assert.equal(inferCategory({ name: 'dsh-web-mobile-fix', description: 'Web UI 移动端布局修复：插件导航单行排满' }), 'ui')
+  assert.equal(inferCategory({ name: 'dsh-revdiff', description: 'Git diff review', topics: ['terminal-ui'] }), 'ui')
+})
+
+test('registry categories always use the canonical taxonomy', () => {
+  const categories = mergeRegistryCategories({ custom: { en: 'Custom', zh: '自定义' } })
+  assert.equal(categories.client.zh, '客户端与运行界面')
+  assert.equal(categories.resource.zh, '资源、教程与导航')
+  assert.equal('custom' in categories, false)
+  assert.equal(inferCategory({ name: 'unclassified-entry' }, 'channel'), 'notify')
+  assert.equal(inferCategory({ name: 'unclassified-entry' }, 'agent'), 'tools')
 })
 
 test('a manifest whose referenced patch is missing is not installable', () => {

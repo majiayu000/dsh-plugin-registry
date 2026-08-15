@@ -6,6 +6,7 @@ import { hasDshCandidateContext } from '../assets/candidate-relevance.js'
 import {
   applyGovernance,
   hasBundleManifest,
+  mergeRegistryCategories,
   mergePlugins,
   normalizeCurated,
   normalizeDiscovered,
@@ -223,10 +224,10 @@ async function main() {
 
   const curatedKeys = new Set(curatedRegistry.plugins.map(repositoryKey))
   const newCandidates = uniqueRepositories.filter(repo => !curatedKeys.has(repo.full_name.toLowerCase()))
+  const repositoryByKey = new Map(uniqueRepositories.map(repo => [repo.full_name.toLowerCase(), repo]))
   const manifestCache = new Map()
   for (const plugin of previous?.plugins || []) {
-    if (plugin.source !== 'discovered') continue
-    manifestCache.set(plugin.id.toLowerCase(), {
+    manifestCache.set(repositoryKey(plugin), {
       pushedAt: plugin.pushedAt,
       shapeValid: plugin.verification?.manifest === 'shape_validated',
       patchStatus: plugin.verification?.patch,
@@ -240,11 +241,11 @@ async function main() {
       patchStatus: patchMissing ? 'missing' : undefined,
     })
   }
-  const candidatesToValidate = newCandidates.filter(repo => {
+  const candidatesToValidate = uniqueRepositories.filter(repo => {
     const cached = manifestCache.get(repo.full_name.toLowerCase())
     return cached?.pushedAt !== repo.pushed_at || (cached.shapeValid && !cached.patchStatus)
   })
-  console.log(`Manifest cache: ${newCandidates.length - candidatesToValidate.length} unchanged, ${candidatesToValidate.length} to validate.`)
+  console.log(`Manifest cache: ${uniqueRepositories.length - candidatesToValidate.length} unchanged, ${candidatesToValidate.length} to validate.`)
   const manifests = await loadPackageManifests(candidatesToValidate)
   const bundleCandidates = candidatesToValidate.flatMap(repository => {
     const check = validateBundleManifest(manifests.get(repository.full_name.toLowerCase()))
@@ -266,16 +267,37 @@ async function main() {
     repositoryTopics: { nodes: (repo.topics || []).map(name => ({ topic: { name } })) },
     avatarUrl: repo.owner?.avatar_url,
   }]))
-  const curated = curatedRegistry.plugins.map(plugin => normalizeCurated(plugin, metadata.get(repositoryKey(plugin))))
+  function repositoryVerification(repository) {
+    const key = repository.full_name.toLowerCase()
+    const cached = manifestCache.get(key)
+    const unchanged = cached?.pushedAt === repository.pushed_at && (!cached.shapeValid || cached.patchStatus)
+    const manifestShapeValid = unchanged ? cached.shapeValid : hasBundleManifest(manifests.get(key))
+    const patchExists = unchanged
+      ? (cached.patchStatus === 'exists' ? true : (cached.patchStatus === 'missing' ? false : null))
+      : bundlePatches.get(key)
+    return { manifestShapeValid, patchExists }
+  }
+
+  const curated = curatedRegistry.plugins.map(plugin => {
+    const key = repositoryKey(plugin)
+    const normalized = normalizeCurated(plugin, metadata.get(key))
+    const repository = repositoryByKey.get(key)
+    if (!repository) return normalized
+    const evidence = repositoryVerification(repository)
+    if (!evidence.manifestShapeValid) return normalized
+    return {
+      ...normalized,
+      verification: {
+        manifest: 'shape_validated',
+        patch: evidence.patchExists === true ? 'exists' : (evidence.patchExists === false ? 'missing' : 'not_checked'),
+        installation: 'not_tested',
+      },
+    }
+  })
   const normalizedCandidates = newCandidates
     .map(repo => {
-      const cached = manifestCache.get(repo.full_name.toLowerCase())
-      const unchanged = cached?.pushedAt === repo.pushed_at && (!cached.shapeValid || cached.patchStatus)
-      const manifestShapeValid = unchanged ? cached.shapeValid : hasBundleManifest(manifests.get(repo.full_name.toLowerCase()))
-      const patchExists = unchanged
-        ? (cached.patchStatus === 'exists' ? true : (cached.patchStatus === 'missing' ? false : null))
-        : bundlePatches.get(repo.full_name.toLowerCase())
-      return normalizeDiscovered(repo, manifestShapeValid, patchExists)
+      const evidence = repositoryVerification(repo)
+      return normalizeDiscovered(repo, evidence.manifestShapeValid, evidence.patchExists)
     })
   const blocked = new Map((blocklist.repositories || []).map(entry => [String(entry.repo).toLowerCase(), entry]))
   const candidateQuarantined = normalizedCandidates.flatMap(plugin => {
@@ -325,7 +347,7 @@ async function main() {
   const document = {
     schemaVersion: 2,
     generatedAt: new Date().toISOString(),
-    categories: curatedRegistry.categories,
+    categories: mergeRegistryCategories(curatedRegistry.categories),
     stats: {
       topicCandidates: uniqueRepositories.length,
       curated: publishedCurated,

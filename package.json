@@ -28,6 +28,7 @@
     "postbuild": "node scripts/generate-seo.mjs",
     "deploy:cloudflare": "npm run build && wrangler pages deploy dist --project-name dsh-plugin-registry --branch main",
     "preview": "vite preview",
+    "backfill:categories": "node scripts/backfill-categories.mjs",
     "backfill:languages": "node scripts/backfill-languages.mjs",
     "sync:plugins": "node scripts/sync-plugins.mjs",
     "validate:registry": "node scripts/validate-registry.mjs",

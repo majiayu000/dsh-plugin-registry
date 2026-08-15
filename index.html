@@ -101,8 +101,8 @@
         </select>
         <label class="sr-only" for="sort">排序方式</label>
         <select class="sel" id="sort" aria-label="排序方式">
-          <option value="relevance">智能排序</option>
-          <option value="stars">按 Stars</option>
+          <option value="relevance">按 Stars（正式优先）</option>
+          <option value="stars">按 Stars（含候选）</option>
           <option value="manifest">Manifest 格式通过优先</option>
           <option value="forks">按 Forks</option>
           <option value="new">按最近更新</option>
@@ -136,7 +136,7 @@
 <script type="module">
 await import('/assets/i18n.js');
 await import('/assets/plugins.js');
-const { createPluginSearchIndex, filterPluginSearchIndex } = await import('/assets/registry-search.js');
+const { compareDefaultPluginOrder, createPluginSearchIndex, filterPluginSearchIndex } = await import('/assets/registry-search.js');
 (async function () {
   'use strict';
   var initialParams = new URLSearchParams(location.search);
@@ -194,12 +194,14 @@ const { createPluginSearchIndex, filterPluginSearchIndex } = await import('/asse
     });
     if (state.language !== 'all') rows = rows.filter(function (plugin) { return plugin.language === state.language; });
     if (state.sort !== 'relevance' || !state.q) rows.sort(function (a, b) {
+      if (state.sort === 'relevance') return compareDefaultPluginOrder(a, b);
       if (state.sort === 'forks') return b.forks - a.forks;
       if (state.sort === 'new') return String(b.pushedAt || '').localeCompare(String(a.pushedAt || ''));
       if (state.sort === 'added') return String(b.addedAt || '').localeCompare(String(a.addedAt || ''));
       if (state.sort === 'manifest') {
         var manifestDelta = Number(b.verification && b.verification.manifest === 'shape_validated') - Number(a.verification && a.verification.manifest === 'shape_validated');
         if (manifestDelta) return manifestDelta;
+        return compareDefaultPluginOrder(a, b);
       }
       return b.stars - a.stars;
     });

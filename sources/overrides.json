@@ -6,7 +6,7 @@
         "zh": "直接连接 DSH 运行时的轻量快速终端界面插件。",
         "en": "A lightweight and fast terminal interface plugin connected directly to the DSH runtime."
       },
-      "category": "ui",
+      "category": "client",
       "install": "dsh plugin --profile tui add dsh-mini-tui@latest",
       "special": true,
       "recommendationSource": "x"

@@ -22,7 +22,9 @@ test('published snapshot contains explicit evidence and no ambiguous booleans', 
     assert.equal('verified' in plugin, false)
     assert.equal('installable' in plugin, false)
     assert.equal(plugin.verification.installation, 'not_tested')
-    assert.equal(plugin.verification.manifest, plugin.source === 'curated' ? 'not_checked' : 'shape_validated')
+    assert.ok(plugin.source === 'curated'
+      ? ['not_checked', 'shape_validated'].includes(plugin.verification.manifest)
+      : plugin.verification.manifest === 'shape_validated')
     assert.ok(['not_checked', 'exists', 'missing'].includes(plugin.verification.patch))
   }
 })

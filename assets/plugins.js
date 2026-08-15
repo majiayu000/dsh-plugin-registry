@@ -207,8 +207,11 @@ import { hasDshCandidateContext } from './candidate-relevance.js'
     var special = plugin.special
       ? '<span class="pill pill-special">' + (locale() === 'en' ? 'Special listing' : '特别收录') + '</span>'
       : '';
+    var manifest = manifestShapeValidated(plugin) || pendingReview(plugin)
+      ? '<span class="pill ' + manifestClass + '">' + escapeHtml(manifestLabel(plugin)) + '</span>'
+      : '';
     return special + '<span class="pill pill-source">' + escapeHtml(sourceLabel(plugin)) + '</span>' +
-      '<span class="pill ' + manifestClass + '">' + escapeHtml(manifestLabel(plugin)) + '</span>';
+      manifest;
   }
 
   function detailHref(plugin) {
