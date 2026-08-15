@@ -10,8 +10,8 @@ test('bundle manifest returns the validated patch path', () => {
 })
 
 test('bundle manifest explains malformed package data', () => {
-  assert.match(validateBundleManifest('not json').reason, /valid JSON/)
-  assert.match(validateBundleManifest({ dsh: { bundle: [] } }).reason, /must be an object/)
-  assert.match(validateBundleManifest({ dsh: { bundle: {} } }).reason, /non-empty string/)
-  assert.match(validateBundleManifest({ dsh: { bundle: { patch: '../outside.yml' } } }).reason, /safe relative path/)
+  assert.equal(validateBundleManifest('not json').reason_code, 'invalid_json')
+  assert.equal(validateBundleManifest({ dsh: { bundle: [] } }).reason_code, 'bundle_not_object')
+  assert.equal(validateBundleManifest({ dsh: { bundle: {} } }).reason_code, 'patch_missing')
+  assert.equal(validateBundleManifest({ dsh: { bundle: { patch: '../outside.yml' } } }).reason_code, 'patch_unsafe')
 })

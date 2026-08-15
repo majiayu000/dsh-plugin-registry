@@ -35,8 +35,8 @@
 
   <div class="pub-grid rise rise-4">
     <section class="panel publish-guide">
-      <h2 class="panel-title">最低可安装契约</h2>
-      <p class="psub">只有 dsh.client 不够，必须声明 dsh.bundle。</p>
+      <h2 class="panel-title">自动发现最低契约</h2>
+      <p class="psub">自动发现要求根目录 package.json 声明 dsh.bundle。</p>
       <pre class="codeblock"><code>{
   <span class="k">"dsh"</span>: {
     <span class="k">"bundle"</span>: {
@@ -46,7 +46,7 @@
 }</code></pre>
       <h2 class="panel-title">让自动发现生效</h2>
       <ol class="publish-list">
-        <li>仓库包含真实、可运行的插件代码。</li>
+        <li>在根目录 package.json 中声明可安装的 bundle。</li>
         <li>在 GitHub 仓库设置中添加 <code>dsh-plugin</code> Topic。</li>
         <li>保持仓库公开且未归档；Fork 默认不会收录。</li>
         <li>等待下一次定时同步，或在下面立即检查。</li>
@@ -55,8 +55,8 @@
     </section>
 
     <aside class="panel repo-checker" aria-labelledby="repo-checker-title">
-      <h2 class="panel-title" id="repo-checker-title">检查你的仓库</h2>
-      <p class="psub">输入 GitHub 仓库地址，只读取公开的 package.json 与 Topics。</p>
+      <h2 class="panel-title" id="repo-checker-title">检查自动发现资格</h2>
+      <p class="psub">检查公开元数据、Topic 与根目录 package.json；不会运行代码，也不代表安全审计。</p>
       <form id="repo-checker-form" novalidate>
         <label class="field" for="repo-input"><span class="field-label">GitHub 仓库</span><input type="text" id="repo-input" placeholder="owner/repo 或 GitHub URL" autocomplete="url" autocapitalize="none" spellcheck="false" aria-describedby="repo-help check-message"></label>
         <p class="field-help" id="repo-help">例如：owner/repo</p>
@@ -78,21 +78,23 @@
 <script type="module">
 await import('/assets/i18n.js');
 const { validateBundleManifest } = await import('/assets/bundle-manifest.js');
-const { evaluateRepository, findRegistryEntry, parseGitHubRepository } = await import('/assets/repository-checker.js');
+const { evaluateRepository, findRegistryEntry, githubFailureMessage, manifestFailureMessage, parseGitHubRepository, repositoryCheckerCopy } = await import('/assets/repository-checker.js');
 (function () {
   'use strict';
+  var locale = window.HRI18N && window.HRI18N.locale === 'en-US' ? 'en-US' : 'zh-CN';
+  var copy = repositoryCheckerCopy(locale);
   function setCheck(key, ok) {
     var row = document.querySelector('[data-check="' + key + '"]');
     row.classList.toggle('ok', ok);
     row.classList.toggle('fail', !ok);
     row.querySelector('.check-ic').textContent = ok ? '✓' : '×';
-    row.querySelector('.check-state').textContent = ok ? '通过' : '未通过';
+    row.querySelector('.check-state').textContent = ok ? copy.passed : copy.failed;
   }
   function resetChecks() {
     document.querySelectorAll('.check-row').forEach(function (row) {
       row.classList.remove('ok', 'fail');
       row.querySelector('.check-ic').textContent = '—';
-      row.querySelector('.check-state').textContent = '待检查';
+      row.querySelector('.check-state').textContent = copy.pending;
     });
   }
   document.getElementById('repo-checker-form').addEventListener('submit', async function (event) {
@@ -104,21 +106,22 @@ const { evaluateRepository, findRegistryEntry, parseGitHubRepository } = await i
     var results = document.getElementById('check-results');
     if (!repo) {
       input.setAttribute('aria-invalid', 'true');
-      message.textContent = '请输入 owner/repo 或完整 GitHub 仓库地址。';
+      message.textContent = copy.invalidInput;
       input.focus();
       return;
     }
     input.removeAttribute('aria-invalid');
-    button.disabled = true; button.textContent = '检查中…'; results.hidden = false; message.textContent = '';
+    button.disabled = true; button.textContent = copy.checking; results.hidden = false; message.textContent = '';
     this.setAttribute('aria-busy', 'true');
     resetChecks();
     try {
       var repoResponse = await fetch('https://api.github.com/repos/' + repo, { headers: { accept: 'application/vnd.github+json' } });
-      if (!repoResponse.ok) throw new Error('GitHub HTTP ' + repoResponse.status);
+      if (!repoResponse.ok) { var repoError = new Error('repository fetch failed'); repoError.status = repoResponse.status; throw repoError; }
       var data = await repoResponse.json();
       var packageResponse = await fetch('https://api.github.com/repos/' + repo + '/contents/package.json', { headers: { accept: 'application/vnd.github.raw+json' } });
-      var bundleCheck = { valid: false, reason: 'package.json 不存在。' };
+      var bundleCheck = { valid: false, reason_code: 'package_missing', reason: copy.packageMissing };
       if (packageResponse.ok) bundleCheck = validateBundleManifest(await packageResponse.text());
+      else if (packageResponse.status !== 404) { var packageError = new Error('package fetch failed'); packageError.status = packageResponse.status; throw packageError; }
       var registryEntry = null;
       try {
         var registryResponse = await fetch('data/plugins.json');
@@ -128,12 +131,15 @@ const { evaluateRepository, findRegistryEntry, parseGitHubRepository } = await i
       var checkKeys = { repository_public: 'repo', discovery_topic: 'topic', bundle_manifest: 'bundle', repository_status: 'status' };
       check.signals.forEach(function (item) { setCheck(checkKeys[item.signal_type], item.signal.passed); });
       message.textContent = check.auto_discoverable
-        ? '检查通过。这个仓库会在下一轮同步中被自动发现。'
+        ? copy.ready
         : (check.listing.listed && check.listing.source === 'curated'
-          ? '这个仓库已通过精选目录收录，但还不符合自动发现契约。现有收录不会受影响。'
-          : (!bundleCheck.valid ? 'Manifest 未通过：' + bundleCheck.reason : '还有项目未通过，请按上面的契约修复后重新检查。'));
-    } catch (error) { message.textContent = '检查失败：' + error.message; }
-    finally { button.disabled = false; button.textContent = '重新检查'; this.removeAttribute('aria-busy'); }
+          ? copy.curated
+          : (!bundleCheck.valid ? manifestFailureMessage(bundleCheck, locale) : copy.incomplete));
+    } catch (error) {
+      results.hidden = true;
+      message.textContent = githubFailureMessage(error.status, locale);
+    }
+    finally { button.disabled = false; button.textContent = copy.checkAgain; this.removeAttribute('aria-busy'); }
   });
 })();
 </script>

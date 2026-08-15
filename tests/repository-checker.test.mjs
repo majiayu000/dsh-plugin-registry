@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { evaluateRepository, findRegistryEntry, parseGitHubRepository } from '../assets/repository-checker.js'
+import { evaluateRepository, findRegistryEntry, githubFailureMessage, manifestFailureMessage, parseGitHubRepository, repositoryCheckerCopy } from '../assets/repository-checker.js'
 
 test('repository input accepts only an owner/repository pair or canonical GitHub URL', () => {
   assert.equal(parseGitHubRepository('owner/repository'), 'owner/repository')
@@ -42,4 +42,13 @@ test('curated listing status stays distinct from automatic discovery eligibility
   assert.equal(result.auto_discoverable, false)
   assert.deepEqual(result.listing, { listed: true, source: 'curated', id: 'owner/repository' })
   assert.equal(findRegistryEntry({ plugins: [entry] }, 'OWNER/REPOSITORY'), entry)
+})
+
+test('checker messages are complete and actionable in both locales', () => {
+  assert.equal(repositoryCheckerCopy('en-US').pending, 'Pending')
+  assert.equal(repositoryCheckerCopy('zh-CN').failed, '未通过')
+  assert.equal(manifestFailureMessage({ reason_code: 'bundle_not_object' }, 'zh-CN'), 'Manifest 未通过：dsh.bundle 必须是对象。')
+  assert.match(manifestFailureMessage({ reason_code: 'patch_unsafe' }, 'en-US'), /^Manifest failed:/)
+  assert.match(githubFailureMessage(404, 'zh-CN'), /找不到/)
+  assert.match(githubFailureMessage(403, 'en-US'), /rate-limited/)
 })
