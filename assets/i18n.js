@@ -98,6 +98,9 @@
     '社区目录与自动发现': 'Community catalog and auto-discovered', '发布列表与审计队列': 'Published registry and audit queue', '待审查': 'Pending review', '已隔离': 'Quarantined', '数据生成于：': 'Generated: ', '按收录插件的 Stars 合计': 'Total Stars across listed plugins',
     '每 2 小时自动同步': 'Auto-sync every 2 hours', '每 2 小时自动发现': 'Auto-discovery every 2 hours',
     '提交仓库，公开走完审核。': 'Submit your repository. Keep the review public.',
+    '把仓库交给审核队列。': 'Send your repository to the review queue.',
+    '检查仓库、补充审核资料、站内提交。你不需要离开页面；提交记录会公开进入 GitHub 队列，方便维护者反馈和持续跟进。': 'Check the repository, add review details, and submit without leaving the site. A public GitHub record keeps maintainer feedback and follow-up trackable.',
+    '站内审核提交流程': 'On-site review submission flow', '补充资料': 'Add details', '审核所需信息': 'Review information', '站内提交': 'Submit here', '无需跳转': 'No redirect', '跟踪审核': 'Track review', '公开 Issue': 'Public issue',
     '先运行仓库预检，再创建带检查结果的 GitHub Issue。维护者反馈、修复记录和最终结论都留在 GitHub；满足契约的仓库仍会自动发现。': 'Run the repository pre-check, then create a GitHub issue with the results. Maintainer feedback, fixes, and the final decision stay on GitHub; eligible repositories are still auto-discovered.',
     'GitHub 提交流程': 'GitHub submission flow', '检查仓库': 'Check repository', '公开元数据': 'Public metadata', '预填提交': 'Prefill submission', '检查结果': 'Check results', 'GitHub 审核': 'GitHub review', 'Issue 可追踪': 'Trackable issue', '进入列表': 'Get listed', '合并后同步': 'Sync after approval',
     '每 2 小时': 'Every 2 hours', '无需提交表单': 'No submission form', '自动发现最低契约': 'Minimum auto-discovery contract', '自动发现要求根目录 package.json 声明 dsh.bundle。': 'Auto-discovery requires dsh.bundle in the root package.json.',
@@ -105,12 +108,18 @@
     '在 GitHub 仓库设置中添加': 'Add the', 'Topic。': 'topic.', '保持仓库公开且未归档；Fork 默认不会收录。': 'Keep the repository public and unarchived; forks are excluded by default.',
     '等待下一次定时同步，或在下面立即检查。': 'Wait for the next scheduled sync or check it below.', '查看完整收录规范': 'View the full listing policy',
     'GitHub 是正式提交通道': 'GitHub is the official submission channel', '每次提交都会创建公开 Issue，用于自动检查、维护者反馈和最终结论。': 'Every submission creates a public issue for automated checks, maintainer feedback, and the final decision.', '查看提交队列': 'View submission queue',
+    '站内提交，GitHub 留痕': 'Submit here, track on GitHub', '表单会把预检和作者资料整理成公开审核工单，并自动通知维护者。': 'The form turns checks and author details into a public review issue and notifies the maintainer.',
     '提交插件仓库': 'Submit a plugin repository', '输入公开 GitHub 仓库，先完成预检，再生成带结果的正式提交。': 'Enter a public GitHub repository, run the pre-check, then generate a formal submission with the results.',
+    '先确认仓库状态，再补充两项审核资料。整个过程大约需要一分钟。': 'Confirm the repository, then add the two required review details. It takes about a minute.',
     'GitHub 仓库': 'GitHub repository', '公开仓库存在': 'Public repository exists', '包含 dsh-plugin Topic': 'Includes the dsh-plugin topic',
     '声明有效的 dsh.bundle': 'Declares a valid dsh.bundle', '仓库未归档且不是 Fork': 'Repository is unarchived and not a fork',
     '例如：owner/repo': 'Example: owner/repository', '自动发现检查结果': 'Auto-discovery check results', '待检查': 'Pending', '通过': 'Passed', '未通过': 'Failed',
     '提交到 GitHub': 'Submit to GitHub', '先检查仓库，GitHub 提交会自动带上预检结果。': 'Check the repository first. The GitHub submission will include the pre-check results.',
+    '补充审核资料': 'Add review details', 'GitHub 用户名': 'GitHub username', '用于在公开审核记录中联系你。': 'Used to contact you in the public review record.', '插件简介': 'Plugin summary', '补充说明': 'Additional notes', '可选': 'optional', '至少 20 个字符': '20 characters minimum',
+    '我是该仓库的所有者或主要维护者，并有权提交收录。': 'I own or substantially maintain this repository and am authorized to submit it.', '我理解仓库地址、简介和补充说明会公开进入 GitHub 审核 Issue。': 'I understand that the repository, summary, and notes will appear in a public GitHub review issue.',
+    '由 Cloudflare Turnstile 保护，验证结果不会公开。': 'Protected by Cloudflare Turnstile. Verification results are not public.', '改用 GitHub 提交 ↗': 'Use GitHub instead ↗', '已进入审核队列': 'Added to the review queue', '查看公开审核记录 ↗': 'View public review record ↗',
     '发布前准备': 'Before you submit', '提交后会发生什么': 'What happens after submission', 'GitHub 创建公开提交 Issue。': 'GitHub creates a public submission issue.', '预检结果和维护者反馈集中记录。': 'Pre-check results and maintainer feedback stay in one place.', '按评论修复仓库后，在同一 Issue 跟进。': 'Fix the repository and follow up in the same issue.', '审核完成后进入目录同步。': 'After approval, the repository enters directory sync.', '直接填写 GitHub 表单': 'Open the GitHub form directly',
+    '审核会怎样进行': 'How review works', '系统创建公开审核 Issue，并指派维护者。': 'The system creates a public review issue and assigns the maintainer.', '预检结果、作者说明和反馈集中记录。': 'Pre-checks, author context, and feedback stay together.', '需要调整时，在同一条审核记录中跟进。': 'Follow up in the same review record when changes are needed.', '符合收录契约后，由目录同步任务更新列表。': 'Once the listing contract is met, the sync job updates the directory.', '备用 GitHub 提交通道': 'GitHub fallback channel',
     '浏览 GitHub Topic': 'Browse GitHub topic', '检查中…': 'Checking…', '重新检查': 'Check again',
     '检查通过。这个仓库会在下一轮同步中被自动发现。': 'Checks passed. This repository will be discovered during the next sync.',
     '还有项目未通过，请按上面的契约修复后重新检查。': 'Some checks failed. Fix the repository contract above and check again.'
@@ -145,7 +154,9 @@
     '例如：git-scribe（小写字母、数字、连字符）': 'e.g. git-scribe (lowercase letters, numbers, hyphens)',
     '给用户看的名字': 'Name shown to users',
     '用户在列表里只会看到这一句，说清楚它解决什么问题。': 'Explain the problem this plugin solves.'
-    , 'owner/repo 或 GitHub URL': 'owner/repo or GitHub URL'
+    , 'owner/repo 或 GitHub URL': 'owner/repo or GitHub URL', '例如：octocat': 'e.g. octocat',
+    '用一两句话说明插件解决什么问题、提供什么能力。': 'In one or two sentences, explain the problem and capability.',
+    '可以补充已知限制、迁移说明或希望审核者重点关注的内容。': 'Add known limitations, migration notes, or anything reviewers should focus on.'
   };
 
   function translateText(raw) {

@@ -27,6 +27,7 @@ Open <http://localhost:5173> to browse, search, filter, and inspect the registry
 - Manifest verification: discovered repositories must declare a valid `dsh.bundle` object in `package.json`, and its referenced patch file must exist.
 - A public JSON snapshot with schema validation, health gates, and a separate audit queue.
 - A repository checker that explains whether a plugin is eligible for automatic discovery.
+- An optional on-site review form that creates an assigned, public GitHub Issue through a protected Cloudflare Pages Function.
 
 ## Query the registry data
 
@@ -76,7 +77,7 @@ For automatic discovery:
 3. Add the `dsh-plugin` GitHub topic.
 4. Wait for the next registry sync.
 
-Use the local repository checker at <http://localhost:5173/publish.html> before requesting a registry correction.
+Use the repository checker at <http://localhost:5173/publish.html>. When the Cloudflare submission channel is configured, authors can submit a trackable review request without leaving the page; GitHub remains available as a fallback. See [submission review setup](docs/submission-review.md).
 
 ## Known limitations
 
@@ -108,6 +109,7 @@ Do not commit tokens or generated credentials. See [CONTRIBUTING.md](CONTRIBUTIN
 - `assets/` contains the registry UI modules, styles, and translations.
 - `public/data/plugins.json` is the generated public registry snapshot.
 - `scripts/` contains discovery, normalization, and validation tooling.
+- `functions/` contains Cloudflare Pages server-side routes for review submissions.
 - `schema/registry.schema.json` defines the published snapshot contract.
 - `tests/` covers registry governance and browser-facing behavior.
 

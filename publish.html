@@ -23,27 +23,27 @@
 
 <main class="wrap" id="main-content">
   <section class="page-head">
-    <p class="eyebrow rise">Publish · GitHub review</p>
-    <h1 class="page-title rise rise-1">提交仓库，公开走完审核。</h1>
-    <p class="page-sub rise rise-2">先运行仓库预检，再创建带检查结果的 GitHub Issue。维护者反馈、修复记录和最终结论都留在 GitHub；满足契约的仓库仍会自动发现。</p>
+    <p class="eyebrow rise">Publish · Review desk</p>
+    <h1 class="page-title rise rise-1">把仓库交给审核队列。</h1>
+    <p class="page-sub rise rise-2">检查仓库、补充审核资料、站内提交。你不需要离开页面；提交记录会公开进入 GitHub 队列，方便维护者反馈和持续跟进。</p>
   </section>
 
-  <ol class="stepper rise rise-3" aria-label="GitHub 提交流程">
-    <li class="step"><span class="step-n" aria-hidden="true">01</span><span class="step-copy"><strong class="step-t">检查仓库</strong><span class="step-d">公开元数据</span></span></li>
-    <li class="step"><span class="step-n" aria-hidden="true">02</span><span class="step-copy"><strong class="step-t">预填提交</strong><span class="step-d">检查结果</span></span></li>
-    <li class="step"><span class="step-n" aria-hidden="true">03</span><span class="step-copy"><strong class="step-t">GitHub 审核</strong><span class="step-d">Issue 可追踪</span></span></li>
-    <li class="step"><span class="step-n" aria-hidden="true">04</span><span class="step-copy"><strong class="step-t">进入列表</strong><span class="step-d">合并后同步</span></span></li>
+  <ol class="stepper rise rise-3" id="submission-stepper" aria-label="站内审核提交流程">
+    <li class="step on" data-step="check"><span class="step-n" aria-hidden="true">01</span><span class="step-copy"><strong class="step-t">检查仓库</strong><span class="step-d">公开元数据</span></span></li>
+    <li class="step" data-step="details"><span class="step-n" aria-hidden="true">02</span><span class="step-copy"><strong class="step-t">补充资料</strong><span class="step-d">审核所需信息</span></span></li>
+    <li class="step" data-step="submit"><span class="step-n" aria-hidden="true">03</span><span class="step-copy"><strong class="step-t">站内提交</strong><span class="step-d">无需跳转</span></span></li>
+    <li class="step" data-step="track"><span class="step-n" aria-hidden="true">04</span><span class="step-copy"><strong class="step-t">跟踪审核</strong><span class="step-d">公开 Issue</span></span></li>
   </ol>
 
   <div class="pub-grid rise rise-4">
     <section class="panel repo-checker publish-primary" aria-labelledby="repo-checker-title">
       <div class="github-route">
         <span class="github-route-mark" aria-hidden="true">GH</span>
-        <div><strong>GitHub 是正式提交通道</strong><p>每次提交都会创建公开 Issue，用于自动检查、维护者反馈和最终结论。</p></div>
+        <div><strong>站内提交，GitHub 留痕</strong><p>表单会把预检和作者资料整理成公开审核工单，并自动通知维护者。</p></div>
         <a href="https://github.com/majiayu000/dsh-plugin-registry/issues?q=is%3Aissue+label%3Aplugin-submission" target="_blank" rel="noopener">查看提交队列</a>
       </div>
       <h2 class="panel-title" id="repo-checker-title">提交插件仓库</h2>
-      <p class="psub">输入公开 GitHub 仓库，先完成预检，再生成带结果的正式提交。</p>
+      <p class="psub">先确认仓库状态，再补充两项审核资料。整个过程大约需要一分钟。</p>
       <form id="repo-checker-form" novalidate>
         <label class="field" for="repo-input"><span class="field-label">GitHub 仓库</span><input type="text" id="repo-input" placeholder="owner/repo 或 GitHub URL" autocomplete="url" autocapitalize="none" spellcheck="false" aria-describedby="repo-help check-message"></label>
         <p class="field-help" id="repo-help">例如：owner/repo</p>
@@ -55,10 +55,32 @@
           <li class="check-row" data-check="status"><span class="check-ic" aria-hidden="true">—</span><span class="check-label">仓库未归档且不是 Fork</span><span class="check-state">待检查</span></li>
         </ul>
         <p class="form-hint" id="check-message" role="status" aria-live="polite" tabindex="-1"></p>
-        <div class="submission-actions">
-          <a class="btn btn-primary github-submit is-disabled" id="github-submit" aria-disabled="true" target="_blank" rel="noopener"><span>提交到 GitHub</span><span aria-hidden="true">↗</span></a>
-          <p id="submission-help" aria-live="polite">先检查仓库，GitHub 提交会自动带上预检结果。</p>
+        <fieldset class="review-fields" id="review-fields" hidden>
+          <legend><span>02</span> 补充审核资料</legend>
+          <div class="review-fields-grid">
+            <label class="field" for="submitter-input"><span class="field-label">GitHub 用户名</span><input type="text" id="submitter-input" placeholder="例如：octocat" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="39" required><span class="field-help">用于在公开审核记录中联系你。</span></label>
+            <label class="field review-summary" for="summary-input"><span class="field-label">插件简介</span><textarea id="summary-input" rows="3" placeholder="用一两句话说明插件解决什么问题、提供什么能力。" maxlength="300" required></textarea><span class="field-help"><span id="summary-count">0</span>/300 · 至少 20 个字符</span></label>
+            <label class="field review-notes" for="notes-input"><span class="field-label">补充说明 <em>可选</em></span><textarea id="notes-input" rows="4" placeholder="可以补充已知限制、迁移说明或希望审核者重点关注的内容。" maxlength="2000"></textarea></label>
+          </div>
+          <div class="review-confirmations">
+            <label><input type="checkbox" id="ownership-confirmed" required><span>我是该仓库的所有者或主要维护者，并有权提交收录。</span></label>
+            <label><input type="checkbox" id="public-review-confirmed" required><span>我理解仓库地址、简介和补充说明会公开进入 GitHub 审核 Issue。</span></label>
+          </div>
+          <label class="submission-trap" aria-hidden="true">Website<input type="text" id="website-input" tabindex="-1" autocomplete="off"></label>
+          <div class="turnstile-shell" id="turnstile-shell" hidden>
+            <div id="turnstile-widget"></div>
+            <p>由 Cloudflare Turnstile 保护，验证结果不会公开。</p>
+          </div>
+        </fieldset>
+        <div class="submission-actions" id="submission-actions" hidden>
+          <button class="btn btn-primary review-submit" id="review-submit" type="button" disabled><span>提交审核</span><span aria-hidden="true">→</span></button>
+          <p id="submission-help" aria-live="polite">正在连接站内审核通道…</p>
+          <a class="submission-fallback" id="github-submit" target="_blank" rel="noopener">改用 GitHub 提交 ↗</a>
         </div>
+        <section class="submission-receipt" id="submission-receipt" hidden tabindex="-1" aria-labelledby="receipt-title">
+          <span class="receipt-mark" aria-hidden="true">✓</span>
+          <div><p class="receipt-kicker">SUBMISSION RECEIVED</p><h3 id="receipt-title">已进入审核队列</h3><p id="receipt-copy"></p><a id="receipt-link" target="_blank" rel="noopener">查看公开审核记录 ↗</a></div>
+        </section>
       </form>
     </section>
 
@@ -72,16 +94,16 @@
     }
   }
 }</code></pre>
-      <h2 class="panel-title">提交后会发生什么</h2>
+      <h2 class="panel-title">审核会怎样进行</h2>
       <ol class="publish-list">
-        <li>GitHub 创建公开提交 Issue。</li>
-        <li>预检结果和维护者反馈集中记录。</li>
-        <li>按评论修复仓库后，在同一 Issue 跟进。</li>
-        <li>审核完成后进入目录同步。</li>
+        <li>系统创建公开审核 Issue，并指派维护者。</li>
+        <li>预检结果、作者说明和反馈集中记录。</li>
+        <li>需要调整时，在同一条审核记录中跟进。</li>
+        <li>符合收录契约后，由目录同步任务更新列表。</li>
       </ol>
       <div class="publish-guide-links">
         <a class="btn" href="policy.html">查看完整收录规范</a>
-        <a href="https://github.com/majiayu000/dsh-plugin-registry/issues/new?template=plugin_submission.yml" target="_blank" rel="noopener">直接填写 GitHub 表单</a>
+        <a href="https://github.com/majiayu000/dsh-plugin-registry/issues/new?template=plugin_submission.yml" target="_blank" rel="noopener">备用 GitHub 提交通道</a>
       </div>
     </aside>
   </div>
@@ -99,18 +121,38 @@ const { evaluateRepository, findRegistryEntry, githubFailureMessage, manifestFai
   var locale = window.HRI18N && window.HRI18N.locale === 'en-US' ? 'en-US' : 'zh-CN';
   var copy = repositoryCheckerCopy(locale);
   var submitLink = document.getElementById('github-submit');
+  var reviewFields = document.getElementById('review-fields');
+  var submissionActions = document.getElementById('submission-actions');
   var submissionHelp = document.getElementById('submission-help');
+  var reviewSubmit = document.getElementById('review-submit');
+  var checkedRepository = null;
+  var checkedResult = null;
+  var channel = { enabled: false, turnstileSiteKey: null };
+  var turnstileToken = '';
+  var turnstileWidgetId = null;
+  var dynamicCopy = locale === 'en-US' ? {
+    connecting: 'Connecting to the on-site review channel…', unavailable: 'On-site submission is not configured yet. Use the GitHub fallback for now.', ready: 'Complete the fields and verification, then submit without leaving this page.', submitting: 'Submitting to the review queue…', invalid: 'Complete the required fields and confirmations.', failed: 'Submission failed. Try again or use the GitHub fallback.', received: 'Review issue #{number} has been created and assigned to the maintainer.', duplicate: 'This repository is already tracked in review issue #{number}.', submit: 'Submit for review', retry: 'Try again'
+  } : {
+    connecting: '正在连接站内审核通道…', unavailable: '站内提交尚未配置完成，请暂时使用 GitHub 备用通道。', ready: '填写资料并完成人机验证后，即可留在本站提交。', submitting: '正在提交到审核队列…', invalid: '请填写必填资料并完成两项确认。', failed: '提交失败，请重试或使用 GitHub 备用通道。', received: '审核工单 #{number} 已创建并指派给维护者。', duplicate: '这个仓库已在审核工单 #{number} 中跟进。', submit: '提交审核', retry: '重新提交'
+  };
+  function setStep(active) {
+    var order = ['check', 'details', 'submit', 'track'];
+    var activeIndex = order.indexOf(active);
+    document.querySelectorAll('#submission-stepper .step').forEach(function (step) {
+      var index = order.indexOf(step.dataset.step);
+      step.classList.toggle('done', index < activeIndex);
+      step.classList.toggle('on', index === activeIndex);
+    });
+  }
   function disableSubmission() {
-    submitLink.removeAttribute('href');
-    submitLink.classList.add('is-disabled');
-    submitLink.setAttribute('aria-disabled', 'true');
-    submissionHelp.textContent = copy.submitAfterCheck;
+    checkedRepository = null; checkedResult = null; reviewFields.hidden = true; submissionActions.hidden = true;
+    document.getElementById('submission-receipt').hidden = true; setStep('check');
   }
   function enableSubmission(repository, check) {
     submitLink.href = buildGitHubSubmissionUrl({ registryRepository: 'majiayu000/dsh-plugin-registry', repository: repository, check: check, locale: locale });
-    submitLink.classList.remove('is-disabled');
-    submitLink.setAttribute('aria-disabled', 'false');
-    submissionHelp.textContent = check.auto_discoverable ? copy.submitReady : copy.submitWithWarnings;
+    checkedRepository = repository; checkedResult = check; reviewFields.hidden = false; submissionActions.hidden = false; setStep('details');
+    if (channel.enabled) loadTurnstile(channel.turnstileSiteKey);
+    updateSubmissionState();
   }
   document.getElementById('repo-input').addEventListener('input', disableSubmission);
   function setCheck(key, ok) {
@@ -127,6 +169,54 @@ const { evaluateRepository, findRegistryEntry, githubFailureMessage, manifestFai
       row.querySelector('.check-state').textContent = copy.pending;
     });
   }
+  function loadTurnstile(siteKey) {
+    if (!siteKey || window.turnstile) { if (window.turnstile && checkedRepository) renderTurnstile(siteKey); return; }
+    var script = document.createElement('script'); script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'; script.async = true; script.defer = true;
+    script.onload = function () { if (checkedRepository) renderTurnstile(siteKey); }; document.head.appendChild(script);
+  }
+  function renderTurnstile(siteKey) {
+    if (!window.turnstile || !siteKey || turnstileWidgetId !== null) return;
+    document.getElementById('turnstile-shell').hidden = false;
+    turnstileWidgetId = window.turnstile.render('#turnstile-widget', { sitekey: siteKey, action: 'plugin_submission', theme: 'light', callback: function (token) { turnstileToken = token; updateSubmissionState(); }, 'expired-callback': function () { turnstileToken = ''; updateSubmissionState(); }, 'error-callback': function () { turnstileToken = ''; updateSubmissionState(); } });
+  }
+  function detailsValid() {
+    var summary = document.getElementById('summary-input').value.trim();
+    return /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/.test(document.getElementById('submitter-input').value.trim().replace(/^@/, '')) && summary.length >= 20 && summary.length <= 300 && document.getElementById('ownership-confirmed').checked && document.getElementById('public-review-confirmed').checked;
+  }
+  function updateSubmissionState() {
+    var valid = Boolean(checkedRepository && channel.enabled && turnstileToken && detailsValid());
+    reviewSubmit.disabled = !valid; reviewSubmit.querySelector('span').textContent = dynamicCopy.submit;
+    submissionHelp.textContent = channel.enabled ? dynamicCopy.ready : dynamicCopy.unavailable;
+    if (checkedRepository && detailsValid()) setStep('submit'); else if (checkedRepository) setStep('details');
+  }
+  async function configureSubmissionChannel() {
+    submissionHelp.textContent = dynamicCopy.connecting;
+    try {
+      var response = await fetch('/api/submissions', { headers: { accept: 'application/json' } });
+      if (!response.ok) throw new Error('channel unavailable');
+      channel = await response.json();
+      if (channel.enabled) loadTurnstile(channel.turnstileSiteKey);
+    } catch (_) { channel = { enabled: false, turnstileSiteKey: null }; }
+    updateSubmissionState();
+  }
+  document.querySelectorAll('#review-fields input, #review-fields textarea').forEach(function (field) { field.addEventListener('input', updateSubmissionState); field.addEventListener('change', updateSubmissionState); });
+  document.getElementById('summary-input').addEventListener('input', function () { document.getElementById('summary-count').textContent = String(this.value.length); });
+  reviewSubmit.addEventListener('click', async function () {
+    if (!detailsValid() || !turnstileToken || !checkedRepository) { submissionHelp.textContent = dynamicCopy.invalid; return; }
+    reviewSubmit.disabled = true; reviewSubmit.querySelector('span').textContent = dynamicCopy.submitting; submissionHelp.textContent = dynamicCopy.submitting;
+    try {
+      var response = await fetch('/api/submissions', { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify({ repository: checkedRepository, submitter: document.getElementById('submitter-input').value, summary: document.getElementById('summary-input').value, notes: document.getElementById('notes-input').value, website: document.getElementById('website-input').value, ownershipConfirmed: document.getElementById('ownership-confirmed').checked, publicReviewConfirmed: document.getElementById('public-review-confirmed').checked, turnstileToken: turnstileToken }) });
+      var result = await response.json();
+      if (!response.ok || !result.ok) throw new Error(result.error || dynamicCopy.failed);
+      setStep('track'); reviewFields.hidden = true; submissionActions.hidden = true;
+      var receipt = document.getElementById('submission-receipt'); receipt.hidden = false;
+      document.getElementById('receipt-copy').textContent = (result.duplicate ? dynamicCopy.duplicate : dynamicCopy.received).replace('{number}', result.issueNumber);
+      document.getElementById('receipt-link').href = result.issueUrl; receipt.focus();
+    } catch (error) {
+      turnstileToken = ''; if (window.turnstile && turnstileWidgetId !== null) window.turnstile.reset(turnstileWidgetId); updateSubmissionState();
+      submissionHelp.textContent = error.message || dynamicCopy.failed; reviewSubmit.querySelector('span').textContent = dynamicCopy.retry;
+    }
+  });
   document.getElementById('repo-checker-form').addEventListener('submit', async function (event) {
     event.preventDefault();
     var input = document.getElementById('repo-input');
@@ -173,6 +263,7 @@ const { evaluateRepository, findRegistryEntry, githubFailureMessage, manifestFai
     }
     finally { button.disabled = false; button.textContent = copy.checkAgain; this.removeAttribute('aria-busy'); }
   });
+  configureSubmissionChannel();
 })();
 </script>
 </body>

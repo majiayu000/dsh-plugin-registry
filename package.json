@@ -24,6 +24,7 @@
   },
   "scripts": {
     "dev": "vite",
+    "dev:cloudflare": "npm run build && wrangler pages dev dist",
     "build": "vite build",
     "postbuild": "node scripts/generate-seo.mjs",
     "deploy:cloudflare": "npm run build && wrangler pages deploy dist --project-name dsh-plugin-registry --branch main",

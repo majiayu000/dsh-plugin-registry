@@ -97,6 +97,7 @@
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
+[hidden] { display: none !important; }
 html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
 body {
   background: var(--bg);
@@ -488,9 +489,33 @@ html.modal-open, html.modal-open body { overflow: hidden; }
 .repo-check-button { margin-top: 12px; background: var(--surface); box-shadow: none; }
 .repo-check-button:hover { background: var(--surface-warm); }
 .submission-actions { margin-top: 22px; padding-top: 20px; border-top: 1px solid var(--border); }
-.github-submit { min-height: 50px !important; font-size: 15px; }
-.github-submit.is-disabled { opacity: .38; pointer-events: none; }
 .submission-actions p { margin-top: 10px; color: var(--muted); font-size: 11.5px; line-height: 1.55; text-align: center; }
+.review-fields { min-width: 0; margin-top: 26px; padding: 0; border: 0; border-top: 1px solid var(--border); }
+.review-fields legend { padding: 22px 12px 0 0; color: var(--fg); font: 500 14px var(--font-body); }
+.review-fields legend span { display: inline-grid; place-items: center; width: 28px; height: 28px; margin-right: 8px; border-radius: 50%; background: var(--blue); color: #fff; font: 500 11px var(--font-mono); }
+.review-fields-grid { display: grid; grid-template-columns: minmax(0, .72fr) minmax(0, 1.28fr); gap: 20px 14px; margin-top: 20px; }
+.review-summary { grid-column: 2; grid-row: 1 / span 2; }
+.review-notes { grid-column: 1 / -1; }
+.review-fields textarea { min-height: 88px; line-height: 1.55; }
+.review-summary textarea { min-height: 128px; }
+.field-label em { color: var(--muted); font: 400 11px var(--font-body); }
+.review-confirmations { display: grid; gap: 10px; margin-top: 20px; padding: 16px; border-radius: 13px; background: var(--surface); }
+.review-confirmations label { display: flex; align-items: flex-start; gap: 10px; color: var(--fg-2); font-size: 12.5px; line-height: 1.5; cursor: pointer; }
+.review-confirmations input { flex: none; margin-top: 3px; accent-color: var(--blue); }
+.submission-trap { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+.turnstile-shell { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 70px; margin-top: 16px; padding: 12px 14px; border: 1px dashed var(--border); border-radius: 13px; background: var(--bg); }
+.turnstile-shell p { max-width: 180px; color: var(--muted); font: 10px/1.5 var(--font-mono); text-align: right; }
+.review-submit { width: 100%; min-height: 50px !important; justify-content: center; font-size: 15px; }
+.submission-fallback { display: block; width: max-content; margin: 12px auto 0; color: var(--muted); font-size: 11.5px; text-underline-offset: 3px; }
+.submission-fallback:hover { color: var(--blue); }
+.submission-receipt { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 16px; margin-top: 24px; padding: 22px; border: 1px solid rgba(22, 163, 74, .18); border-radius: 16px; background: rgba(22, 163, 74, .06); }
+.receipt-mark { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: var(--success); color: #fff; font: 600 18px var(--font-mono); }
+.receipt-kicker { color: var(--success); font: 500 9px var(--font-mono); letter-spacing: .12em; }
+.submission-receipt h3 { margin-top: 5px; font-size: 23px; }
+.submission-receipt h3::before { content: none; }
+.submission-receipt div > p:not(.receipt-kicker) { margin-top: 7px; color: var(--fg-2); font-size: 13px; }
+.submission-receipt a { display: inline-block; margin-top: 12px; color: var(--fg); font: 500 11px var(--font-mono); text-underline-offset: 3px; }
+.submission-receipt a:hover { color: var(--blue); }
 .publish-guide-links { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 .publish-guide-links > a:not(.btn) { color: var(--muted); font-size: 12px; text-underline-offset: 3px; }
 .publish-guide-links > a:not(.btn):hover { color: var(--blue); }
@@ -730,6 +755,10 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
   .panel { padding: 20px 16px; }
   .github-route { grid-template-columns: 36px minmax(0, 1fr); margin: -4px 0 24px; }
   .github-route a { grid-column: 2; white-space: normal; }
+  .review-fields-grid { grid-template-columns: 1fr; }
+  .review-summary, .review-notes { grid-column: 1; grid-row: auto; }
+  .turnstile-shell { align-items: flex-start; flex-direction: column; }
+  .turnstile-shell p { max-width: none; text-align: left; }
   .policy-layout { margin-top: 40px; }
   .policy-section { grid-template-columns: 34px minmax(0, 1fr); gap: 10px; padding: 30px 0; }
   .policy-section h2 { font-size: 24px; }
