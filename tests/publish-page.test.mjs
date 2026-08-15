@@ -26,4 +26,5 @@ test('repository field and result states have matching styles', async () => {
   assert.match(css, /\.field input, \.field select, \.field textarea/)
   assert.match(css, /\.repo-checker \.check-row\.fail/)
   assert.match(css, /\.check-state\s*\{/)
+  assert.match(css, /\.pub-grid > \* \{ min-width: 0; \}/)
 })

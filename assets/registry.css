@@ -482,6 +482,7 @@ html.modal-open, html.modal-open body { overflow: hidden; }
 .step-d { display: block; font: var(--text-xs)/1.4 var(--font-mono); color: var(--muted); margin-top: 3px; overflow-wrap: anywhere; }
 
 .pub-grid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 48px; align-items: start; }
+.pub-grid > * { min-width: 0; }
 .field { display: block; margin-bottom: 0; }
 .field-label { display: block; font: 500 13px var(--font-body); letter-spacing: 0.02em; margin-bottom: 9px; }
 .field-label::before { content: '> '; color: var(--blue); font-family: var(--font-mono); font-weight: 400; }
