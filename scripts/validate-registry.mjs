@@ -3,7 +3,7 @@ import { pathToFileURL } from 'node:url'
 import { resolve } from 'node:path'
 import { repoKey } from './registry-core.mjs'
 
-const INSTALL_PREFIX = 'dsh plugin --profile web add '
+const INSTALL_PATTERN = /^dsh plugin --profile ([A-Za-z0-9._-]+) add ([^\s]+)$/
 const GITHUB_OWNER_PATTERN = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/
 const GITHUB_REPOSITORY_PATTERN = /^[A-Za-z0-9._-]{1,100}$/
 
@@ -53,6 +53,12 @@ export function validateRegistry(registry) {
     if (!Number.isInteger(plugin?.stars) || plugin.stars < 0) errors.push(`${label}.stars must be a non-negative integer.`)
     if (!Number.isInteger(plugin?.forks) || plugin.forks < 0) errors.push(`${label}.forks must be a non-negative integer.`)
     if (plugin?.language !== undefined && typeof plugin.language !== 'string') errors.push(`${label}.language must be a string.`)
+    if (plugin?.special !== undefined && typeof plugin.special !== 'boolean') errors.push(`${label}.special must be a boolean.`)
+    if (plugin?.license !== undefined && typeof plugin.license !== 'string') errors.push(`${label}.license must be a string.`)
+    if (plugin?.latestRelease !== undefined && plugin.latestRelease !== null) {
+      if (typeof plugin.latestRelease !== 'object' || typeof plugin.latestRelease.tag !== 'string') errors.push(`${label}.latestRelease is invalid.`)
+      if (plugin.latestRelease?.publishedAt !== null && (typeof plugin.latestRelease?.publishedAt !== 'string' || Number.isNaN(Date.parse(plugin.latestRelease.publishedAt)))) errors.push(`${label}.latestRelease.publishedAt is invalid.`)
+    }
     if (plugin?.pushedAt !== undefined && plugin.pushedAt !== null && (typeof plugin.pushedAt !== 'string' || Number.isNaN(Date.parse(plugin.pushedAt)))) {
       errors.push(`${label}.pushedAt must be a valid ISO date or null.`)
     }
@@ -64,10 +70,10 @@ export function validateRegistry(registry) {
     }
     const expectedManifest = plugin?.source === 'curated' ? 'not_checked' : 'shape_validated'
     if (plugin?.verification?.manifest !== expectedManifest) errors.push(`${label}.verification.manifest must be ${expectedManifest}.`)
+    const allowedPatchStatuses = plugin?.source === 'curated' ? ['not_checked'] : ['not_checked', 'exists', 'missing']
+    if (!allowedPatchStatuses.includes(plugin?.verification?.patch)) errors.push(`${label}.verification.patch is invalid.`)
     if (plugin?.verification?.installation !== 'not_tested') errors.push(`${label}.verification.installation must be not_tested.`)
-    const installTarget = String(plugin?.install || '').slice(INSTALL_PREFIX.length)
-    if (!String(plugin?.install || '').startsWith(INSTALL_PREFIX) || !/^[^\s]+$/.test(installTarget)) errors.push(`${label}.install is invalid.`)
-    if (plugin?.source === 'discovered' && installTarget.toLowerCase() !== `github:${plugin.id}`.toLowerCase()) errors.push(`${label}.install must target its repository ID.`)
+    if (!INSTALL_PATTERN.test(String(plugin?.install || ''))) errors.push(`${label}.install is invalid.`)
     if (!plugin?.description?.zh && !plugin?.description?.en) warnings.push(`${label} has no description: ${plugin?.id}.`)
   })
 

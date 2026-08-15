@@ -17,6 +17,8 @@ export const REPOSITORY_DISCOVERY_QUERY = `
           isArchived
           isFork
           primaryLanguage { name }
+          licenseInfo { spdxId }
+          latestRelease { tagName publishedAt }
           owner { avatarUrl }
           repositoryTopics(first: 20) { nodes { topic { name } } }
         }
@@ -51,6 +53,11 @@ export function mapGraphqlRepository(repository) {
     stargazers_count: repository.stargazerCount || 0,
     forks_count: repository.forkCount || 0,
     language: repository.primaryLanguage?.name || '',
+    license: repository.licenseInfo?.spdxId || '',
+    latest_release: repository.latestRelease ? {
+      tag: repository.latestRelease.tagName,
+      published_at: repository.latestRelease.publishedAt,
+    } : null,
     pushed_at: repository.pushedAt || null,
     archived: Boolean(repository.isArchived),
     fork: Boolean(repository.isFork),

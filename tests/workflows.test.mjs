@@ -16,3 +16,10 @@ test('a changed registry deploys the verified artifact without relying on a bot 
   assert.match(workflow, /if: needs\.sync\.outputs\.registry_changed == 'true'/)
   assert.match(workflow, /uses: actions\/deploy-pages@v4/)
 })
+
+test('registry sync imports the shared bundle parser before checking referenced patch files', async () => {
+  const sync = await readFile('scripts/sync-plugins.mjs', 'utf8')
+  assert.match(sync, /import \{ validateBundleManifest \} from '\.\.\/assets\/bundle-manifest\.js'/)
+  assert.match(sync, /validateBundleManifest\(manifests\.get/)
+  assert.match(sync, /patchStatus: patchMissing \? 'missing'/)
+})

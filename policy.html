@@ -31,11 +31,12 @@
         <span class="policy-index" aria-hidden="true">01</span>
         <div>
           <h2>自动收录条件</h2>
-          <p class="policy-lead">仓库必须同时满足以下条件，才能进入可安装插件列表；缺少有效 dsh.bundle 的候选仓库仍会公开展示并标注状态。</p>
+          <p class="policy-lead">仓库必须同时满足以下条件，才能进入可安装插件列表；缺少有效 dsh.bundle、但具有额外 DSH 关联信号的候选仓库仍会公开展示并标注状态。</p>
           <ol class="policy-requirements">
             <li><strong>公开且可访问</strong><span>同步任务必须能读取仓库元数据和根目录 package.json。</span></li>
             <li><strong>带有发现标记</strong><span>仓库需声明 <code>dsh-plugin</code> Topic，供定时任务发现。</span></li>
-            <li><strong>声明可安装 bundle</strong><span>根目录 package.json 的 <code>dsh.bundle.patch</code> 必须是安全的相对路径。</span></li>
+            <li><strong>候选相关性明确</strong><span>缺少有效 bundle 时，仓库名称、简介或额外 Topic 必须还能表明它与 DSH 有关；仅有发现 Topic 的仓库不会展示。</span></li>
+            <li><strong>声明可安装 bundle</strong><span>根目录 package.json 的 <code>dsh.bundle.patch</code> 必须是安全的相对路径，且引用文件真实存在。</span></li>
             <li><strong>状态符合要求</strong><span>已归档仓库和 Fork 不会自动进入公开列表。</span></li>
           </ol>
         </div>
@@ -62,7 +63,7 @@
           <h2>本站显示的状态</h2>
           <p class="policy-lead">状态说明的是本站验证到了什么，不代表对插件代码作出安全背书。</p>
           <dl class="policy-statuses">
-            <div><dt><span class="pill pill-manifest">Manifest 格式检查通过</span></dt><dd>自动发现，并通过根目录 bundle 格式校验；可进入公开列表。</dd></div>
+            <div><dt><span class="pill pill-manifest">Manifest 与 Patch 已确认</span></dt><dd>自动发现，根目录 bundle 格式有效，且引用的 Patch 文件存在；可进入可安装列表。</dd></div>
             <div><dt><span class="pill pill-source">来源：社区目录</span></dt><dd>从社区维护的公开目录同步；本站没有检查其 Manifest、功能质量或安全性。</dd></div>
             <div><dt><span class="pill pill-pending">缺少有效 dsh.bundle</span></dt><dd>仓库已被发现并显示在浏览列表中，但不提供安装命令；补充有效声明后会自动转为可安装状态。</dd></div>
             <div><dt><span class="pill pill-danger">已隔离</span></dt><dd>因误收录、重复、风险或治理决定被排除，不出现在公开列表。</dd></div>

@@ -2,9 +2,9 @@
 
 Harness Registry is a searchable DeepSeek Harness plugin registry for DSH users and plugin authors. It combines a community-curated catalog with GitHub discovery, verifies the installable `dsh.bundle` manifest contract, and exposes comparable plugin metadata and copy-ready install commands.
 
-> Status: pre-release. The registry is available at [majiayu000.github.io/dsh-plugin-registry](https://majiayu000.github.io/dsh-plugin-registry/) and the source is released under the MIT License. See [launch readiness](docs/shipwise-readiness.md).
+> Status: pre-release. The registry is available at [plugin.dshdesk.com](https://plugin.dshdesk.com/) and the source is released under the MIT License. See [launch readiness](docs/shipwise-readiness.md).
 
-![Harness Registry browsing 1,135 verified and curated DSH plugins](docs/assets/harness-registry.png)
+![Harness Registry browsing verified, curated, and candidate DSH repositories](docs/assets/harness-registry.png)
 
 ## Quickstart
 
@@ -24,7 +24,7 @@ Open <http://localhost:5173> to browse, search, filter, and inspect the registry
 - A searchable web directory with categories, trust labels, Stars, Forks, and install commands.
 - Curated entries imported from the community registry.
 - Automatic discovery from the GitHub `dsh-plugin` topic.
-- Manifest verification: discovered repositories must declare a valid `dsh.bundle` object in `package.json`.
+- Manifest verification: discovered repositories must declare a valid `dsh.bundle` object in `package.json`, and its referenced patch file must exist.
 - A public JSON snapshot with schema validation, health gates, and a separate audit queue.
 - A repository checker that explains whether a plugin is eligible for automatic discovery.
 
@@ -80,7 +80,7 @@ Use the local repository checker at <http://localhost:5173/publish.html> before 
 
 ## Known limitations
 
-- Manifest verification confirms the package shape; it is not a security audit or endorsement of plugin code.
+- Manifest and patch-file verification confirm the install entry exists; they are not an installation test, security audit, or endorsement of plugin code.
 - Stars, Forks, descriptions, Topics, and primary languages are point-in-time GitHub metadata and can lag until the next sync.
 - A complete discovery refresh requires a GitHub token; unauthenticated runs inspect only recent candidates and cannot overwrite a complete snapshot.
 - The browser-based repository checker uses the unauthenticated GitHub API and may encounter rate limits.

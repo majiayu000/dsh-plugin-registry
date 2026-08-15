@@ -7,6 +7,8 @@ test('plugin detail shows real maintenance metadata with honest fallbacks', asyn
 
   assert.match(html, /id="language-status"/)
   assert.match(html, /id="updated-status"/)
+  assert.match(html, /id="license-status"/)
+  assert.match(html, /id="release-status"/)
   assert.match(html, /plugin\.language/)
   assert.match(html, /plugin\.pushedAt/)
   assert.match(html, /最近更新/)

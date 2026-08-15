@@ -5,7 +5,7 @@
   "description": "Searchable DeepSeek Harness plugin registry with curated listings and manifest-verified GitHub discovery.",
   "private": true,
   "type": "module",
-  "homepage": "https://majiayu000.github.io/dsh-plugin-registry/",
+  "homepage": "https://plugin.dshdesk.com/",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/majiayu000/dsh-plugin-registry.git"
@@ -25,13 +25,18 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "postbuild": "node scripts/generate-seo.mjs",
+    "deploy:cloudflare": "npm run build && wrangler pages deploy dist --project-name dsh-plugin-registry --branch main",
     "preview": "vite preview",
     "backfill:languages": "node scripts/backfill-languages.mjs",
     "sync:plugins": "node scripts/sync-plugins.mjs",
     "validate:registry": "node scripts/validate-registry.mjs",
-    "test": "node --test tests/*.test.mjs"
+    "test": "node --test tests/*.test.mjs",
+    "test:e2e": "playwright test"
   },
   "devDependencies": {
-    "vite": "^7.1.1"
+    "@playwright/test": "^1.62.1",
+    "vite": "^7.1.1",
+    "wrangler": "^4.123.0"
   }
 }

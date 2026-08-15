@@ -33,3 +33,14 @@ test('category and curated filters compose with text search', () => {
   assert.deepEqual(filterPluginSearchIndex(index, { source: 'discovered', manifest: 'shape_validated', query: 'acme terminal' }), [plugins[1]])
   assert.deepEqual(filterPluginSearchIndex(index, { manifest: 'not_validated' }), [plugins[3]])
 })
+
+test('search ranks exact names ahead of popular description-only matches', () => {
+  const ranked = [
+    { id: 'popular/toolkit', name: 'toolkit', description: { en: 'Includes terminal helpers' }, stars: 500 },
+    { id: 'acme/terminal', name: 'terminal', description: { en: 'A focused terminal' }, stars: 1 },
+  ]
+  const index = createPluginSearchIndex(ranked, function (plugin) {
+    return plugin.id + ' ' + plugin.description.en
+  })
+  assert.deepEqual(filterPluginSearchIndex(index, { query: 'terminal' }), [ranked[1], ranked[0]])
+})

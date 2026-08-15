@@ -1,6 +1,9 @@
 import { validateBundleManifest } from '../assets/bundle-manifest.js'
 
 const CATEGORY_RULES = [
+  ['market', /market(?:place)?|plugin[ ._-]?(?:manager|browser|catalog|store)|registry|插件(?:市场|商店|管理器)/i],
+  ['session', /session|conversation|chat[ ._-]?history|message[ ._-]?history|会话|对话|聊天记录|消息历史/i],
+  ['fun', /desktop[ ._-]?pet|\bpet\b|wallpaper|music|game|emoji|桌宠|壁纸|音乐|娱乐/i],
   ['theme', /theme|skin|appearance|pixel|主题|皮肤/i],
   ['ui', /\bui\b|sidebar|desktop|tui|webview|界面|侧边栏|桌面/i],
   ['memory', /memory|recall|knowledge.graph|记忆|知识图谱/i],
@@ -26,6 +29,14 @@ export function hasBundleManifest(text) {
 
 export function repoKey(owner, name) {
   return `${owner}/${name}`.toLowerCase()
+}
+
+export function repositoryKey(plugin) {
+  const match = String(plugin?.url || '').match(/^https:\/\/github\.com\/([^/]+)\/([^/?#]+)/)
+  if (match) return repoKey(match[1], match[2])
+  const idRepository = String(plugin?.id || '').split('#')[0]
+  if (idRepository.includes('/')) return idRepository.toLowerCase()
+  return repoKey(plugin?.owner || '', String(plugin?.name || '').split('#')[0])
 }
 
 function curatedIdentity(plugin) {
@@ -58,6 +69,8 @@ export function normalizeCurated(plugin, metadata = {}) {
     stars: metadata.stargazerCount ?? plugin.stars ?? 0,
     forks: metadata.forkCount ?? 0,
     language: metadata.language || plugin.language || '',
+    license: metadata.license || plugin.license || '',
+    latestRelease: metadata.latestRelease || plugin.latestRelease || null,
     pushedAt: metadata.pushedAt || null,
     addedAt: plugin.added || null,
     source: 'curated',
@@ -65,6 +78,7 @@ export function normalizeCurated(plugin, metadata = {}) {
     listingEligible: true,
     verification: {
       manifest: 'not_checked',
+      patch: 'not_checked',
       installation: 'not_tested',
     },
     install: plugin.install || `dsh plugin --profile web add github:${owner}/${name}`,
@@ -74,8 +88,9 @@ export function normalizeCurated(plugin, metadata = {}) {
   }
 }
 
-export function normalizeDiscovered(repository, manifestShapeValid) {
+export function normalizeDiscovered(repository, manifestShapeValid, patchExists = null) {
   const [owner, name] = repository.full_name.split('/')
+  const listingEligible = Boolean(manifestShapeValid && patchExists !== false)
   return {
     id: repository.full_name,
     name,
@@ -89,13 +104,21 @@ export function normalizeDiscovered(repository, manifestShapeValid) {
     stars: repository.stargazers_count || 0,
     forks: repository.forks_count || 0,
     language: repository.language || '',
+    license: repository.license || '',
+    latestRelease: repository.latest_release ? {
+      tag: repository.latest_release.tag || '',
+      publishedAt: repository.latest_release.published_at || null,
+    } : null,
     pushedAt: repository.pushed_at || null,
     addedAt: null,
     source: 'discovered',
-    trustLevel: manifestShapeValid ? 'manifest_verified' : 'pending_review',
-    listingEligible: Boolean(manifestShapeValid),
+    trustLevel: listingEligible ? 'manifest_verified' : 'pending_review',
+    listingEligible,
     verification: {
       manifest: manifestShapeValid ? 'shape_validated' : 'not_validated',
+      patch: manifestShapeValid
+        ? (patchExists === true ? 'exists' : (patchExists === false ? 'missing' : 'not_checked'))
+        : 'not_checked',
       installation: 'not_tested',
     },
     install: `dsh plugin --profile web add github:${repository.full_name}`,
@@ -105,7 +128,7 @@ export function normalizeDiscovered(repository, manifestShapeValid) {
   }
 }
 
-const OVERRIDABLE_FIELDS = ['name', 'description', 'category', 'icon', 'install']
+const OVERRIDABLE_FIELDS = ['name', 'description', 'category', 'icon', 'install', 'special']
 
 export function applyOverride(plugin, override = {}) {
   const next = { ...plugin }
@@ -125,7 +148,8 @@ export function applyGovernance(plugins, blocklist = {}, overrides = {}) {
   const quarantined = []
 
   for (const plugin of plugins) {
-    const key = repoKey(plugin.owner, plugin.name)
+    const key = repositoryKey(plugin)
+    const entryKey = String(plugin.id || '').toLowerCase()
     const block = blocked.get(key)
     if (block) {
       quarantined.push({
@@ -136,7 +160,7 @@ export function applyGovernance(plugins, blocklist = {}, overrides = {}) {
       })
       continue
     }
-    published.push(applyOverride(plugin, patches[key] || patches[plugin.id] || {}))
+    published.push(applyOverride(plugin, patches[entryKey] || patches[key] || {}))
   }
   return { plugins: published, quarantined }
 }
@@ -172,8 +196,8 @@ export function validateHealth(next, previous, options = {}) {
 
 export function mergePlugins(curated, discovered) {
   const registry = new Map()
-  for (const plugin of discovered) registry.set(repoKey(plugin.owner, plugin.name), plugin)
-  for (const plugin of curated) registry.set(repoKey(plugin.owner, plugin.name), plugin)
+  for (const plugin of discovered) registry.set(String(plugin.id).toLowerCase(), plugin)
+  for (const plugin of curated) registry.set(String(plugin.id).toLowerCase(), plugin)
   return [...registry.values()]
     .filter(plugin => !plugin.archived && plugin.listingEligible)
     .sort((a, b) => b.stars - a.stars || a.id.localeCompare(b.id))

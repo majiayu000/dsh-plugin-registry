@@ -37,6 +37,7 @@
   <section class="detail-evidence-summary rise rise-2" aria-label="本站掌握的信息">
     <div><span>来源</span><strong id="evidence-source">—</strong></div>
     <div><span>Manifest</span><strong id="evidence-manifest">—</strong></div>
+    <div><span>Patch 文件</span><strong id="evidence-patch">—</strong></div>
     <div><span>安装测试</span><strong id="evidence-installation">未执行</strong></div>
   </section>
 
@@ -70,7 +71,7 @@
     </div>
     <aside>
       <div class="side-card"><h4>社区数据</h4><div class="metric-pair"><div><b id="plugin-stars">—</b><span>Stars</span></div><div><b id="plugin-forks">—</b><span>Forks</span></div></div></div>
-      <div class="side-card"><h4>信息</h4><div class="kv"><span class="k">维护者</span><span class="v" id="maintainer"></span></div><div class="kv"><span class="k">分类</span><span class="v" id="category"></span></div><div class="kv"><span class="k" id="language-label"></span><span class="v" id="language-status"></span></div><div class="kv"><span class="k" id="updated-label"></span><time class="v" id="updated-status"></time></div><div class="kv"><span class="k" id="added-label">本站收录</span><time class="v" id="added-status"></time></div><div class="kv"><span class="k">来源</span><span class="v" id="source"></span></div><div class="kv"><span class="k" id="manifest-label"></span><span class="v" id="manifest-status"></span></div><div class="kv"><span class="k" id="installation-test-label"></span><span class="v" id="installation-test-status"></span></div><div class="kv"><span class="k">仓库</span><span class="v"><a id="repo-link" target="_blank" rel="noopener">GitHub</a></span></div></div>
+      <div class="side-card"><h4>信息</h4><div class="kv"><span class="k">维护者</span><span class="v" id="maintainer"></span></div><div class="kv"><span class="k">分类</span><span class="v" id="category"></span></div><div class="kv"><span class="k" id="language-label"></span><span class="v" id="language-status"></span></div><div class="kv"><span class="k" id="license-label"></span><span class="v" id="license-status"></span></div><div class="kv"><span class="k" id="release-label"></span><span class="v" id="release-status"></span></div><div class="kv"><span class="k" id="updated-label"></span><time class="v" id="updated-status"></time></div><div class="kv"><span class="k" id="added-label">本站收录</span><time class="v" id="added-status"></time></div><div class="kv"><span class="k">来源</span><span class="v" id="source"></span></div><div class="kv"><span class="k" id="manifest-label"></span><span class="v" id="manifest-status"></span></div><div class="kv"><span class="k" id="patch-label"></span><span class="v" id="patch-status"></span></div><div class="kv"><span class="k" id="installation-test-label"></span><span class="v" id="installation-test-status"></span></div><div class="kv"><span class="k">仓库</span><span class="v"><a id="repo-link" target="_blank" rel="noopener">GitHub</a></span></div></div>
       <a class="detail-report" href="https://github.com/majiayu000/dsh-plugin-registry/issues/new?template=registry_correction.yml" target="_blank" rel="noopener">报告条目信息问题 ↗</a>
     </aside>
   </div>
@@ -86,7 +87,7 @@ const { findPluginById } = await import('/assets/plugin-detail.js');
 (async function () {
   'use strict';
   try { await HR.ready; } catch (error) { document.getElementById('plugin-name').textContent = '插件数据加载失败'; return; }
-  var requested = new URLSearchParams(location.search).get('plugin');
+  var requested = document.body.dataset.pluginId || new URLSearchParams(location.search).get('plugin');
   var english = window.HRI18N.locale === 'en-US';
   var plugin = findPluginById(HR.PLUGINS, requested);
   if (!plugin) {
@@ -119,6 +120,10 @@ const { findPluginById } = await import('/assets/plugin-detail.js');
   var language = typeof plugin.language === 'string' ? plugin.language.trim() : '';
   document.getElementById('language-label').textContent = english ? 'Language' : '开发语言';
   document.getElementById('language-status').textContent = language || missingMetadata;
+  document.getElementById('license-label').textContent = 'License';
+  document.getElementById('license-status').textContent = plugin.license || missingMetadata;
+  document.getElementById('release-label').textContent = english ? 'Latest release' : '最新版本';
+  document.getElementById('release-status').textContent = plugin.latestRelease && plugin.latestRelease.tag || missingMetadata;
   document.getElementById('updated-label').textContent = english ? 'Last updated' : '最近更新';
   var updatedStatus = document.getElementById('updated-status');
   var hasValidPushedAt = typeof plugin.pushedAt === 'string' && !Number.isNaN(Date.parse(plugin.pushedAt));
@@ -133,15 +138,24 @@ const { findPluginById } = await import('/assets/plugin-detail.js');
   if (hasValidAddedAt) addedStatus.dateTime = plugin.addedAt;
   document.getElementById('source').textContent = HR.sourceLabel(plugin).replace(/^来源：|^Source:\s*/, '');
   var manifestShapeValidated = HR.manifestShapeValidated(plugin);
+  var patchStatus = plugin.verification && plugin.verification.patch || 'not_checked';
+  var patchLabel = patchStatus === 'exists'
+    ? (english ? 'File confirmed' : '文件已确认')
+    : (patchStatus === 'missing' ? (english ? 'File not found' : '未找到文件') : (english ? 'Not checked' : '未检查'));
   document.getElementById('manifest-label').textContent = 'Manifest';
   document.getElementById('manifest-status').textContent = HR.manifestLabel(plugin).replace(/^Manifest\s*/, '');
+  document.getElementById('patch-label').textContent = english ? 'Patch file' : 'Patch 文件';
+  document.getElementById('patch-status').textContent = patchLabel;
   document.getElementById('installation-test-label').textContent = english ? 'Installation test' : '安装测试';
   document.getElementById('installation-test-status').textContent = english ? 'Not performed' : '未执行';
   document.getElementById('evidence-source').textContent = plugin.source === 'curated' ? (english ? 'Community catalog' : '社区目录') : (english ? 'GitHub discovery' : 'GitHub 自动发现');
   document.getElementById('evidence-manifest').textContent = manifestShapeValidated ? (english ? 'Format checked' : '格式检查通过') : (english ? 'Not checked' : '未检查');
+  document.getElementById('evidence-patch').textContent = patchLabel;
   document.getElementById('evidence-installation').textContent = english ? 'Not performed' : '未执行';
   document.getElementById('manifest-decision').textContent = manifestShapeValidated
-    ? (english ? 'The repository manifest matched the dsh.bundle format at synchronization time.' : '同步时，仓库 Manifest 符合 dsh.bundle 格式。')
+    ? (patchStatus === 'exists'
+      ? (english ? 'The manifest matched dsh.bundle and its referenced patch file existed at synchronization time.' : '同步时，Manifest 符合 dsh.bundle 格式，且引用的 Patch 文件真实存在。')
+      : (english ? 'The manifest matched dsh.bundle, but the referenced patch file was not confirmed.' : 'Manifest 符合 dsh.bundle 格式，但引用的 Patch 文件尚未确认。'))
     : (english ? 'The registry has not checked this repository manifest; confirm its installation instructions in the repository.' : '本站没有检查这个仓库的 Manifest，请先在仓库中确认安装说明。');
   ['repo-button', 'repo-link'].forEach(function (id) { document.getElementById(id).href = plugin.url; });
   document.getElementById('install-btn').textContent = HR.installActionLabel(plugin);
@@ -149,7 +163,7 @@ const { findPluginById } = await import('/assets/plugin-detail.js');
   document.getElementById('repo-button').classList.toggle('btn-primary', !manifestShapeValidated);
   document.getElementById('evidence-title').textContent = manifestShapeValidated ? (english ? 'Manifest format checked' : 'Manifest 格式检查通过') : (english ? 'Source recorded as community catalog' : '来源记录为社区目录');
   document.getElementById('evidence-copy').textContent = manifestShapeValidated
-    ? (english ? 'At sync time, the root package.json matched the dsh.bundle format. The registry did not run the plugin, test installation, or audit security.' : '同步时，仓库根目录 package.json 符合 dsh.bundle 格式；本站没有运行插件、测试安装或审计安全性。')
+    ? (english ? 'At sync time, the root package.json matched the dsh.bundle format and the patch-file check is shown separately. The registry did not run the plugin, test installation, or audit security.' : '同步时，仓库根目录 package.json 符合 dsh.bundle 格式，Patch 文件检查结果单独展示；本站没有运行插件、测试安装或审计安全性。')
     : (english ? 'The entry was synchronized from a public community catalog. The registry did not check its manifest, run the plugin, test installation, or audit security.' : '该条目同步自公开社区目录；本站没有检查 Manifest、运行插件、测试安装或审计安全性。');
   document.getElementById('topic-list').innerHTML = (plugin.topics || []).map(function (topic) { return '<span class="topic-chip">' + HR.escapeHtml(topic) + '</span>'; }).join('') || '<span class="topic-chip">dsh-plugin</span>';
   document.getElementById('install-btn').addEventListener('click', function () { HR.openInstallDialog(plugin); });

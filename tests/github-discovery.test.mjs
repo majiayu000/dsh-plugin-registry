@@ -66,6 +66,8 @@ test('GraphQL repositories map to the registry normalization contract', () => {
     isArchived: false,
     isFork: false,
     primaryLanguage: { name: 'TypeScript' },
+    licenseInfo: { spdxId: 'MIT' },
+    latestRelease: { tagName: 'v1.2.3', publishedAt: '2026-08-14T00:00:00Z' },
     owner: { avatarUrl: 'https://avatars.example/acme' },
     repositoryTopics: { nodes: [{ topic: { name: 'dsh-plugin' } }] },
   }), {
@@ -75,6 +77,8 @@ test('GraphQL repositories map to the registry normalization contract', () => {
     stargazers_count: 12,
     forks_count: 3,
     language: 'TypeScript',
+    license: 'MIT',
+    latest_release: { tag: 'v1.2.3', published_at: '2026-08-14T00:00:00Z' },
     pushed_at: '2026-08-15T00:00:00Z',
     archived: false,
     fork: false,

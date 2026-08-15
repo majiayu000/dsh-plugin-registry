@@ -27,6 +27,12 @@
       <a href="dashboard.html">统计</a>
     </nav>
     <div class="topbar-r">
+      <a class="github-link" href="https://github.com/majiayu000/dsh-plugin-registry" target="_blank" rel="noopener noreferrer" aria-label="在 GitHub 上查看本项目">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 2.5a9.5 9.5 0 0 0-3 18.52c.48.09.65-.2.65-.46v-1.84c-2.66.58-3.22-1.13-3.22-1.13-.43-1.1-1.06-1.4-1.06-1.4-.87-.6.07-.58.07-.58.96.07 1.47.99 1.47.99.85 1.46 2.24 1.04 2.79.8.09-.62.33-1.04.61-1.28-2.12-.24-4.35-1.06-4.35-4.7 0-1.04.37-1.89.98-2.55-.1-.24-.43-1.21.09-2.52 0 0 .8-.26 2.61.97A9.1 9.1 0 0 1 12 7c.81 0 1.62.11 2.38.32 1.81-1.23 2.61-.97 2.61-.97.52 1.31.19 2.28.09 2.52.61.66.98 1.51.98 2.55 0 3.65-2.23 4.45-4.36 4.69.34.3.65.88.65 1.78v2.67c0 .26.17.55.66.46A9.5 9.5 0 0 0 12 2.5Z"/>
+        </svg>
+        <span>GitHub</span>
+      </a>
       <span class="cli-tag">COMMUNITY PREVIEW</span>
     </div>
   </div>
@@ -95,6 +101,7 @@
         </select>
         <label class="sr-only" for="sort">排序方式</label>
         <select class="sel" id="sort" aria-label="排序方式">
+          <option value="relevance">智能排序</option>
           <option value="stars">按 Stars</option>
           <option value="manifest">Manifest 格式通过优先</option>
           <option value="forks">按 Forks</option>
@@ -132,7 +139,16 @@ await import('/assets/plugins.js');
 const { createPluginSearchIndex, filterPluginSearchIndex } = await import('/assets/registry-search.js');
 (async function () {
   'use strict';
-  var state = { q: '', cat: 'all', source: 'all', manifest: 'all', language: 'all', sort: 'stars', limit: 60 };
+  var initialParams = new URLSearchParams(location.search);
+  var state = {
+    q: initialParams.get('q') || '',
+    cat: initialParams.get('category') || 'all',
+    source: initialParams.get('source') || 'all',
+    manifest: initialParams.get('manifest') || 'all',
+    language: initialParams.get('language') || 'all',
+    sort: initialParams.get('sort') || 'relevance',
+    limit: 60
+  };
   var list = document.getElementById('list');
   var note = document.getElementById('list-note');
 
@@ -177,7 +193,7 @@ const { createPluginSearchIndex, filterPluginSearchIndex } = await import('/asse
       query: state.q,
     });
     if (state.language !== 'all') rows = rows.filter(function (plugin) { return plugin.language === state.language; });
-    rows.sort(function (a, b) {
+    if (state.sort !== 'relevance' || !state.q) rows.sort(function (a, b) {
       if (state.sort === 'forks') return b.forks - a.forks;
       if (state.sort === 'new') return String(b.pushedAt || '').localeCompare(String(a.pushedAt || ''));
       if (state.sort === 'added') return String(b.addedAt || '').localeCompare(String(a.addedAt || ''));
@@ -199,6 +215,18 @@ const { createPluginSearchIndex, filterPluginSearchIndex } = await import('/asse
       ? ' · ' + pendingCount + (english ? ' need a valid dsh.bundle' : ' 个待补充 dsh.bundle')
       : '');
     document.getElementById('load-more-wrap').hidden = rows.length <= state.limit;
+    syncUrl();
+  }
+
+  function syncUrl() {
+    var params = new URLSearchParams();
+    if (state.q) params.set('q', state.q);
+    if (state.cat !== 'all') params.set('category', state.cat);
+    if (state.source !== 'all') params.set('source', state.source);
+    if (state.manifest !== 'all') params.set('manifest', state.manifest);
+    if (state.language !== 'all') params.set('language', state.language);
+    if (state.sort !== 'relevance') params.set('sort', state.sort);
+    history.replaceState(null, '', location.pathname + (params.size ? '?' + params.toString() : '') + location.hash);
   }
 
   document.getElementById('q').addEventListener('input', function (e) { state.q = e.target.value.trim(); state.limit = 60; apply(); });
@@ -233,7 +261,12 @@ const { createPluginSearchIndex, filterPluginSearchIndex } = await import('/asse
     document.getElementById('chips').appendChild(chip);
   });
   document.getElementById('all-count').textContent = HR.PLUGINS.length.toLocaleString();
-  document.querySelector('#chips .chip').setAttribute('aria-pressed', 'true');
+  if (state.cat !== 'all' && !HR.registry.categories[state.cat]) state.cat = 'all';
+  document.querySelectorAll('#chips .chip').forEach(function (chip) {
+    var active = chip.dataset.cat === state.cat;
+    chip.classList.toggle('on', active);
+    chip.setAttribute('aria-pressed', String(active));
+  });
   var languageSelect = document.getElementById('language');
   var languageCounts = HR.PLUGINS.reduce(function (counts, plugin) {
     if (plugin.language) counts[plugin.language] = (counts[plugin.language] || 0) + 1;
@@ -249,6 +282,13 @@ const { createPluginSearchIndex, filterPluginSearchIndex } = await import('/asse
     languageSelect.disabled = true;
     languageSelect.options[0].textContent = window.HRI18N.locale === 'en-US' ? 'Language data pending' : '语言数据待同步';
   }
+  if (state.language !== 'all' && !languageCounts[state.language]) state.language = 'all';
+  ['source', 'manifest', 'language', 'sort'].forEach(function (id) {
+    var select = document.getElementById(id);
+    if ([...select.options].some(function (option) { return option.value === state[id]; })) select.value = state[id];
+    else state[id] = id === 'sort' ? 'relevance' : 'all';
+  });
+  document.getElementById('q').value = state.q;
   document.addEventListener('keydown', function (e) {
     if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); document.getElementById('q').focus(); }
   });

@@ -39,7 +39,7 @@ The project has a deployed registry UI, a validated schema, a real data snapshot
 | README first screen | verified locally | Positioning, proof, quickstart, and pre-release limitation are visible | Push and review the rendered GitHub page |
 | Limitations documented | verified | README separates manifest verification from security review | Keep limitations aligned with implementation |
 | Platform source docs checked | verified | ShipWise Agent Guide, decision tree, discoverability, release lifecycle, and GitHub source guide | Recheck current platform rules before publishing |
-| Baseline metrics recorded | verified | Snapshot: 1,135 published, 281 curated, 854 automatically discovered; GitHub: 0 Stars and 0 Forks | Refresh immediately before launch copy |
+| Baseline metrics recorded | verified | Snapshot: 2,006 published, 573 curated, 1,433 automatically discovered; GitHub: 0 Stars and 0 Forks | Refresh immediately before launch copy |
 
 ## P2 channel polish
 
@@ -54,10 +54,10 @@ The project has a deployed registry UI, a validated schema, a real data snapshot
 The current generated snapshot reports:
 
 ```text
-published: 1135
-curated: 281
-automaticallyDiscovered: 854
-pendingReview: 765
+published: 2006
+curated: 573
+automaticallyDiscovered: 1433
+pendingReview: 1167
 ```
 
 These are point-in-time repository facts from `public/data/plugins.json`, not market-size or adoption claims.
@@ -88,7 +88,7 @@ Expected outcome: dependency install succeeds; tests, registry validation, and V
 
 ## Decision
 
-- Hosted preview: yes — <https://majiayu000.github.io/dsh-plugin-registry/>
+- Hosted preview: yes — <https://plugin.dshdesk.com/>
 - Formal launch: no
 - Reason: the production access path is verified, but the release strategy and social preview remain open
 - Next action: choose a release strategy and prepare the repository social preview

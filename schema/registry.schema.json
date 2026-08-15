@@ -48,6 +48,26 @@
           "stars": { "type": "integer", "minimum": 0 },
           "forks": { "type": "integer", "minimum": 0 },
           "language": { "type": "string" },
+          "license": { "type": "string" },
+          "latestRelease": {
+            "anyOf": [
+              {
+                "type": "object",
+                "required": ["tag", "publishedAt"],
+                "additionalProperties": false,
+                "properties": {
+                  "tag": { "type": "string" },
+                  "publishedAt": {
+                    "anyOf": [
+                      { "type": "string", "format": "date-time" },
+                      { "type": "null" }
+                    ]
+                  }
+                }
+              },
+              { "type": "null" }
+            ]
+          },
           "pushedAt": {
             "anyOf": [
               { "type": "string", "format": "date-time" },
@@ -56,12 +76,14 @@
           },
           "source": { "enum": ["curated", "discovered"] },
           "trustLevel": { "enum": ["curated", "manifest_verified"] },
+          "special": { "type": "boolean" },
           "verification": {
             "type": "object",
-            "required": ["manifest", "installation"],
+            "required": ["manifest", "patch", "installation"],
             "additionalProperties": false,
             "properties": {
               "manifest": { "enum": ["not_checked", "shape_validated"] },
+              "patch": { "enum": ["not_checked", "exists", "missing"] },
               "installation": { "const": "not_tested" }
             }
           },

@@ -4,6 +4,10 @@
     {
       "repo": "deepseek-ai/deepseek-harness",
       "reason": "DeepSeek Harness core repository, not a plugin"
+    },
+    {
+      "repo": "nexu-io/open-design",
+      "reason": "External design application that uses DSH as a runtime, not a standalone DSH plugin"
     }
   ]
 }

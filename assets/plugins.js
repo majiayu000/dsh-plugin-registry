@@ -1,5 +1,6 @@
 /* Harness Registry — real registry loader and shared render helpers */
 import { writeClipboardText } from './clipboard.js'
+import { hasDshCandidateContext } from './candidate-relevance.js'
 
 (function () {
   'use strict';
@@ -153,13 +154,16 @@ import { writeClipboardText } from './clipboard.js'
     var english = locale() === 'en';
     var dialog = ensureInstallDialog();
     var manifestChecked = manifestShapeValidated(plugin);
+    var patchStatus = plugin.verification && plugin.verification.patch;
     dialog.querySelector('#install-dialog-title').textContent = manifestChecked
       ? (english ? 'How to install ' + plugin.name : '安装 ' + plugin.name + ' 的步骤')
       : (english ? 'Install information for ' + plugin.name : plugin.name + ' 的安装信息');
     dialog.querySelector('[data-install-command]').textContent = plugin.install;
     dialog.querySelector('[data-install-repo]').href = plugin.url;
     dialog.querySelector('[data-install-evidence]').innerHTML = '<b>' + escapeHtml(manifestLabel(plugin)) + '</b><p>' + (manifestChecked
-      ? (english ? 'The root package.json matched the dsh.bundle format when the registry synchronized it. Installation was not run or tested.' : '同步时，仓库根目录 package.json 符合 dsh.bundle 格式；本站没有运行或测试安装。')
+      ? (patchStatus === 'exists'
+        ? (english ? 'The root package.json matched dsh.bundle and the referenced patch file existed at synchronization time. Installation was not run or tested.' : '同步时，仓库根目录 package.json 符合 dsh.bundle 格式，且引用的 Patch 文件存在；本站没有运行或测试安装。')
+        : (english ? 'The root package.json matched dsh.bundle, but the referenced patch file was not confirmed. Installation was not run or tested.' : '仓库根目录 package.json 符合 dsh.bundle 格式，但引用的 Patch 文件尚未确认；本站没有运行或测试安装。'))
       : (english ? 'This command came from the community catalog. The registry did not check the repository manifest or confirm that the command installs successfully.' : '这条命令来自社区目录；本站没有检查仓库 Manifest，也没有确认命令能够成功安装。')) + '</p>';
     var copyButton = dialog.querySelector('[data-install-copy]');
     copyButton.textContent = english ? 'Copy install command' : '复制安装命令';
@@ -199,7 +203,10 @@ import { writeClipboardText } from './clipboard.js'
 
   function sourcePill(plugin) {
     var manifestClass = manifestShapeValidated(plugin) ? 'pill-manifest' : (pendingReview(plugin) ? 'pill-pending' : 'pill-unchecked');
-    return '<span class="pill pill-source">' + escapeHtml(sourceLabel(plugin)) + '</span>' +
+    var special = plugin.special
+      ? '<span class="pill pill-special">' + (locale() === 'en' ? 'Special listing' : '特别收录') + '</span>'
+      : '';
+    return special + '<span class="pill pill-source">' + escapeHtml(sourceLabel(plugin)) + '</span>' +
       '<span class="pill ' + manifestClass + '">' + escapeHtml(manifestLabel(plugin)) + '</span>';
   }
 
@@ -267,7 +274,7 @@ import { writeClipboardText } from './clipboard.js'
       addedAt: null,
       source: 'discovered',
       trustLevel: 'pending_review',
-      verification: { manifest: 'not_validated', installation: 'not_tested' },
+      verification: { manifest: 'not_validated', patch: 'not_checked', installation: 'not_tested' },
       topics: entry.topics || ['dsh-plugin'],
       icon: entry.icon || (owner ? 'https://github.com/' + encodeURIComponent(owner) + '.png?size=96' : '')
     };
@@ -285,7 +292,9 @@ import { writeClipboardText } from './clipboard.js'
     var audit = responses[1] && responses[1].ok ? await responses[1].json() : { pendingReview: [] };
     var publishedIds = new Set(registry.plugins.map(function (plugin) { return plugin.id.toLowerCase(); }));
     var candidates = Array.isArray(audit.pendingReview)
-      ? audit.pendingReview.filter(function (entry) { return entry && entry.id && entry.url && !publishedIds.has(entry.id.toLowerCase()); }).map(normalizePendingPlugin)
+      ? audit.pendingReview.filter(function (entry) {
+          return entry && entry.id && entry.url && !publishedIds.has(entry.id.toLowerCase()) && hasDshCandidateContext(entry);
+        }).map(normalizePendingPlugin)
       : [];
     HR.registry = registry;
     HR.PUBLISHED = registry.plugins;

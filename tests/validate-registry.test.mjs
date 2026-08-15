@@ -14,7 +14,7 @@ function registry(plugin = {}) {
       description: { zh: '描述', en: 'Description' }, category: 'tools', stars: 1, forks: 0,
       language: 'TypeScript', pushedAt: '2026-08-14T00:00:00.000Z',
       source: 'discovered', trustLevel: 'manifest_verified',
-      verification: { manifest: 'shape_validated', installation: 'not_tested' },
+      verification: { manifest: 'shape_validated', patch: 'exists', installation: 'not_tested' },
       install: 'dsh plugin --profile web add github:acme/plugin', icon: 'https://github.com/acme.png', ...plugin,
     }],
   }
@@ -22,6 +22,13 @@ function registry(plugin = {}) {
 
 test('valid registry contract passes', () => {
   assert.deepEqual(validateRegistry(registry()), { errors: [], warnings: [] })
+})
+
+test('special listings may use a repository-approved profile and package target', () => {
+  assert.deepEqual(validateRegistry(registry({
+    special: true,
+    install: 'dsh plugin --profile tui add dsh-mini-tui@latest',
+  })), { errors: [], warnings: [] })
 })
 
 test('contract requires every schema-level registry section', () => {

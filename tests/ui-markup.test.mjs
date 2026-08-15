@@ -42,6 +42,16 @@ test('primary pages expose keyboard and assistive-technology navigation', async 
   assert.match(index, /aria-pressed/)
 })
 
+test('homepage links to the registry GitHub repository', async () => {
+  const [html, css] = await Promise.all([
+    readFile('index.html', 'utf8'),
+    readFile('assets/registry.css', 'utf8'),
+  ])
+  assert.match(html, /class="github-link" href="https:\/\/github\.com\/majiayu000\/dsh-plugin-registry"/)
+  assert.match(html, /aria-label="在 GitHub 上查看本项目"/)
+  assert.match(css, /\.github-link\s*\{/)
+})
+
 test('plugin detail describes only verifiable registry signals', async () => {
   const html = await readFile('plugin-detail.html', 'utf8')
   assert.doesNotMatch(html, /为什么被收录|人工精选且可安装|已通过社区精选库/)
@@ -58,6 +68,15 @@ test('plugin rows expose topics and update dates as decision signals', async () 
   assert.match(script, /prow-topic/)
   assert.match(script, /prow-updated/)
   assert.match(script, /plugin\.pushedAt/)
+})
+
+test('special listings receive a distinct bilingual marker', async () => {
+  const [script, css] = await Promise.all([
+    readFile('assets/plugins.js', 'utf8'),
+    readFile('assets/registry.css', 'utf8'),
+  ])
+  assert.match(script, /Special listing.*特别收录/)
+  assert.match(css, /\.pill-special/)
 })
 
 test('pending GitHub candidates remain visible without exposing an install action', async () => {

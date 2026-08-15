@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 
-test('schema v2 separates manifest evidence from installation testing', async () => {
+test('schema v2 separates manifest, patch, and installation evidence', async () => {
   const schema = JSON.parse(await readFile('schema/registry.schema.json', 'utf8'))
   const pluginSchema = schema.properties.plugins.items
 
@@ -23,6 +23,7 @@ test('published snapshot contains explicit evidence and no ambiguous booleans', 
     assert.equal('installable' in plugin, false)
     assert.equal(plugin.verification.installation, 'not_tested')
     assert.equal(plugin.verification.manifest, plugin.source === 'curated' ? 'not_checked' : 'shape_validated')
+    assert.ok(['not_checked', 'exists', 'missing'].includes(plugin.verification.patch))
   }
 })
 
@@ -33,6 +34,7 @@ test('plugin details expose both manifest and installation-test status', async (
     readFile('dashboard.html', 'utf8'),
   ])
   assert.match(html, /id="manifest-status"/)
+  assert.match(html, /id="patch-status"/)
   assert.match(html, /id="installation-test-status"/)
   assert.match(html, /没有运行插件、测试安装或审计安全性/)
   assert.match(shared + dashboard, /Manifest 格式检查通过/)

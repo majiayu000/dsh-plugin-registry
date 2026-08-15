@@ -1,6 +1,8 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { discoverGitHubRepositories, mapGraphqlRepository, REPOSITORY_DISCOVERY_QUERY } from './github-discovery.mjs'
+import { validateBundleManifest } from '../assets/bundle-manifest.js'
+import { hasDshCandidateContext } from '../assets/candidate-relevance.js'
 import {
   applyGovernance,
   hasBundleManifest,
@@ -8,6 +10,7 @@ import {
   normalizeCurated,
   normalizeDiscovered,
   repoKey,
+  repositoryKey,
   toPublicPlugin,
   validateHealth,
 } from './registry-core.mjs'
@@ -181,6 +184,34 @@ async function loadPackageManifests(repositories) {
   return manifests
 }
 
+async function loadBundlePatches(candidates) {
+  if (!TOKEN || candidates.length === 0) return new Map()
+  const results = new Map()
+  const batchSize = 40
+  const batches = []
+  for (let offset = 0; offset < candidates.length; offset += batchSize) batches.push(candidates.slice(offset, offset + batchSize))
+  let nextBatch = 0
+
+  async function worker() {
+    while (nextBatch < batches.length) {
+      const batch = batches[nextBatch]
+      nextBatch += 1
+      const fields = batch.map((candidate, index) => {
+        const [owner, name] = candidate.repository.full_name.split('/')
+        const expression = `HEAD:${candidate.patch.slice(2)}`
+        return `r${index}: repository(owner: ${JSON.stringify(owner)}, name: ${JSON.stringify(name)}) { object(expression: ${JSON.stringify(expression)}) { ... on Blob { byteSize } } }`
+      }).join('\n')
+      const data = await githubGraphql(`query { ${fields} }`, {}, { allowPartial: true })
+      batch.forEach((candidate, index) => {
+        results.set(candidate.repository.full_name.toLowerCase(), Boolean(data?.[`r${index}`]?.object))
+      })
+    }
+  }
+
+  await Promise.all(Array.from({ length: Math.min(4, batches.length) }, () => worker()))
+  return results
+}
+
 async function main() {
   const [previous, previousAudit] = await Promise.all([loadPrevious(), loadPreviousAudit()])
   const [blocklist, overrides] = await Promise.all([loadConfig(BLOCKLIST), loadConfig(OVERRIDES)])
@@ -190,44 +221,82 @@ async function main() {
   const uniqueRepositories = [...new Map(repositories.map(repo => [repo.full_name.toLowerCase(), repo])).values()]
     .filter(repo => !repo.archived && !repo.fork)
 
-  const curatedKeys = new Set(curatedRegistry.plugins.map(plugin => repoKey(plugin.owner, plugin.name)))
+  const curatedKeys = new Set(curatedRegistry.plugins.map(repositoryKey))
   const newCandidates = uniqueRepositories.filter(repo => !curatedKeys.has(repo.full_name.toLowerCase()))
   const manifestCache = new Map()
   for (const plugin of previous?.plugins || []) {
     if (plugin.source !== 'discovered') continue
-    manifestCache.set(plugin.id.toLowerCase(), { pushedAt: plugin.pushedAt, shapeValid: plugin.verification?.manifest === 'shape_validated' })
+    manifestCache.set(plugin.id.toLowerCase(), {
+      pushedAt: plugin.pushedAt,
+      shapeValid: plugin.verification?.manifest === 'shape_validated',
+      patchStatus: plugin.verification?.patch,
+    })
   }
   for (const plugin of previousAudit?.pendingReview || []) {
-    manifestCache.set(plugin.id.toLowerCase(), { pushedAt: plugin.pushedAt, shapeValid: false })
+    const patchMissing = String(plugin.reason || '').startsWith('dsh.bundle.patch does not resolve')
+    manifestCache.set(plugin.id.toLowerCase(), {
+      pushedAt: plugin.pushedAt,
+      shapeValid: patchMissing,
+      patchStatus: patchMissing ? 'missing' : undefined,
+    })
   }
-  const candidatesToValidate = newCandidates.filter(repo => manifestCache.get(repo.full_name.toLowerCase())?.pushedAt !== repo.pushed_at)
+  const candidatesToValidate = newCandidates.filter(repo => {
+    const cached = manifestCache.get(repo.full_name.toLowerCase())
+    return cached?.pushedAt !== repo.pushed_at || (cached.shapeValid && !cached.patchStatus)
+  })
   console.log(`Manifest cache: ${newCandidates.length - candidatesToValidate.length} unchanged, ${candidatesToValidate.length} to validate.`)
   const manifests = await loadPackageManifests(candidatesToValidate)
+  const bundleCandidates = candidatesToValidate.flatMap(repository => {
+    const check = validateBundleManifest(manifests.get(repository.full_name.toLowerCase()))
+    return check.valid ? [{ repository, patch: check.patch }] : []
+  })
+  const bundlePatches = await loadBundlePatches(bundleCandidates)
 
   const metadata = new Map(uniqueRepositories.map(repo => [repo.full_name.toLowerCase(), {
     stargazerCount: repo.stargazers_count,
     forkCount: repo.forks_count,
     language: repo.language || '',
+    license: repo.license || '',
+    latestRelease: repo.latest_release ? {
+      tag: repo.latest_release.tag || '',
+      publishedAt: repo.latest_release.published_at || null,
+    } : null,
     pushedAt: repo.pushed_at,
     isArchived: repo.archived,
     repositoryTopics: { nodes: (repo.topics || []).map(name => ({ topic: { name } })) },
     avatarUrl: repo.owner?.avatar_url,
   }]))
-  const curated = curatedRegistry.plugins.map(plugin => normalizeCurated(plugin, metadata.get(repoKey(plugin.owner, plugin.name))))
+  const curated = curatedRegistry.plugins.map(plugin => normalizeCurated(plugin, metadata.get(repositoryKey(plugin))))
   const normalizedCandidates = newCandidates
     .map(repo => {
       const cached = manifestCache.get(repo.full_name.toLowerCase())
-      const unchanged = cached?.pushedAt === repo.pushed_at
-      return normalizeDiscovered(repo, unchanged ? cached.shapeValid : hasBundleManifest(manifests.get(repo.full_name.toLowerCase())))
+      const unchanged = cached?.pushedAt === repo.pushed_at && (!cached.shapeValid || cached.patchStatus)
+      const manifestShapeValid = unchanged ? cached.shapeValid : hasBundleManifest(manifests.get(repo.full_name.toLowerCase()))
+      const patchExists = unchanged
+        ? (cached.patchStatus === 'exists' ? true : (cached.patchStatus === 'missing' ? false : null))
+        : bundlePatches.get(repo.full_name.toLowerCase())
+      return normalizeDiscovered(repo, manifestShapeValid, patchExists)
     })
   const blocked = new Map((blocklist.repositories || []).map(entry => [String(entry.repo).toLowerCase(), entry]))
-  const candidateQuarantined = normalizedCandidates.filter(plugin => blocked.has(repoKey(plugin.owner, plugin.name))).map(plugin => ({
-    id: plugin.id,
-    url: plugin.url,
-    trustLevel: 'quarantined',
-    reason: blocked.get(repoKey(plugin.owner, plugin.name)).reason || 'Blocked by registry maintainers',
-  }))
-  const eligibleCandidates = normalizedCandidates.filter(plugin => !blocked.has(repoKey(plugin.owner, plugin.name)))
+  const candidateQuarantined = normalizedCandidates.flatMap(plugin => {
+    const block = blocked.get(repoKey(plugin.owner, plugin.name))
+    if (block) return [{
+      id: plugin.id,
+      url: plugin.url,
+      trustLevel: 'quarantined',
+      reason: block.reason || 'Blocked by registry maintainers',
+    }]
+    if (!plugin.listingEligible && !hasDshCandidateContext(plugin)) return [{
+      id: plugin.id,
+      url: plugin.url,
+      trustLevel: 'quarantined',
+      reason: 'Only the dsh-plugin discovery topic was present; no additional DSH relevance signal was found',
+    }]
+    return []
+  })
+  const eligibleCandidates = normalizedCandidates.filter(plugin => {
+    return !blocked.has(repoKey(plugin.owner, plugin.name)) && (plugin.listingEligible || hasDshCandidateContext(plugin))
+  })
   const discovered = eligibleCandidates.filter(plugin => plugin.listingEligible)
   const pendingReview = eligibleCandidates.filter(plugin => !plugin.listingEligible).map(plugin => ({
     id: plugin.id,
@@ -237,7 +306,9 @@ async function main() {
     description: plugin.description,
     category: plugin.category,
     trustLevel: 'pending_review',
-    reason: 'package.json does not declare a valid dsh.bundle object',
+    reason: plugin.verification.patch === 'missing'
+      ? 'dsh.bundle.patch does not resolve to a file at repository HEAD'
+      : 'package.json does not declare a valid dsh.bundle object',
     stars: plugin.stars,
     forks: plugin.forks,
     language: plugin.language,
@@ -259,8 +330,10 @@ async function main() {
       topicCandidates: uniqueRepositories.length,
       curated: publishedCurated,
       automaticallyDiscovered: publishedDiscovered,
+      patchFilesConfirmed: plugins.filter(plugin => plugin.verification.patch === 'exists').length,
       published: plugins.length,
-      manifestRejected: pendingReview.length,
+      manifestRejected: pendingReview.filter(plugin => !String(plugin.reason).startsWith('dsh.bundle.patch')).length,
+      patchRejected: pendingReview.filter(plugin => String(plugin.reason).startsWith('dsh.bundle.patch')).length,
       pendingReview: pendingReview.length,
       quarantined: quarantined.length,
       discoveryMode: TOKEN ? 'complete' : 'recent',

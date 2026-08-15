@@ -65,7 +65,7 @@ await import('/assets/plugins.js');
 (async function () {
   'use strict';
   try { await HR.ready; } catch (error) { document.querySelector('main').innerHTML = '<div class="prow-empty">插件数据暂时无法加载。</div>'; return; }
-  var plugins = HR.PLUGINS;
+  var plugins = HR.PUBLISHED;
   var authors = {};
   plugins.forEach(function (plugin) { authors[plugin.owner] = true; });
   document.getElementById('k-stars').textContent = plugins.reduce(function (sum, plugin) { return sum + plugin.stars; }, 0).toLocaleString();

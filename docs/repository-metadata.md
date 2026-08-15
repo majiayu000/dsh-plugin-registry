@@ -14,7 +14,7 @@ This record follows the ShipWise discoverability checklist. Public GitHub settin
 ## GitHub About
 
 - Description: `Searchable DeepSeek Harness plugin registry with curated listings and manifest-verified GitHub discovery.`
-- Homepage: <https://majiayu000.github.io/dsh-plugin-registry/>
+- Homepage: <https://plugin.dshdesk.com/>
 - Topics applied: `deepseek-harness`, `developer-tools`, `dsh-plugin`, `javascript`, `open-source`, `plugin-discovery`, `plugin-registry`, `registry`, `vite`
 
 ## Surface status

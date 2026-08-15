@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { applyGovernance, hasBundleManifest, inferCategory, mergePlugins, normalizeCurated, normalizeDiscovered, toPublicPlugin, validateHealth } from '../scripts/registry-core.mjs'
+import { applyGovernance, hasBundleManifest, inferCategory, mergePlugins, normalizeCurated, normalizeDiscovered, repositoryKey, toPublicPlugin, validateHealth } from '../scripts/registry-core.mjs'
 
 test('only a dsh.bundle with a safe relative patch passes manifest validation', () => {
   assert.equal(hasBundleManifest('{"dsh":{"bundle":{"patch":"./cordis.patch.yml"}}}'), true)
@@ -27,10 +27,26 @@ test('discovered repositories receive stable categories and install commands', (
   assert.equal(inferCategory({ name: plugin.name, description: plugin.description.en }), 'memory')
   assert.equal(plugin.install, 'dsh plugin --profile web add github:acme/dsh-memory')
   assert.equal(plugin.listingEligible, true)
-  assert.deepEqual(plugin.verification, { manifest: 'shape_validated', installation: 'not_tested' })
+  assert.deepEqual(plugin.verification, { manifest: 'shape_validated', patch: 'not_checked', installation: 'not_tested' })
   assert.equal(plugin.trustLevel, 'manifest_verified')
   assert.equal(plugin.language, 'TypeScript')
   assert.equal(plugin.icon, 'https://avatars.example/acme.png')
+})
+
+test('automatic discovery can classify every public category family', () => {
+  assert.equal(inferCategory({ name: 'dsh-session-export' }), 'session')
+  assert.equal(inferCategory({ name: 'dsh-plugin-market' }), 'market')
+  assert.equal(inferCategory({ name: 'dsh-desktop-pet' }), 'fun')
+})
+
+test('a manifest whose referenced patch is missing is not installable', () => {
+  const plugin = normalizeDiscovered({
+    full_name: 'acme/broken-plugin',
+    html_url: 'https://github.com/acme/broken-plugin',
+  }, true, false)
+  assert.equal(plugin.listingEligible, false)
+  assert.equal(plugin.trustLevel, 'pending_review')
+  assert.equal(plugin.verification.patch, 'missing')
 })
 
 test('curated entries override discovered duplicates', () => {
@@ -40,7 +56,7 @@ test('curated entries override discovered duplicates', () => {
   assert.equal(merged.length, 1)
   assert.equal(merged[0].source, 'curated')
   assert.equal(merged[0].trustLevel, 'curated')
-  assert.deepEqual(merged[0].verification, { manifest: 'not_checked', installation: 'not_tested' })
+  assert.deepEqual(merged[0].verification, { manifest: 'not_checked', patch: 'not_checked', installation: 'not_tested' })
 })
 
 test('curated monorepo entries use the repository URL as identity', () => {
@@ -53,6 +69,21 @@ test('curated monorepo entries use the repository URL as identity', () => {
   assert.equal(plugin.id, 'sjh9714/dsh-movein#dsh-movein-permissions')
   assert.equal(plugin.owner, 'sjh9714')
   assert.equal(plugin.name, 'dsh-movein-permissions')
+  assert.equal(repositoryKey(plugin), 'sjh9714/dsh-movein')
+})
+
+test('repository governance blocks every entry from a curated monorepo', () => {
+  const plugin = normalizeCurated({
+    owner: 'whyihaveyou',
+    name: 'dsh-suite#plugin-notify',
+    url: 'https://github.com/whyihaveyou/dsh-suite/tree/main/packages/plugins/plugin-notify',
+    description: { zh: '通知', en: 'Notifications' },
+  })
+  const result = applyGovernance([plugin], {
+    repositories: [{ repo: 'whyihaveyou/dsh-suite', reason: 'repository quarantine' }],
+  })
+  assert.equal(result.plugins.length, 0)
+  assert.equal(result.quarantined[0].id, 'whyihaveyou/dsh-suite#plugin-notify')
 })
 
 test('public plugins expose verification evidence without internal eligibility flags', () => {
@@ -61,18 +92,19 @@ test('public plugins expose verification evidence without internal eligibility f
   assert.equal('listingEligible' in plugin, false)
   assert.equal('verified' in plugin, false)
   assert.equal('installable' in plugin, false)
-  assert.deepEqual(plugin.verification, { manifest: 'shape_validated', installation: 'not_tested' })
+  assert.deepEqual(plugin.verification, { manifest: 'shape_validated', patch: 'not_checked', installation: 'not_tested' })
 })
 
 test('governance blocks repositories and applies only approved overrides', () => {
   const plugin = normalizeDiscovered({ full_name: 'acme/plugin', html_url: 'https://github.com/acme/plugin' }, true)
   const result = applyGovernance([plugin], { repositories: [{ repo: 'other/repo' }] }, {
-    plugins: { 'acme/plugin': { name: 'Better name', category: 'dev', description: { zh: '修正' }, trustLevel: 'curated' } },
+    plugins: { 'acme/plugin': { name: 'Better name', category: 'dev', description: { zh: '修正' }, special: true, trustLevel: 'curated' } },
   })
   assert.equal(result.plugins[0].name, 'Better name')
   assert.equal(result.plugins[0].category, 'dev')
   assert.equal(result.plugins[0].description.zh, '修正')
   assert.equal(result.plugins[0].description.en, '')
+  assert.equal(result.plugins[0].special, true)
   assert.equal(result.plugins[0].trustLevel, 'manifest_verified')
 
   const blocked = applyGovernance([plugin], { repositories: [{ repo: 'ACME/plugin', reason: 'duplicate' }] })

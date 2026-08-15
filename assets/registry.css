@@ -156,6 +156,14 @@ h1, h2, h3 {
 .nav a.on { color: var(--fg); }
 .nav a.on::before, .nav a.on::after { color: var(--blue); }
 .topbar-r { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+.github-link {
+  display: inline-flex; align-items: center; gap: 7px; min-height: 30px; padding: 5px 11px;
+  border: 1px solid var(--border); border-radius: var(--radius-pill); background: var(--bg); color: var(--fg-2);
+  font: 500 12px/1 var(--font-mono); text-decoration: none;
+  transition: border-color var(--motion-fast), color var(--motion-fast), background var(--motion-fast), transform var(--motion-fast);
+}
+.github-link svg { width: 16px; height: 16px; fill: currentColor; }
+.github-link:hover { border-color: var(--fg); background: var(--surface); color: var(--fg); transform: translateY(-1px); }
 .locale-switch { min-width: 34px; height: 28px; padding: 0 9px; border: 1px solid var(--border); border-radius: var(--radius-pill); background: var(--bg); color: var(--fg); font: 500 11px var(--font-mono); cursor: pointer; transition: border-color var(--motion-fast), color var(--motion-fast), background var(--motion-fast); }
 .locale-switch:hover { border-color: var(--blue); color: var(--blue); background: var(--blue-soft); }
 .cli-tag {
@@ -244,6 +252,7 @@ html.modal-open, html.modal-open body { overflow: hidden; }
   color: var(--fg-2);
 }
 .pill-official { background: var(--blue-soft); color: var(--blue); box-shadow: 0 0 0 1px var(--blue-ring); }
+.pill-special { background: linear-gradient(135deg, #fff7d6, #ffe3a3); color: #8a4b08; box-shadow: 0 0 0 1px rgba(217, 119, 6, 0.28); }
 .pill-source { background: var(--surface); color: var(--fg-2); box-shadow: var(--elev-ring); }
 .pill-manifest { background: var(--blue-soft); color: var(--blue); box-shadow: 0 0 0 1px var(--blue-ring); }
 .pill-unchecked { background: rgba(234, 179, 8, 0.1); color: #854d0e; box-shadow: 0 0 0 1px rgba(234, 179, 8, 0.18); }
@@ -413,7 +422,7 @@ html.modal-open, html.modal-open body { overflow: hidden; }
 .detail-cta { margin-left: auto; display: flex; gap: 10px; flex: none; }
 
 .detail-evidence-summary {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; margin-top: 28px;
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; margin-top: 28px;
   overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--border);
 }
 .detail-evidence-summary > div { min-width: 0; padding: 14px 18px; background: var(--bg); }
@@ -727,6 +736,8 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
   .policy-requirements { grid-template-columns: 1fr; }
   .policy-statuses > div { grid-template-columns: 1fr; gap: 8px; }
   .cli-tag { display: none; }
+  .github-link { width: 30px; min-height: 30px; justify-content: center; padding: 0; }
+  .github-link span { display: none; }
   .prow { grid-template-columns: 36px minmax(0, 1fr); gap: 10px; padding-left: 0; padding-right: 0; }
   .prow-act { display: none; }
   .prow-stars { display: none; }
