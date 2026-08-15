@@ -2,7 +2,7 @@
 
 Harness Registry is a searchable DeepSeek Harness plugin registry for DSH users and plugin authors. It combines a community-curated catalog with GitHub discovery, verifies the installable `dsh.bundle` manifest contract, and exposes comparable plugin metadata and copy-ready install commands.
 
-> Status: pre-release. The registry and local UI work under the MIT License, but the project does not yet have a production deployment. See [launch readiness](docs/shipwise-readiness.md).
+> Status: pre-release. The registry is available at [majiayu000.github.io/dsh-plugin-registry](https://majiayu000.github.io/dsh-plugin-registry/) and the source is released under the MIT License. See [launch readiness](docs/shipwise-readiness.md).
 
 ![Harness Registry browsing 1,135 verified and curated DSH plugins](docs/assets/harness-registry.png)
 
@@ -78,7 +78,7 @@ Use the local repository checker at <http://localhost:5173/publish.html> before 
 - Stars, Forks, descriptions, and Topics are point-in-time GitHub metadata and can lag until the next sync.
 - A complete discovery refresh requires a GitHub token; unauthenticated runs inspect only recent candidates and cannot overwrite a complete snapshot.
 - The browser-based repository checker uses the unauthenticated GitHub API and may encounter rate limits.
-- A production-hosted access path and release process have not been verified yet.
+- The GitHub Pages site tracks `main`; formal versioned releases are not yet available.
 
 ## Development
 

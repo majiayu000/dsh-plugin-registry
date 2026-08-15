@@ -114,7 +114,7 @@ import { writeClipboardText } from './clipboard.js'
   }
 
   async function loadRegistry() {
-    var response = await fetch('/data/plugins.json', { cache: 'no-cache' });
+    var response = await fetch('data/plugins.json', { cache: 'no-cache' });
     if (!response.ok) throw new Error('Registry HTTP ' + response.status);
     var registry = await response.json();
     if (!Array.isArray(registry.plugins)) throw new Error('Invalid registry document');
