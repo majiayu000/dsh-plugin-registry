@@ -12,6 +12,7 @@ function registry(plugin = {}) {
     plugins: [{
       id: 'acme/plugin', name: 'plugin', owner: 'acme', url: 'https://github.com/acme/plugin',
       description: { zh: '描述', en: 'Description' }, category: 'tools', stars: 1, forks: 0,
+      language: 'TypeScript', pushedAt: '2026-08-14T00:00:00.000Z',
       source: 'discovered', trustLevel: 'manifest_verified',
       verification: { manifest: 'shape_validated', installation: 'not_tested' },
       install: 'dsh plugin --profile web add github:acme/plugin', icon: 'https://github.com/acme.png', ...plugin,
@@ -47,6 +48,11 @@ test('missing descriptions are reported without removing listed plugins', () => 
 test('legacy verified and installable booleans are rejected as ambiguous', () => {
   const result = validateRegistry(registry({ verified: true, installable: true }))
   assert.match(result.errors.join(' '), /ambiguous verified or installable fields/)
+})
+
+test('contract rejects invalid repository update timestamps', () => {
+  const result = validateRegistry(registry({ pushedAt: 'recently' }))
+  assert.match(result.errors.join(' '), /pushedAt must be a valid ISO date or null/)
 })
 
 test('duplicate repositories and malformed install commands fail', () => {

@@ -51,7 +51,7 @@
     </div>
     <aside>
       <div class="side-card"><h4>社区数据</h4><div class="metric-pair"><div><b id="plugin-stars">—</b><span>Stars</span></div><div><b id="plugin-forks">—</b><span>Forks</span></div></div></div>
-      <div class="side-card"><h4>信息</h4><div class="kv"><span class="k">维护者</span><span class="v" id="maintainer"></span></div><div class="kv"><span class="k">分类</span><span class="v" id="category"></span></div><div class="kv"><span class="k">来源</span><span class="v" id="source"></span></div><div class="kv"><span class="k" id="manifest-label"></span><span class="v" id="manifest-status"></span></div><div class="kv"><span class="k" id="installation-test-label"></span><span class="v" id="installation-test-status"></span></div><div class="kv"><span class="k">仓库</span><span class="v"><a id="repo-link" target="_blank" rel="noopener">GitHub</a></span></div></div>
+      <div class="side-card"><h4>信息</h4><div class="kv"><span class="k">维护者</span><span class="v" id="maintainer"></span></div><div class="kv"><span class="k">分类</span><span class="v" id="category"></span></div><div class="kv"><span class="k" id="language-label"></span><span class="v" id="language-status"></span></div><div class="kv"><span class="k" id="updated-label"></span><time class="v" id="updated-status"></time></div><div class="kv"><span class="k">来源</span><span class="v" id="source"></span></div><div class="kv"><span class="k" id="manifest-label"></span><span class="v" id="manifest-status"></span></div><div class="kv"><span class="k" id="installation-test-label"></span><span class="v" id="installation-test-status"></span></div><div class="kv"><span class="k">仓库</span><span class="v"><a id="repo-link" target="_blank" rel="noopener">GitHub</a></span></div></div>
     </aside>
   </div>
 </main>
@@ -94,6 +94,18 @@ const { findPluginById } = await import('/assets/plugin-detail.js');
   document.getElementById('plugin-forks').textContent = plugin.forks.toLocaleString();
   document.getElementById('maintainer').textContent = '@' + plugin.owner;
   document.getElementById('category').textContent = HR.categoryName(plugin.category);
+  var missingMetadata = english ? 'Not provided' : '未提供';
+  var language = typeof plugin.language === 'string' ? plugin.language.trim() : '';
+  document.getElementById('language-label').textContent = english ? 'Language' : '开发语言';
+  document.getElementById('language-status').textContent = language || missingMetadata;
+  document.getElementById('updated-label').textContent = english ? 'Last updated' : '最近更新';
+  var updatedStatus = document.getElementById('updated-status');
+  var hasValidPushedAt = typeof plugin.pushedAt === 'string' && !Number.isNaN(Date.parse(plugin.pushedAt));
+  updatedStatus.textContent = hasValidPushedAt ? plugin.pushedAt.slice(0, 10) : missingMetadata;
+  if (hasValidPushedAt) {
+    updatedStatus.dateTime = plugin.pushedAt;
+    updatedStatus.title = english ? 'Last push to the GitHub repository' : 'GitHub 仓库最后推送时间';
+  }
   document.getElementById('source').textContent = plugin.source === 'curated' ? (english ? 'Community catalog' : '社区目录') : (english ? 'GitHub auto-discovery' : 'GitHub 自动发现');
   var manifestShapeValidated = plugin.verification.manifest === 'shape_validated';
   document.getElementById('manifest-label').textContent = 'Manifest';

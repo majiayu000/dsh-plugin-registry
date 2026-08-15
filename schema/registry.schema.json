@@ -48,6 +48,12 @@
           "stars": { "type": "integer", "minimum": 0 },
           "forks": { "type": "integer", "minimum": 0 },
           "language": { "type": "string" },
+          "pushedAt": {
+            "anyOf": [
+              { "type": "string", "format": "date-time" },
+              { "type": "null" }
+            ]
+          },
           "source": { "enum": ["curated", "discovered"] },
           "trustLevel": { "enum": ["curated", "manifest_verified"] },
           "verification": {

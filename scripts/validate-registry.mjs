@@ -47,6 +47,9 @@ export function validateRegistry(registry) {
     if (!Number.isInteger(plugin?.stars) || plugin.stars < 0) errors.push(`${label}.stars must be a non-negative integer.`)
     if (!Number.isInteger(plugin?.forks) || plugin.forks < 0) errors.push(`${label}.forks must be a non-negative integer.`)
     if (plugin?.language !== undefined && typeof plugin.language !== 'string') errors.push(`${label}.language must be a string.`)
+    if (plugin?.pushedAt !== undefined && plugin.pushedAt !== null && (typeof plugin.pushedAt !== 'string' || Number.isNaN(Date.parse(plugin.pushedAt)))) {
+      errors.push(`${label}.pushedAt must be a valid ISO date or null.`)
+    }
     if (!['curated', 'discovered'].includes(plugin?.source)) errors.push(`${label}.source is invalid.`)
     const expectedTrust = plugin?.source === 'curated' ? 'curated' : 'manifest_verified'
     if (plugin?.trustLevel !== expectedTrust) errors.push(`${label}.trustLevel must be ${expectedTrust}.`)
