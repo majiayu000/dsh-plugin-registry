@@ -12,7 +12,7 @@ Requirements: Node.js 22 and npm.
 
 ```bash
 git clone https://github.com/majiayu000/dsh-plugin-registry.git
-cd dsh-plugin
+cd dsh-plugin-registry
 npm ci
 npm run dev
 ```
@@ -96,6 +96,14 @@ GITHUB_TOKEN=... npm run sync:plugins
 ```
 
 Do not commit tokens or generated credentials. See [CONTRIBUTING.md](CONTRIBUTING.md) for the change workflow.
+
+### Project structure
+
+- `assets/` contains the registry UI modules, styles, and translations.
+- `public/data/plugins.json` is the generated public registry snapshot.
+- `scripts/` contains discovery, normalization, and validation tooling.
+- `schema/registry.schema.json` defines the published snapshot contract.
+- `tests/` covers registry governance and browser-facing behavior.
 
 ## Support and security
 
