@@ -26,25 +26,25 @@
     <p class="page-sub rise rise-2">插件仍由你自己的 GitHub 仓库托管。声明可安装的 DSH bundle，再添加 dsh-plugin Topic，Registry 会在下一次同步时自动发现。</p>
   </section>
 
-  <div class="stepper rise rise-3">
-    <div class="step"><span class="step-n">01</span><div><b>声明 bundle</b><small>package.json</small></div></div>
-    <div class="step"><span class="step-n">02</span><div><b>添加 Topic</b><small>dsh-plugin</small></div></div>
-    <div class="step"><span class="step-n">03</span><div><b>自动验证</b><small>每 8 小时</small></div></div>
-    <div class="step"><span class="step-n">04</span><div><b>进入列表</b><small>无需提交表单</small></div></div>
-  </div>
+  <ol class="stepper rise rise-3" aria-label="自动发现流程">
+    <li class="step"><span class="step-n" aria-hidden="true">01</span><span class="step-copy"><strong class="step-t">声明 bundle</strong><span class="step-d">package.json</span></span></li>
+    <li class="step"><span class="step-n" aria-hidden="true">02</span><span class="step-copy"><strong class="step-t">添加 Topic</strong><span class="step-d">dsh-plugin</span></span></li>
+    <li class="step"><span class="step-n" aria-hidden="true">03</span><span class="step-copy"><strong class="step-t">自动验证</strong><span class="step-d">每 8 小时</span></span></li>
+    <li class="step"><span class="step-n" aria-hidden="true">04</span><span class="step-copy"><strong class="step-t">进入列表</strong><span class="step-d">无需提交表单</span></span></li>
+  </ol>
 
   <div class="pub-grid rise rise-4">
     <section class="panel publish-guide">
-      <h3>最低可安装契约</h3>
+      <h2 class="panel-title">最低可安装契约</h2>
       <p class="psub">只有 dsh.client 不够，必须声明 dsh.bundle。</p>
-      <div class="codeblock">{
+      <pre class="codeblock"><code>{
   <span class="k">"dsh"</span>: {
     <span class="k">"bundle"</span>: {
       <span class="k">"patch"</span>: <span class="k">"./cordis.patch.yml"</span>
     }
   }
-}</div>
-      <h3>让自动发现生效</h3>
+}</code></pre>
+      <h2 class="panel-title">让自动发现生效</h2>
       <ol class="publish-list">
         <li>仓库包含真实、可运行的插件代码。</li>
         <li>在 GitHub 仓库设置中添加 <code>dsh-plugin</code> Topic。</li>
@@ -54,18 +54,21 @@
       <a class="btn" href="https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/blob/main/contributing.md" target="_blank" rel="noopener">查看完整收录规范</a>
     </section>
 
-    <aside class="panel repo-checker">
-      <h3>检查你的仓库</h3>
+    <aside class="panel repo-checker" aria-labelledby="repo-checker-title">
+      <h2 class="panel-title" id="repo-checker-title">检查你的仓库</h2>
       <p class="psub">输入 GitHub 仓库地址，只读取公开的 package.json 与 Topics。</p>
-      <label class="field"><span>GitHub 仓库</span><input id="repo-input" placeholder="owner/repo 或 GitHub URL" autocomplete="off"></label>
-      <button class="btn btn-primary" id="check-button">开始检查</button>
-      <div class="check-list" id="check-results" hidden>
-        <div class="check-row" data-check="repo"><span class="check-ic">✓</span>公开仓库存在</div>
-        <div class="check-row" data-check="topic"><span class="check-ic">✓</span>包含 dsh-plugin Topic</div>
-        <div class="check-row" data-check="bundle"><span class="check-ic">✓</span>声明有效的 dsh.bundle</div>
-        <div class="check-row" data-check="status"><span class="check-ic">✓</span>仓库未归档且不是 Fork</div>
-      </div>
-      <p class="form-hint" id="check-message"></p>
+      <form id="repo-checker-form" novalidate>
+        <label class="field" for="repo-input"><span class="field-label">GitHub 仓库</span><input type="text" id="repo-input" placeholder="owner/repo 或 GitHub URL" autocomplete="url" autocapitalize="none" spellcheck="false" aria-describedby="repo-help check-message"></label>
+        <p class="field-help" id="repo-help">例如：owner/repo</p>
+        <button class="btn btn-primary" id="check-button" type="submit">开始检查</button>
+        <ul class="check-list" id="check-results" hidden aria-label="自动发现检查结果">
+          <li class="check-row" data-check="repo"><span class="check-ic" aria-hidden="true">—</span><span class="check-label">公开仓库存在</span><span class="check-state">待检查</span></li>
+          <li class="check-row" data-check="topic"><span class="check-ic" aria-hidden="true">—</span><span class="check-label">包含 dsh-plugin Topic</span><span class="check-state">待检查</span></li>
+          <li class="check-row" data-check="bundle"><span class="check-ic" aria-hidden="true">—</span><span class="check-label">声明有效的 dsh.bundle</span><span class="check-state">待检查</span></li>
+          <li class="check-row" data-check="status"><span class="check-ic" aria-hidden="true">—</span><span class="check-label">仓库未归档且不是 Fork</span><span class="check-state">待检查</span></li>
+        </ul>
+        <p class="form-hint" id="check-message" role="status" aria-live="polite" tabindex="-1"></p>
+      </form>
     </aside>
   </div>
 </main>
@@ -78,19 +81,41 @@ const { validateBundleManifest } = await import('/assets/bundle-manifest.js');
 const { evaluateRepository, findRegistryEntry, parseGitHubRepository } = await import('/assets/repository-checker.js');
 (function () {
   'use strict';
-  function setCheck(key, ok) { document.querySelector('[data-check="' + key + '"]').classList.toggle('ok', ok); }
-  document.getElementById('check-button').addEventListener('click', async function () {
-    var repo = parseGitHubRepository(document.getElementById('repo-input').value);
+  function setCheck(key, ok) {
+    var row = document.querySelector('[data-check="' + key + '"]');
+    row.classList.toggle('ok', ok);
+    row.classList.toggle('fail', !ok);
+    row.querySelector('.check-ic').textContent = ok ? '✓' : '×';
+    row.querySelector('.check-state').textContent = ok ? '通过' : '未通过';
+  }
+  function resetChecks() {
+    document.querySelectorAll('.check-row').forEach(function (row) {
+      row.classList.remove('ok', 'fail');
+      row.querySelector('.check-ic').textContent = '—';
+      row.querySelector('.check-state').textContent = '待检查';
+    });
+  }
+  document.getElementById('repo-checker-form').addEventListener('submit', async function (event) {
+    event.preventDefault();
+    var input = document.getElementById('repo-input');
+    var button = document.getElementById('check-button');
+    var repo = parseGitHubRepository(input.value);
     var message = document.getElementById('check-message');
     var results = document.getElementById('check-results');
-    if (!repo) { message.textContent = '请输入 owner/repo 或完整 GitHub 仓库地址。'; return; }
-    this.disabled = true; this.textContent = '检查中…'; results.hidden = false; message.textContent = '';
-    ['repo', 'topic', 'bundle', 'status'].forEach(function (key) { setCheck(key, false); });
+    if (!repo) {
+      input.setAttribute('aria-invalid', 'true');
+      message.textContent = '请输入 owner/repo 或完整 GitHub 仓库地址。';
+      input.focus();
+      return;
+    }
+    input.removeAttribute('aria-invalid');
+    button.disabled = true; button.textContent = '检查中…'; results.hidden = false; message.textContent = '';
+    this.setAttribute('aria-busy', 'true');
+    resetChecks();
     try {
       var repoResponse = await fetch('https://api.github.com/repos/' + repo, { headers: { accept: 'application/vnd.github+json' } });
       if (!repoResponse.ok) throw new Error('GitHub HTTP ' + repoResponse.status);
       var data = await repoResponse.json();
-      setCheck('repo', true); setCheck('topic', (data.topics || []).indexOf('dsh-plugin') >= 0); setCheck('status', !data.archived && !data.fork);
       var packageResponse = await fetch('https://api.github.com/repos/' + repo + '/contents/package.json', { headers: { accept: 'application/vnd.github.raw+json' } });
       var bundleCheck = { valid: false, reason: 'package.json 不存在。' };
       if (packageResponse.ok) bundleCheck = validateBundleManifest(await packageResponse.text());
@@ -108,7 +133,7 @@ const { evaluateRepository, findRegistryEntry, parseGitHubRepository } = await i
           ? '这个仓库已通过精选目录收录，但还不符合自动发现契约。现有收录不会受影响。'
           : (!bundleCheck.valid ? 'Manifest 未通过：' + bundleCheck.reason : '还有项目未通过，请按上面的契约修复后重新检查。'));
     } catch (error) { message.textContent = '检查失败：' + error.message; }
-    finally { this.disabled = false; this.textContent = '重新检查'; }
+    finally { button.disabled = false; button.textContent = '重新检查'; this.removeAttribute('aria-busy'); }
   });
 })();
 </script>
