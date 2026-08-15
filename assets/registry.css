@@ -197,12 +197,7 @@ html.modal-open, html.modal-open body { overflow: hidden; }
 .install-dialog-close:hover { background: var(--surface-warm); color: var(--fg); }
 .install-dialog-close:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .install-dialog-intro { margin-top: 14px; color: var(--fg-2); font-size: 14px; max-width: 62ch; }
-.install-dialog-context { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 18px; }
-.install-dialog-context > div { min-width: 0; padding: 12px 14px; border: 1px solid var(--border-soft); border-radius: 14px; background: var(--surface); }
-.install-dialog-context span, .install-dialog-context small { display: block; color: var(--muted); font-size: 11px; line-height: 1.45; }
-.install-dialog-context b { display: block; margin: 3px 0; color: var(--fg); font-size: 13px; font-weight: 500; }
-.install-dialog-context code, .install-steps code { font-family: var(--font-mono); color: var(--fg-2); overflow-wrap: anywhere; }
-.install-steps { display: grid; gap: 2px; margin-top: 16px; list-style: none; }
+.install-steps { display: grid; gap: 2px; margin-top: 22px; list-style: none; }
 .install-steps li { display: grid; grid-template-columns: 36px 1fr; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border-soft); }
 .install-steps li > span { color: var(--blue); font: 500 11px/1.7 var(--font-mono); }
 .install-steps b { display: block; font-size: 14px; font-weight: 500; }
@@ -222,9 +217,6 @@ html.modal-open, html.modal-open body { overflow: hidden; }
 .install-dialog-links { display: flex; justify-content: space-between; gap: 16px; margin-top: 18px; }
 .install-dialog-links a { color: var(--fg-2); font-size: 12px; text-underline-offset: 3px; }
 .install-dialog-links a:hover { color: var(--blue); }
-@media (max-width: 520px) {
-  .install-dialog-context { grid-template-columns: 1fr; }
-}
 
 /* ---------- 徽标 / 药丸 ---------- */
 .pill {
