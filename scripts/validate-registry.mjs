@@ -17,7 +17,7 @@ export function validateRegistry(registry) {
   const errors = []
   const warnings = []
   const ids = new Set()
-  const repositories = new Set()
+  const repositoryIds = new Map()
   const categories = new Set(Object.keys(registry?.categories || {}))
 
   if (registry?.schemaVersion !== 2) errors.push('schemaVersion must be 2.')
@@ -40,8 +40,14 @@ export function validateRegistry(registry) {
     if (ids.has(String(plugin?.id).toLowerCase())) errors.push(`${label}.id is duplicated: ${plugin.id}.`)
     ids.add(String(plugin?.id).toLowerCase())
     if (!repositoryUrl) errors.push(`${label}.url must be a valid GitHub repository URL.`)
-    if (key && repositories.has(key) && !String(plugin.id).includes('#')) errors.push(`${label} duplicates repository ${key}.`)
-    if (key) repositories.add(key)
+    const existingRepositoryIds = repositoryIds.get(key) || new Set()
+    if (key && existingRepositoryIds.size && !String(plugin.id).includes('#') && [...existingRepositoryIds].some(id => !id.includes('#'))) {
+      errors.push(`${label} duplicates repository ${key}.`)
+    }
+    if (key) {
+      existingRepositoryIds.add(String(plugin.id).toLowerCase())
+      repositoryIds.set(key, existingRepositoryIds)
+    }
     if (!/^https:\/\//.test(plugin?.icon || '')) errors.push(`${label}.icon must be an HTTPS URL.`)
     if (!categories.has(plugin?.category)) errors.push(`${label}.category is unknown: ${plugin?.category}.`)
     if (!Number.isInteger(plugin?.stars) || plugin.stars < 0) errors.push(`${label}.stars must be a non-negative integer.`)

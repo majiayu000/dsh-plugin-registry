@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
+import { discoverGitHubRepositories, mapGraphqlRepository, REPOSITORY_DISCOVERY_QUERY } from './github-discovery.mjs'
 import {
   applyGovernance,
   hasBundleManifest,
@@ -66,6 +67,14 @@ async function loadPrevious() {
   }
 }
 
+async function loadPreviousAudit() {
+  try {
+    return JSON.parse(await readFile(AUDIT_OUTPUT, 'utf8'))
+  } catch {
+    return null
+  }
+}
+
 async function loadConfig(path) {
   return JSON.parse(await readFile(path, 'utf8'))
 }
@@ -91,42 +100,54 @@ async function loadCurated(previous) {
   }
 }
 
-async function githubSearch(query, page = 1) {
-  const params = new URLSearchParams({ q: query, sort: 'updated', order: 'desc', per_page: '100', page: String(page) })
-  const result = await fetchJson(`${GITHUB_API}/search/repositories?${params}`)
-  if (TOKEN) await sleep(2_100)
-  return result
-}
-
-function isoDate(date) {
-  return date.toISOString().slice(0, 10)
-}
-
-async function discoverWindow(from, to) {
-  const query = `topic:dsh-plugin created:${isoDate(from)}..${isoDate(to)}`
-  const first = await githubSearch(query, 1)
-  if (first.total_count <= 1_000 || isoDate(from) === isoDate(to)) {
-    const pages = Math.min(10, Math.ceil(first.total_count / 100))
-    const items = [...first.items]
-    for (let page = 2; page <= pages; page += 1) items.push(...(await githubSearch(query, page)).items)
-    return items
+async function githubGraphql(query, variables, options = {}) {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const response = await fetchJson(`${GITHUB_API}/graphql`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ query, variables }),
+    })
+    if (!response.errors?.length) return response.data
+    const message = response.errors.map(error => error.message).join('; ')
+    if (options.allowPartial && response.data) {
+      console.warn(`GitHub GraphQL returned partial data: ${message}`)
+      return response.data
+    }
+    if (attempt === 2) throw new Error(`GitHub GraphQL failed: ${message}`)
+    console.warn(`GitHub GraphQL warning; retrying (${attempt + 1}/3): ${message}`)
+    await sleep(2_000 * (attempt + 1))
   }
+  throw new Error('GitHub GraphQL failed without a response.')
+}
 
-  const midpoint = new Date(Math.floor((from.getTime() + to.getTime()) / 2))
-  const nextDay = new Date(midpoint)
-  nextDay.setUTCDate(nextDay.getUTCDate() + 1)
-  return [
-    ...(await discoverWindow(from, midpoint)),
-    ...(await discoverWindow(nextDay, to)),
-  ]
+async function githubSearchPage({ searchQuery, cursor }) {
+  const data = await githubGraphql(REPOSITORY_DISCOVERY_QUERY, { searchQuery, cursor })
+  return {
+    repositoryCount: data.search.repositoryCount,
+    repositories: data.search.nodes.filter(Boolean).map(mapGraphqlRepository),
+    pageInfo: data.search.pageInfo,
+    rateLimit: data.rateLimit,
+  }
 }
 
 async function discoverRepositories() {
   if (!TOKEN) {
     console.warn('No GitHub token found; syncing the 100 most recently updated candidates only.')
-    return (await githubSearch('topic:dsh-plugin')).items.slice(0, MAX_UNAUTHENTICATED_CANDIDATES)
+    const params = new URLSearchParams({ q: 'topic:dsh-plugin', sort: 'updated', order: 'desc', per_page: String(MAX_UNAUTHENTICATED_CANDIDATES) })
+    return (await fetchJson(`${GITHUB_API}/search/repositories?${params}`)).items
   }
-  return discoverWindow(new Date('2008-01-01T00:00:00Z'), new Date())
+  console.log('Starting complete GitHub topic discovery with GraphQL pagination.')
+  return discoverGitHubRepositories({
+    searchPage: githubSearchPage,
+    onProgress(progress) {
+      const remaining = progress.rateLimit?.remaining ?? '?'
+      if (progress.type === 'window') {
+        console.log(`Discovery window ${progress.range}: ${progress.totalCount} repositories (depth ${progress.depth}, rate limit ${remaining} remaining).`)
+      } else {
+        console.log(`Discovery page ${progress.page}: ${progress.fetched}/${progress.totalCount} for ${progress.range} (rate limit ${remaining} remaining).`)
+      }
+    },
+  })
 }
 
 async function loadPackageManifests(repositories) {
@@ -146,13 +167,8 @@ async function loadPackageManifests(repositories) {
         const [owner, name] = repo.full_name.split('/')
         return `r${index}: repository(owner: ${JSON.stringify(owner)}, name: ${JSON.stringify(name)}) { object(expression: "HEAD:package.json") { ... on Blob { text } } }`
       }).join('\n')
-      const response = await fetchJson(`${GITHUB_API}/graphql`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ query: `query { ${fields} }` }),
-      })
-      if (response.errors?.length) console.warn(`GraphQL manifest batch warning: ${response.errors[0].message}`)
-      batch.forEach((repo, index) => manifests.set(repoKey(...repo.full_name.split('/')), response.data?.[`r${index}`]?.object?.text || ''))
+      const data = await githubGraphql(`query { ${fields} }`, {}, { allowPartial: true })
+      batch.forEach((repo, index) => manifests.set(repoKey(...repo.full_name.split('/')), data?.[`r${index}`]?.object?.text || ''))
       completed += batch.length
       if (completed === batch.length || completed === repositories.length || completed % 400 < batchSize) {
         console.log(`Manifest validation: ${completed}/${repositories.length}`)
@@ -164,7 +180,7 @@ async function loadPackageManifests(repositories) {
 }
 
 async function main() {
-  const previous = await loadPrevious()
+  const [previous, previousAudit] = await Promise.all([loadPrevious(), loadPreviousAudit()])
   const [blocklist, overrides] = await Promise.all([loadConfig(BLOCKLIST), loadConfig(OVERRIDES)])
   const curatedRegistry = await loadCurated(previous)
   const repositories = await discoverRepositories()
@@ -174,13 +190,17 @@ async function main() {
 
   const curatedKeys = new Set(curatedRegistry.plugins.map(plugin => repoKey(plugin.owner, plugin.name)))
   const newCandidates = uniqueRepositories.filter(repo => !curatedKeys.has(repo.full_name.toLowerCase()))
-  const previousManifestValidated = new Map((previous?.plugins || [])
-    .filter(plugin => plugin.verification?.manifest === 'shape_validated' || plugin.source === 'discovered')
-    .map(plugin => [plugin.id.toLowerCase(), plugin]))
-  const unchangedManifestValidated = new Set(newCandidates
-    .filter(repo => previousManifestValidated.get(repo.full_name.toLowerCase())?.pushedAt === repo.pushed_at)
-    .map(repo => repo.full_name.toLowerCase()))
-  const manifests = await loadPackageManifests(newCandidates.filter(repo => !unchangedManifestValidated.has(repo.full_name.toLowerCase())))
+  const manifestCache = new Map()
+  for (const plugin of previous?.plugins || []) {
+    if (plugin.source !== 'discovered') continue
+    manifestCache.set(plugin.id.toLowerCase(), { pushedAt: plugin.pushedAt, shapeValid: plugin.verification?.manifest === 'shape_validated' })
+  }
+  for (const plugin of previousAudit?.pendingReview || []) {
+    manifestCache.set(plugin.id.toLowerCase(), { pushedAt: plugin.pushedAt, shapeValid: false })
+  }
+  const candidatesToValidate = newCandidates.filter(repo => manifestCache.get(repo.full_name.toLowerCase())?.pushedAt !== repo.pushed_at)
+  console.log(`Manifest cache: ${newCandidates.length - candidatesToValidate.length} unchanged, ${candidatesToValidate.length} to validate.`)
+  const manifests = await loadPackageManifests(candidatesToValidate)
 
   const metadata = new Map(uniqueRepositories.map(repo => [repo.full_name.toLowerCase(), {
     stargazerCount: repo.stargazers_count,
@@ -193,7 +213,11 @@ async function main() {
   }]))
   const curated = curatedRegistry.plugins.map(plugin => normalizeCurated(plugin, metadata.get(repoKey(plugin.owner, plugin.name))))
   const normalizedCandidates = newCandidates
-    .map(repo => normalizeDiscovered(repo, unchangedManifestValidated.has(repo.full_name.toLowerCase()) || hasBundleManifest(manifests.get(repo.full_name.toLowerCase()))))
+    .map(repo => {
+      const cached = manifestCache.get(repo.full_name.toLowerCase())
+      const unchanged = cached?.pushedAt === repo.pushed_at
+      return normalizeDiscovered(repo, unchanged ? cached.shapeValid : hasBundleManifest(manifests.get(repo.full_name.toLowerCase())))
+    })
   const blocked = new Map((blocklist.repositories || []).map(entry => [String(entry.repo).toLowerCase(), entry]))
   const candidateQuarantined = normalizedCandidates.filter(plugin => blocked.has(repoKey(plugin.owner, plugin.name))).map(plugin => ({
     id: plugin.id,
@@ -209,6 +233,7 @@ async function main() {
     trustLevel: 'pending_review',
     reason: 'package.json does not declare a valid dsh.bundle object',
     stars: plugin.stars,
+    pushedAt: plugin.pushedAt,
   }))
   const governed = applyGovernance(mergePlugins(curated, discovered), blocklist, overrides)
   const plugins = governed.plugins.map(toPublicPlugin)

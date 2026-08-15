@@ -28,11 +28,25 @@ export function repoKey(owner, name) {
   return `${owner}/${name}`.toLowerCase()
 }
 
+function curatedIdentity(plugin) {
+  const match = String(plugin.url || '').match(/^https:\/\/github\.com\/([^/]+)\/([^/?#]+)/)
+  if (!match) return { id: `${plugin.owner}/${plugin.name}`, owner: plugin.owner }
+  const [, repositoryOwner, repositoryName] = match
+  const qualifier = plugin.name === repositoryName
+    ? ''
+    : (plugin.name.startsWith(`${repositoryName}#`) ? plugin.name.slice(repositoryName.length + 1) : plugin.name)
+  return {
+    id: `${repositoryOwner}/${repositoryName}${qualifier ? `#${qualifier}` : ''}`,
+    owner: repositoryOwner,
+  }
+}
+
 export function normalizeCurated(plugin, metadata = {}) {
-  const owner = plugin.owner
+  const identity = curatedIdentity(plugin)
+  const owner = identity.owner
   const name = plugin.name
   return {
-    id: `${owner}/${name}`,
+    id: identity.id,
     name,
     owner,
     url: plugin.url || `https://github.com/${owner}/${name}`,

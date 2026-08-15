@@ -1,0 +1,101 @@
+const MAX_SEARCH_RESULTS = 1_000
+const ONE_SECOND = 1_000
+
+export const REPOSITORY_DISCOVERY_QUERY = `
+  query RegistryRepositoryDiscovery($searchQuery: String!, $cursor: String) {
+    search(query: $searchQuery, type: REPOSITORY, first: 100, after: $cursor) {
+      repositoryCount
+      pageInfo { hasNextPage endCursor }
+      nodes {
+        ... on Repository {
+          nameWithOwner
+          url
+          description
+          stargazerCount
+          forkCount
+          pushedAt
+          isArchived
+          isFork
+          primaryLanguage { name }
+          owner { avatarUrl }
+          repositoryTopics(first: 20) { nodes { topic { name } } }
+        }
+      }
+    }
+    rateLimit { cost remaining resetAt }
+  }
+`
+
+function toSearchTimestamp(value) {
+  return new Date(value).toISOString().replace(/\.\d{3}Z$/, 'Z')
+}
+
+function splitWindow(from, to) {
+  const fromTime = from.getTime()
+  const toTime = to.getTime()
+  const midpoint = Math.floor(((fromTime + toTime) / 2) / ONE_SECOND) * ONE_SECOND
+  if (midpoint < fromTime || midpoint >= toTime) {
+    throw new Error(`GitHub returned more than ${MAX_SEARCH_RESULTS} repositories inside one second; the discovery window cannot be split safely.`)
+  }
+  return [
+    [new Date(fromTime), new Date(midpoint)],
+    [new Date(midpoint + ONE_SECOND), new Date(toTime)],
+  ]
+}
+
+export function mapGraphqlRepository(repository) {
+  return {
+    full_name: repository.nameWithOwner,
+    html_url: repository.url,
+    description: repository.description || '',
+    stargazers_count: repository.stargazerCount || 0,
+    forks_count: repository.forkCount || 0,
+    language: repository.primaryLanguage?.name || '',
+    pushed_at: repository.pushedAt || null,
+    archived: Boolean(repository.isArchived),
+    fork: Boolean(repository.isFork),
+    topics: repository.repositoryTopics?.nodes?.map(node => node.topic.name) || [],
+    owner: { avatar_url: repository.owner?.avatarUrl || '' },
+  }
+}
+
+export async function discoverGitHubRepositories({
+  searchPage,
+  from = new Date('2008-01-01T00:00:00Z'),
+  to = new Date(),
+  onProgress = () => {},
+}) {
+  async function discoverWindow(windowFrom, windowTo, depth = 0) {
+    const range = `${toSearchTimestamp(windowFrom)}..${toSearchTimestamp(windowTo)}`
+    const searchQuery = `topic:dsh-plugin created:${range}`
+    const first = await searchPage({ searchQuery, cursor: null })
+    const totalCount = first.repositoryCount
+    onProgress({ type: 'window', range, totalCount, depth, rateLimit: first.rateLimit })
+
+    if (totalCount > MAX_SEARCH_RESULTS) {
+      const windows = splitWindow(windowFrom, windowTo)
+      return [
+        ...(await discoverWindow(windows[0][0], windows[0][1], depth + 1)),
+        ...(await discoverWindow(windows[1][0], windows[1][1], depth + 1)),
+      ]
+    }
+
+    const repositories = [...first.repositories]
+    let pageInfo = first.pageInfo
+    let page = 1
+    while (pageInfo.hasNextPage) {
+      page += 1
+      const next = await searchPage({ searchQuery, cursor: pageInfo.endCursor })
+      repositories.push(...next.repositories)
+      pageInfo = next.pageInfo
+      onProgress({ type: 'page', range, totalCount, fetched: repositories.length, page, rateLimit: next.rateLimit })
+    }
+
+    if (repositories.length !== totalCount) {
+      throw new Error(`GitHub discovery returned ${repositories.length}/${totalCount} repositories for ${range}. Refusing to publish an incomplete window.`)
+    }
+    return repositories
+  }
+
+  return discoverWindow(new Date(from), new Date(to))
+}

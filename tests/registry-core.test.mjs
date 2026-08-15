@@ -43,6 +43,18 @@ test('curated entries override discovered duplicates', () => {
   assert.deepEqual(merged[0].verification, { manifest: 'not_checked', installation: 'not_tested' })
 })
 
+test('curated monorepo entries use the repository URL as identity', () => {
+  const plugin = normalizeCurated({
+    owner: 'sjh9714',
+    name: 'dsh-movein-permissions',
+    url: 'https://github.com/sjh9714/dsh-movein/tree/main/plugin',
+    description: { zh: '权限规则', en: 'Permission rules' },
+  })
+  assert.equal(plugin.id, 'sjh9714/dsh-movein#dsh-movein-permissions')
+  assert.equal(plugin.owner, 'sjh9714')
+  assert.equal(plugin.name, 'dsh-movein-permissions')
+})
+
 test('public plugins expose verification evidence without internal eligibility flags', () => {
   const normalized = normalizeDiscovered({ full_name: 'acme/plugin', html_url: 'https://github.com/acme/plugin' }, true)
   const plugin = toPublicPlugin(normalized)

@@ -63,6 +63,19 @@ test('duplicate repositories and malformed install commands fail', () => {
   assert.match(result.errors.join(' '), /duplicates repository/)
 })
 
+test('a base plugin and qualified monorepo plugins can share one repository in any order', () => {
+  const document = registry()
+  const base = document.plugins[0]
+  const qualified = {
+    ...base,
+    id: `${base.id}#permissions`,
+    name: 'permissions',
+    install: `dsh plugin --profile web add github:${base.id}#permissions`,
+  }
+  document.plugins = [qualified, base]
+  assert.deepEqual(validateRegistry(document).errors, [])
+})
+
 test('GitHub identities reject markup before registry data reaches HTML renderers', () => {
   const owner = '<img src=x onerror=alert(1)>'
   const result = validateRegistry(registry({
