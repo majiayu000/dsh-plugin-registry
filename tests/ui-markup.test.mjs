@@ -52,4 +52,6 @@ test('install actions open an accessible shared guide instead of silently copyin
   assert.match(detail, /HR\.openInstallDialog\(plugin\)/)
   assert.match(detail, /id="install-btn">安装步骤<\/button>/)
   assert.match(detail, /id="copy-btn"/)
+  assert.match(detail, /id="install-copy-status" role="status"/)
+  assert.match(detail, /命令已复制，插件尚未安装/)
 })

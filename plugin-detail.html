@@ -32,6 +32,7 @@
   </section>
 
   <div class="installbox rise rise-2"><span class="dollar">$</span><code id="install-command"></code><button class="copy" id="copy-btn">复制命令</button></div>
+  <p class="install-note" id="install-copy-status" role="status"></p>
 
   <div class="detail-grid">
     <div>
@@ -84,6 +85,10 @@ const { findPluginById } = await import('/assets/plugin-detail.js');
   document.getElementById('source-pill').innerHTML = HR.sourcePill(plugin);
   document.getElementById('avatar-slot').appendChild(HR.avatar(plugin, 'lg'));
   document.getElementById('install-command').textContent = plugin.install;
+  var installCopyStatus = document.getElementById('install-copy-status');
+  installCopyStatus.textContent = english
+    ? 'Copying this command does not install the plugin. Run it in a terminal to start installation.'
+    : '复制命令不会安装插件；只有在终端执行后，安装才会开始。';
   document.getElementById('plugin-stars').textContent = plugin.stars.toLocaleString();
   document.getElementById('plugin-forks').textContent = plugin.forks.toLocaleString();
   document.getElementById('maintainer').textContent = '@' + plugin.owner;
@@ -96,7 +101,13 @@ const { findPluginById } = await import('/assets/plugin-detail.js');
     : (english ? 'At sync time, the root package.json contained a dsh.bundle object that matched the registry schema. This is not a security audit.' : '同步时，仓库根目录 package.json 的 dsh.bundle 字段符合注册表格式；这不代表安全审计。');
   document.getElementById('topic-list').innerHTML = (plugin.topics || []).map(function (topic) { return '<span class="topic-chip">' + HR.escapeHtml(topic) + '</span>'; }).join('') || '<span class="topic-chip">dsh-plugin</span>';
   document.getElementById('install-btn').addEventListener('click', function () { HR.openInstallDialog(plugin); });
-  document.getElementById('copy-btn').addEventListener('click', function () { HR.copyText(this, plugin.install); });
+  document.getElementById('copy-btn').addEventListener('click', function () {
+    HR.copyText(this, plugin.install).then(function (copied) {
+      installCopyStatus.textContent = copied
+        ? (english ? 'Command copied. The plugin is not installed yet. Paste and run it in your terminal.' : '命令已复制，插件尚未安装。请粘贴到终端并执行。')
+        : (english ? 'Copy failed. Select the command above and copy it manually.' : '复制失败，请选中上方命令手动复制。');
+    });
+  });
 })();
 </script>
 </body>
