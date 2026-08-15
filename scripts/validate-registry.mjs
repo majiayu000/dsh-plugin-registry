@@ -54,6 +54,7 @@ export function validateRegistry(registry) {
     if (!Number.isInteger(plugin?.forks) || plugin.forks < 0) errors.push(`${label}.forks must be a non-negative integer.`)
     if (plugin?.language !== undefined && typeof plugin.language !== 'string') errors.push(`${label}.language must be a string.`)
     if (plugin?.special !== undefined && typeof plugin.special !== 'boolean') errors.push(`${label}.special must be a boolean.`)
+    if (plugin?.recommendationSource !== undefined && plugin.recommendationSource !== 'x') errors.push(`${label}.recommendationSource is invalid.`)
     if (plugin?.license !== undefined && typeof plugin.license !== 'string') errors.push(`${label}.license must be a string.`)
     if (plugin?.latestRelease !== undefined && plugin.latestRelease !== null) {
       if (typeof plugin.latestRelease !== 'object' || typeof plugin.latestRelease.tag !== 'string') errors.push(`${label}.latestRelease is invalid.`)

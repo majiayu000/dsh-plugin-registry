@@ -90,6 +90,7 @@
       "source": "discovered",
       "trustLevel": "manifest_verified",
       "special": true,
+      "recommendationSource": "x",
       "verification": {
         "manifest": "shape_validated",
         "patch": "exists",

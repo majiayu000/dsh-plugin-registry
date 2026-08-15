@@ -98,13 +98,14 @@ test('public plugins expose verification evidence without internal eligibility f
 test('governance blocks repositories and applies only approved overrides', () => {
   const plugin = normalizeDiscovered({ full_name: 'acme/plugin', html_url: 'https://github.com/acme/plugin' }, true)
   const result = applyGovernance([plugin], { repositories: [{ repo: 'other/repo' }] }, {
-    plugins: { 'acme/plugin': { name: 'Better name', category: 'dev', description: { zh: '修正' }, special: true, trustLevel: 'curated' } },
+    plugins: { 'acme/plugin': { name: 'Better name', category: 'dev', description: { zh: '修正' }, special: true, recommendationSource: 'x', trustLevel: 'curated' } },
   })
   assert.equal(result.plugins[0].name, 'Better name')
   assert.equal(result.plugins[0].category, 'dev')
   assert.equal(result.plugins[0].description.zh, '修正')
   assert.equal(result.plugins[0].description.en, '')
   assert.equal(result.plugins[0].special, true)
+  assert.equal(result.plugins[0].recommendationSource, 'x')
   assert.equal(result.plugins[0].trustLevel, 'manifest_verified')
 
   const blocked = applyGovernance([plugin], { repositories: [{ repo: 'ACME/plugin', reason: 'duplicate' }] })

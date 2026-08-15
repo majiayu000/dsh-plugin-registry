@@ -76,6 +76,7 @@ test('special listings receive a distinct bilingual marker', async () => {
     readFile('assets/registry.css', 'utf8'),
   ])
   assert.match(script, /Special listing.*特别收录/)
+  assert.match(script, /Source: X recommendation.*来源：X 推荐/)
   assert.match(css, /\.pill-special/)
 })
 

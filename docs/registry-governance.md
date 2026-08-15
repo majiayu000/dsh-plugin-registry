@@ -15,7 +15,7 @@ Registry 的公开列表只包含两种可信等级：
 ## 人工治理
 
 - 在 `sources/blocklist.json` 中按 `owner/repo` 排除恶意仓库、误收录、教程或重复项目，并记录原因。
-- 在 `sources/overrides.json` 中按小写 `owner/repo` 修正 `name`、`description`、`category`、`icon`、`install` 或 `special` 标记。来源、可信等级和仓库身份不能被覆盖。
+- 在 `sources/overrides.json` 中按小写 `owner/repo` 修正 `name`、`description`、`category`、`icon`、`install`、`special` 或展示用的 `recommendationSource` 标记。底层来源、可信等级和仓库身份不能被覆盖。
 
 ## 写入门禁
 

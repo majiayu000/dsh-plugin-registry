@@ -86,6 +86,7 @@ import { hasDshCandidateContext } from './candidate-relevance.js'
   }
 
   function sourceLabel(plugin) {
+    if (plugin.recommendationSource === 'x') return locale() === 'en' ? 'Source: X recommendation' : '来源：X 推荐';
     if (plugin.source === 'curated') return locale() === 'en' ? 'Source: community catalog' : '来源：社区目录';
     if (pendingReview(plugin)) return locale() === 'en' ? 'Source: GitHub candidate' : '来源：GitHub 候选';
     return locale() === 'en' ? 'Source: GitHub discovery' : '来源：GitHub 自动发现';

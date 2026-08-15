@@ -8,7 +8,8 @@
       },
       "category": "ui",
       "install": "dsh plugin --profile tui add dsh-mini-tui@latest",
-      "special": true
+      "special": true,
+      "recommendationSource": "x"
     }
   }
 }

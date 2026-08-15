@@ -13,6 +13,7 @@ test('special listing is visible with its repository-approved install command', 
   const row = page.locator('#list .prow').filter({ hasText: 'dsh-mini-tui' }).first()
   await expect(row).toBeVisible()
   await expect(row.locator('.pill-special')).toHaveText(/特别收录|Special listing/)
+  await expect(row.locator('.pill-source')).toHaveText(/来源：X 推荐|Source: X recommendation/)
   const install = await page.evaluate(() => HR.PLUGINS.find(plugin => plugin.id === 'boxeryao/dsh-mini-tui').install)
   expect(install).toBe('dsh plugin --profile tui add dsh-mini-tui@latest')
 })
