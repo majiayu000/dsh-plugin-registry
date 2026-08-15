@@ -23,7 +23,7 @@
   <section class="page-head">
     <p class="eyebrow rise">Stats · 公开数据</p>
     <h1 class="page-title rise rise-1">Registry 的脉搏。</h1>
-    <p class="page-sub rise rise-2">数据来自精选注册表与 GitHub dsh-plugin Topic。这里不制造下载量或评分，只展示可以被验证的公开指标。</p>
+    <p class="page-sub rise rise-2">数据来自社区目录与 GitHub dsh-plugin Topic。这里不制造下载量或评分，只展示可以被验证的公开指标。</p>
   </section>
 
   <div class="kpis rise rise-3">
@@ -85,7 +85,7 @@ await import('/assets/plugins.js');
   var curated = plugins.filter(function (plugin) { return plugin.source === 'curated'; }).length;
   var english = window.HRI18N.locale === 'en-US';
   bars('sources', [
-    { name: english ? 'Curated' : '精选', value: curated },
+    { name: english ? 'Community catalog' : '社区目录', value: curated },
     { name: english ? 'Manifest verified' : 'Manifest 已验证', value: plugins.length - curated },
     { name: english ? 'Pending review' : '待审查', value: HR.registry.stats.pendingReview || 0 },
     { name: english ? 'Quarantined' : '已隔离', value: HR.registry.stats.quarantined || 0 }

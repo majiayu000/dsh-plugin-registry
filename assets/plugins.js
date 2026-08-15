@@ -152,7 +152,7 @@ import { writeClipboardText } from './clipboard.js'
   }
 
   function sourcePill(plugin) {
-    if (plugin.trustLevel === 'curated' || plugin.source === 'curated') return '<span class="pill pill-official">' + (locale() === 'en' ? 'Curated' : '精选') + '</span>';
+    if (plugin.trustLevel === 'curated' || plugin.source === 'curated') return '<span class="pill pill-official">' + (locale() === 'en' ? 'Community catalog' : '社区目录收录') + '</span>';
     return '<span class="pill">' + (locale() === 'en' ? 'Manifest verified' : 'Manifest 已验证') + '</span>';
   }
 

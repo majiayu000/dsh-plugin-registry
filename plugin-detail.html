@@ -93,7 +93,7 @@ const { findPluginById } = await import('/assets/plugin-detail.js');
   document.getElementById('plugin-forks').textContent = plugin.forks.toLocaleString();
   document.getElementById('maintainer').textContent = '@' + plugin.owner;
   document.getElementById('category').textContent = HR.categoryName(plugin.category);
-  document.getElementById('source').textContent = plugin.source === 'curated' ? (english ? 'Curated registry' : '精选注册表') : (english ? 'GitHub auto-discovery' : 'GitHub 自动发现');
+  document.getElementById('source').textContent = plugin.source === 'curated' ? (english ? 'Community catalog' : '社区目录') : (english ? 'GitHub auto-discovery' : 'GitHub 自动发现');
   ['repo-button', 'repo-link'].forEach(function (id) { document.getElementById(id).href = plugin.url; });
   document.getElementById('evidence-title').textContent = plugin.source === 'curated' ? (english ? 'Imported from the community catalog' : '来自社区目录') : (english ? 'Manifest format verified' : 'Manifest 格式验证通过');
   document.getElementById('evidence-copy').textContent = plugin.source === 'curated'
