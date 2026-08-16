@@ -16420,6 +16420,28 @@
       "added": "2026-08-16",
       "stars": 5,
       "forks": 0
+    },
+    {
+      "id": "MichengAI/dsh-agency-agents",
+      "name": "dsh-agency-agents",
+      "url": "https://github.com/MichengAI/dsh-agency-agents",
+      "description": {
+        "zh": "全行业专家智能体阵容：267 个即插即用的领域专家角色——从前端、安全到小红书运营、抖音策略——专家模式下按需召唤，零配置运行；上游 persona 素材遵循 MIT 并随包附带许可文本。",
+        "en": "Agency experts for DSH: a summonable roster of 267 ready-to-use domain experts — covering engineering, security, content operations, and more — callable on demand in expert mode with zero configuration; upstream personas ship under MIT with license text included."
+      },
+      "category": "tools",
+      "topics": [
+        "deepseek",
+        "deepseek-harness",
+        "dsh",
+        "dsh-plugin",
+        "dsh-plugins"
+      ],
+      "install": "dsh plugin --profile web add @michengai/dsh-agency-agents",
+      "icon": "https://avatars.githubusercontent.com/u/18638322?u=a2a5eea751bf6a07741ca4063b08e625de9bea11&v=4",
+      "added": "2026-08-16",
+      "stars": 1,
+      "forks": 0
     }
   ]
 }
