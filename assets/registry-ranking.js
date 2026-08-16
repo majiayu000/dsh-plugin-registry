@@ -46,7 +46,9 @@ function trustMultiplier(plugin, trust) {
   if (plugin.verification?.patch === 'exists' && typeof plugin.verifiedCommit === 'string' && /^[0-9a-f]{40}$/.test(plugin.verifiedCommit)) {
     multiplier *= trust.verifiedChain
   }
-  if (plugin.source === 'curated') multiplier *= trust.curated
+  if (plugin.source === 'curated' && plugin.verification?.manifest === 'shape_validated' && plugin.verification?.patch === 'exists') {
+    multiplier *= trust.curated
+  }
   if (plugin.origin === 'issue') multiplier *= trust.issueSubmitted
   if (plugin.special || plugin.recommendationSource) multiplier *= trust.special
   return multiplier

@@ -54,7 +54,8 @@ test('submission endpoint validates Turnstile, checks GitHub, and creates an ass
     if (String(url).includes('/siteverify')) return Response.json({ success: true, action: 'plugin_submission', hostname: 'plugin.example' })
     if (String(url).includes('/issues?state=open')) return Response.json([])
     if (String(url).endsWith('/repos/owner/dsh-example')) return Response.json({ visibility: 'public', private: false, topics: ['dsh-plugin'], archived: false, fork: false })
-    if (String(url).endsWith('/contents/package.json')) return new Response(JSON.stringify({ dsh: { bundle: { patch: './cordis.patch.yml' } } }))
+    if (String(url).endsWith('/contents/package.json')) return new Response(JSON.stringify({ name: 'dsh-example', dsh: { bundle: { patch: './cordis.patch.yml' } } }))
+    if (String(url).endsWith('/contents/cordis.patch.yml')) return new Response('- insert:\n    - id: hello\n      name: dsh-example\n')
     if (String(url).endsWith('/repos/majiayu000/dsh-plugin-registry/issues') && init.method === 'POST') {
       return Response.json({ number: 42, html_url: 'https://github.com/majiayu000/dsh-plugin-registry/issues/42' }, { status: 201 })
     }
@@ -78,4 +79,5 @@ test('submission endpoint validates Turnstile, checks GitHub, and creates an ass
   assert.deepEqual(issue.labels, ['plugin-submission'])
   assert.deepEqual(issue.assignees, ['majiayu000'])
   assert.match(issue.body, /- \[x\] 声明有效的 dsh\.bundle/)
+  assert.match(issue.body, /- \[x\] Patch 文件存在且含插件行/)
 })

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { applyGovernance, hasBundleManifest, inferCategory, mergePlugins, mergeRegistryCategories, normalizeCurated, normalizeDiscovered, repositoryKey, toPublicPlugin, validateHealth } from '../scripts/registry-core.mjs'
+import { applyGovernance, bundleDirectoryFromUrl, hasBundleManifest, inferCategory, mergePlugins, mergeRegistryCategories, normalizeCurated, normalizeDiscovered, repositoryKey, toPublicPlugin, validateHealth } from '../scripts/registry-core.mjs'
 
 test('only a dsh.bundle with a safe relative patch passes manifest validation', () => {
   assert.equal(hasBundleManifest('{"dsh":{"bundle":{"patch":"./cordis.patch.yml"}}}'), true)
@@ -26,6 +26,7 @@ test('discovered repositories receive stable categories and install commands', (
   }, true)
   assert.equal(inferCategory({ name: plugin.name, description: plugin.description.en }), 'memory')
   assert.equal(plugin.install, 'dsh plugin --profile web add github:acme/dsh-memory')
+  assert.equal(plugin.profile, 'web')
   assert.equal(plugin.listingEligible, true)
   assert.deepEqual(plugin.verification, { manifest: 'shape_validated', patch: 'not_checked', installation: 'not_tested' })
   assert.equal(plugin.trustLevel, 'manifest_verified')
@@ -189,11 +190,72 @@ test('health gate rejects partial and unexpectedly smaller snapshots', () => {
   assert.deepEqual(validateHealth({ plugins: plugins.slice(0, 90), stats: { published: 90, curated: 18, discoveryMode: 'complete' } }, previous), [])
 })
 
-test('verified commit pins record the checked HEAD without altering trust', () => {
+test('verified commit pins record the checked HEAD and rewrite the github install spec', () => {
   const commit = 'a'.repeat(40)
   const pinned = normalizeDiscovered({ full_name: 'acme/plugin', html_url: 'https://github.com/acme/plugin' }, true, true, commit)
   assert.equal(pinned.verifiedCommit, commit)
   assert.equal(pinned.trustLevel, 'manifest_verified')
+  assert.equal(pinned.install, `dsh plugin --profile web add github:acme/plugin#${commit}`)
   const unpinned = normalizeDiscovered({ full_name: 'acme/plugin', html_url: 'https://github.com/acme/plugin' }, true, true)
   assert.equal('verifiedCommit' in unpinned, false)
+  assert.equal(unpinned.install, 'dsh plugin --profile web add github:acme/plugin')
+})
+
+test('an invalid patch is not installable', () => {
+  const plugin = normalizeDiscovered({
+    full_name: 'acme/empty-patch',
+    html_url: 'https://github.com/acme/empty-patch',
+  }, true, 'invalid')
+  assert.equal(plugin.listingEligible, false)
+  assert.equal(plugin.verification.patch, 'invalid')
+})
+
+test('curated entries keep a declared category instead of regex-overwriting it', () => {
+  const plugin = normalizeCurated({
+    owner: 'strukto-ai',
+    name: 'mirage#dsh',
+    url: 'https://github.com/strukto-ai/mirage/tree/main/typescript/packages/dsh',
+    category: 'dev',
+    description: {
+      zh: '挂载 Slack、Gmail、Notion，并发送通知',
+      en: 'Mount Slack, Gmail, Notion, and send notifications',
+    },
+  })
+  assert.equal(plugin.category, 'dev')
+  assert.equal(bundleDirectoryFromUrl(plugin.url), 'typescript/packages/dsh')
+})
+
+test('curated entries that fail a completed contract check are not listing eligible', () => {
+  const plugin = normalizeCurated({
+    owner: 'acme',
+    name: 'plugin',
+    url: 'https://github.com/acme/plugin',
+    description: { zh: '精选', en: 'Curated' },
+  }, {}, { manifestShapeValid: false, patchExists: null, checked: true })
+  assert.equal(plugin.listingEligible, false)
+  assert.equal(plugin.verification.manifest, 'not_validated')
+})
+
+test('curated entries stay listed when the contract was not checked', () => {
+  const plugin = normalizeCurated({
+    owner: 'acme',
+    name: 'plugin',
+    url: 'https://github.com/acme/plugin',
+    description: { zh: '精选', en: 'Curated' },
+  })
+  assert.equal(plugin.listingEligible, true)
+  assert.equal(plugin.verification.manifest, 'not_checked')
+})
+
+test('health gate treats curated source count separately from published curated', () => {
+  const plugins = Array.from({ length: 100 }, (_, index) => ({ id: `a/${index}`, source: index < 20 ? 'curated' : 'discovered' }))
+  const previous = { plugins, stats: { published: 100, curated: 20, curatedSource: 20, discoveryMode: 'complete' } }
+  assert.deepEqual(validateHealth({
+    plugins: plugins.filter((_, index) => index >= 10),
+    stats: { published: 90, curated: 10, curatedSource: 20, discoveryMode: 'complete' },
+  }, previous), [])
+  assert.match(validateHealth({
+    plugins: plugins.slice(0, 90),
+    stats: { published: 90, curated: 18, curatedSource: 10, discoveryMode: 'complete' },
+  }, previous).join(' '), /Curated source/)
 })

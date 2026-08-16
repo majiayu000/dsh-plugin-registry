@@ -53,14 +53,26 @@ test('missing maintenance timestamps fall back to the neutral score', () => {
   assert.equal(unknown.breakdown.maint, RANKING_CONFIG.missingMaintenanceScore)
 })
 
-test('trust multipliers stack: issue-submitted curated listing outranks equal vendored curated', () => {
-  const issue = plugin({ id: 'a/issue', source: 'curated', origin: 'issue', addedAt: daysAgo(60), verification: { manifest: 'not_checked', patch: 'not_checked', installation: 'not_tested' }, verifiedCommit: undefined })
-  const vendored = plugin({ id: 'a/vendored', source: 'curated', addedAt: daysAgo(60), verification: { manifest: 'not_checked', patch: 'not_checked', installation: 'not_tested' }, verifiedCommit: undefined })
-  const verified = plugin({ id: 'a/verified' })
-  const scores = [issue, vendored, verified].map(p => computeRankingScore(p, { now: NOW }).score)
+test('curated trust boost applies only after the install contract is checked', () => {
+  const issue = plugin({
+    id: 'a/issue',
+    source: 'curated',
+    origin: 'issue',
+    addedAt: daysAgo(60),
+    verification: { manifest: 'shape_validated', patch: 'exists', installation: 'not_tested' },
+  })
+  const unchecked = plugin({
+    id: 'a/unchecked',
+    source: 'curated',
+    addedAt: daysAgo(60),
+    verification: { manifest: 'not_checked', patch: 'not_checked', installation: 'not_tested' },
+    verifiedCommit: undefined,
+  })
+  const verifiedDiscovered = plugin({ id: 'a/verified' })
+  const scores = [issue, unchecked, verifiedDiscovered].map(p => computeRankingScore(p, { now: NOW }).score)
   assert.ok(scores[0] > scores[1])
-  assert.ok(scores[1] > scores[2])
-  assert.ok(Math.abs(scores[0] / scores[1] - RANKING_CONFIG.trust.issueSubmitted) < 1e-9)
+  assert.ok(scores[2] > scores[1])
+  assert.ok(Math.abs(scores[0] / scores[1] - (RANKING_CONFIG.trust.verifiedChain * RANKING_CONFIG.trust.curated * RANKING_CONFIG.trust.issueSubmitted)) < 1e-9)
 })
 
 test('new-listing boost fades to zero after the discovery window', () => {

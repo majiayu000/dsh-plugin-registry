@@ -8,11 +8,12 @@ import {
   REPOSITORY_DISCOVERY_QUERY,
   REPOSITORY_METADATA_BATCH_SIZE,
 } from './github-discovery.mjs'
-import { validateBundleManifest } from '../assets/bundle-manifest.js'
+import { listBundleDirectories, validateBundleManifest } from '../assets/bundle-manifest.js'
+import { validateBundlePatch } from '../assets/bundle-patch.js'
 import { hasDshCandidateContext } from '../assets/candidate-relevance.js'
 import {
   applyGovernance,
-  hasBundleManifest,
+  bundleDirectoryFromUrl,
   mergeRegistryCategories,
   mergePlugins,
   normalizeCurated,
@@ -21,6 +22,7 @@ import {
   repositoryKey,
   toPublicPlugin,
   validateHealth,
+  verificationCacheKey,
 } from './registry-core.mjs'
 import { validateRegistry } from './validate-registry.mjs'
 
@@ -177,6 +179,8 @@ async function discoverRepositories() {
         console.log(`Discovery window ${progress.range}: ${progress.totalCount} repositories (depth ${progress.depth}, rate limit ${remaining} remaining).`)
       } else if (progress.type === 'page') {
         console.log(`Discovery page ${progress.page}: ${progress.fetched}/${progress.totalCount} for ${progress.range} (rate limit ${remaining} remaining).`)
+      } else if (progress.type === 'resplit') {
+        console.warn(`Discovery window ${progress.range} returned ${progress.fetched}/${progress.totalCount} unique repositories; splitting further.`)
       } else {
         console.warn(`Discovery index drift for ${progress.range}: fetched ${progress.fetched}, initially reported ${progress.totalCount}; accepting within tolerance ${progress.allowedDrift}.`)
       }
@@ -184,13 +188,31 @@ async function discoverRepositories() {
   })
 }
 
-async function loadPackageManifests(repositories) {
-  if (!TOKEN || repositories.length === 0) return { manifests: new Map(), headCommits: new Map() }
+function githubFullName(plugin) {
+  const match = String(plugin?.url || '').match(/^https:\/\/github\.com\/([^/]+)\/([^/?#]+)/)
+  return match ? `${match[1]}/${match[2]}` : String(plugin?.id || '').split('#')[0]
+}
+
+function targetKey(fullName, directory = '') {
+  return verificationCacheKey(fullName, directory)
+}
+
+function packageExpression(directory = '') {
+  return directory ? `HEAD:${directory}/package.json` : 'HEAD:package.json'
+}
+
+function patchExpression(patch, directory = '') {
+  const file = String(patch || '').replace(/^\.\//, '')
+  return directory ? `HEAD:${directory}/${file}` : `HEAD:${file}`
+}
+
+async function loadPackageManifests(targets) {
+  if (!TOKEN || targets.length === 0) return { manifests: new Map(), headCommits: new Map() }
   const manifests = new Map()
   const headCommits = new Map()
   const batchSize = 40
   const batches = []
-  for (let offset = 0; offset < repositories.length; offset += batchSize) batches.push(repositories.slice(offset, offset + batchSize))
+  for (let offset = 0; offset < targets.length; offset += batchSize) batches.push(targets.slice(offset, offset + batchSize))
   let nextBatch = 0
   let completed = 0
 
@@ -198,20 +220,20 @@ async function loadPackageManifests(repositories) {
     while (nextBatch < batches.length) {
       const batch = batches[nextBatch]
       nextBatch += 1
-      const fields = batch.map((repo, index) => {
-        const [owner, name] = repo.full_name.split('/')
-        return `r${index}: repository(owner: ${JSON.stringify(owner)}, name: ${JSON.stringify(name)}) { object(expression: "HEAD:package.json") { ... on Blob { text } } defaultBranchRef { target { ... on Commit { oid } } } }`
+      const fields = batch.map((target, index) => {
+        const [owner, name] = target.full_name.split('/')
+        return `r${index}: repository(owner: ${JSON.stringify(owner)}, name: ${JSON.stringify(name)}) { object(expression: ${JSON.stringify(packageExpression(target.directory))}) { ... on Blob { text } } defaultBranchRef { target { ... on Commit { oid } } } }`
       }).join('\n')
       const data = await githubGraphql(`query { ${fields} }`, {}, { allowPartial: true })
-      batch.forEach((repo, index) => {
-        const key = repoKey(...repo.full_name.split('/'))
+      batch.forEach((target, index) => {
+        const key = targetKey(target.full_name, target.directory)
         manifests.set(key, data?.[`r${index}`]?.object?.text || '')
         const oid = data?.[`r${index}`]?.defaultBranchRef?.target?.oid
         if (typeof oid === 'string' && /^[0-9a-f]{40}$/.test(oid)) headCommits.set(key, oid)
       })
       completed += batch.length
-      if (completed === batch.length || completed === repositories.length || completed % 400 < batchSize) {
-        console.log(`Manifest validation: ${completed}/${repositories.length}`)
+      if (completed === batch.length || completed === targets.length || completed % 400 < batchSize) {
+        console.log(`Manifest validation: ${completed}/${targets.length}`)
       }
     }
   }
@@ -232,13 +254,18 @@ async function loadBundlePatches(candidates) {
       const batch = batches[nextBatch]
       nextBatch += 1
       const fields = batch.map((candidate, index) => {
-        const [owner, name] = candidate.repository.full_name.split('/')
-        const expression = `HEAD:${candidate.patch.slice(2)}`
-        return `r${index}: repository(owner: ${JSON.stringify(owner)}, name: ${JSON.stringify(name)}) { object(expression: ${JSON.stringify(expression)}) { ... on Blob { byteSize } } }`
+        const [owner, name] = candidate.full_name.split('/')
+        return `r${index}: repository(owner: ${JSON.stringify(owner)}, name: ${JSON.stringify(name)}) { object(expression: ${JSON.stringify(patchExpression(candidate.patch, candidate.directory))}) { ... on Blob { text } } }`
       }).join('\n')
       const data = await githubGraphql(`query { ${fields} }`, {}, { allowPartial: true })
       batch.forEach((candidate, index) => {
-        results.set(candidate.repository.full_name.toLowerCase(), Boolean(data?.[`r${index}`]?.object))
+        const text = data?.[`r${index}`]?.object?.text
+        if (typeof text !== 'string') {
+          results.set(candidate.key, false)
+          return
+        }
+        const check = validateBundlePatch(text, { packageName: candidate.packageName })
+        results.set(candidate.key, check.valid ? true : 'invalid')
       })
     }
   }
@@ -265,41 +292,6 @@ async function main() {
   if (missingCuratedRepositoryKeys.length > 0) {
     console.log(`Curated metadata: ${curatedRepositoryMetadata.size}/${missingCuratedRepositoryKeys.length} repository roots resolved.`)
   }
-  const manifestCache = new Map()
-  for (const plugin of previous?.plugins || []) {
-    manifestCache.set(repositoryKey(plugin), {
-      pushedAt: plugin.pushedAt,
-      shapeValid: plugin.verification?.manifest === 'shape_validated',
-      patchStatus: plugin.verification?.patch,
-      verifiedCommit: typeof plugin.verifiedCommit === 'string' ? plugin.verifiedCommit : undefined,
-    })
-  }
-  for (const plugin of previousAudit?.pendingReview || []) {
-    const patchMissing = String(plugin.reason || '').startsWith('dsh.bundle.patch does not resolve')
-    manifestCache.set(plugin.id.toLowerCase(), {
-      pushedAt: plugin.pushedAt,
-      shapeValid: patchMissing,
-      patchStatus: patchMissing ? 'missing' : undefined,
-    })
-  }
-  const candidatesToValidate = uniqueRepositories.filter(repo => {
-    const cached = manifestCache.get(repo.full_name.toLowerCase())
-    return cached?.pushedAt !== repo.pushed_at || (cached.shapeValid && !cached.patchStatus)
-  })
-  console.log(`Manifest cache: ${uniqueRepositories.length - candidatesToValidate.length} unchanged, ${candidatesToValidate.length} to validate.`)
-  const { manifests, headCommits } = await loadPackageManifests(candidatesToValidate)
-  const bundleCandidates = candidatesToValidate.flatMap(repository => {
-    const check = validateBundleManifest(manifests.get(repository.full_name.toLowerCase()))
-    return check.valid ? [{ repository, patch: check.patch }] : []
-  })
-  const bundlePatches = await loadBundlePatches(bundleCandidates)
-
-  const partialRatio = graphqlRequests.total ? graphqlRequests.partial / graphqlRequests.total : 0
-  const maxPartialRatio = Number(process.env.DSH_MAX_PARTIAL_RATIO ?? 0.05)
-  if (partialRatio > maxPartialRatio) {
-    throw new Error(`GitHub GraphQL returned partial data for ${graphqlRequests.partial}/${graphqlRequests.total} requests (limit ${maxPartialRatio}); refusing to publish a partially validated snapshot.`)
-  }
-
   const metadata = new Map([
     ...uniqueRepositories.map(repo => [repo.full_name.toLowerCase(), {
       stargazerCount: repo.stargazers_count,
@@ -317,40 +309,142 @@ async function main() {
     }]),
     ...curatedRepositoryMetadata,
   ])
-  function repositoryVerification(repository) {
-    const key = repository.full_name.toLowerCase()
-    const cached = manifestCache.get(key)
-    const unchanged = cached?.pushedAt === repository.pushed_at && (!cached.shapeValid || cached.patchStatus)
-    const manifestShapeValid = unchanged ? cached.shapeValid : hasBundleManifest(manifests.get(key))
-    const patchExists = unchanged
-      ? (cached.patchStatus === 'exists' ? true : (cached.patchStatus === 'missing' ? false : null))
-      : bundlePatches.get(key)
-    const verifiedCommit = unchanged ? cached?.verifiedCommit : headCommits.get(key)
-    return { manifestShapeValid, patchExists, verifiedCommit }
+  const manifestCache = new Map()
+  for (const plugin of previous?.plugins || []) {
+    const cached = {
+      pushedAt: plugin.pushedAt,
+      shapeValid: plugin.verification?.manifest === 'shape_validated',
+      patchStatus: plugin.verification?.patch,
+      verifiedCommit: typeof plugin.verifiedCommit === 'string' ? plugin.verifiedCommit : undefined,
+      profile: plugin.profile,
+      packageName: plugin.packageName,
+    }
+    manifestCache.set(String(plugin.id).toLowerCase(), cached)
+    manifestCache.set(verificationCacheKey(repositoryKey(plugin), bundleDirectoryFromUrl(plugin.url)), cached)
+  }
+  for (const plugin of previousAudit?.pendingReview || []) {
+    const patchMissing = String(plugin.reason || '').startsWith('dsh.bundle.patch does not resolve')
+    const patchInvalid = String(plugin.reason || '').startsWith('dsh.bundle.patch is not a valid')
+    manifestCache.set(String(plugin.id).toLowerCase(), {
+      pushedAt: plugin.pushedAt,
+      shapeValid: patchMissing || patchInvalid,
+      patchStatus: patchMissing ? 'missing' : (patchInvalid ? 'invalid' : undefined),
+    })
+  }
+
+  function pushedAtFor(fullName) {
+    return metadata.get(String(fullName).toLowerCase())?.pushedAt
+      || repositoryByKey.get(String(fullName).toLowerCase())?.pushed_at
+      || null
+  }
+
+  const rootTargets = uniqueRepositories.map(repo => ({ full_name: repo.full_name, directory: '' }))
+  const curatedTargets = curatedRegistry.plugins.map(plugin => ({
+    full_name: githubFullName(plugin),
+    directory: bundleDirectoryFromUrl(plugin.url),
+    id: plugin.id,
+  }))
+  const initialTargets = [...new Map([...rootTargets, ...curatedTargets].map(target => [targetKey(target.full_name, target.directory), target])).values()]
+  const targetsToValidate = initialTargets.filter(target => {
+    const cached = manifestCache.get(target.id?.toLowerCase()) || manifestCache.get(targetKey(target.full_name, target.directory))
+    const pushedAt = pushedAtFor(target.full_name)
+    return cached?.pushedAt !== pushedAt || (cached.shapeValid && !cached.patchStatus)
+  })
+  console.log(`Manifest cache: ${initialTargets.length - targetsToValidate.length} unchanged, ${targetsToValidate.length} to validate.`)
+  const { manifests, headCommits } = await loadPackageManifests(targetsToValidate)
+
+  const extraTargets = []
+  for (const repo of uniqueRepositories) {
+    const rootText = manifests.get(targetKey(repo.full_name, ''))
+    if (!rootText) continue
+    for (const directory of listBundleDirectories(rootText)) {
+      const key = targetKey(repo.full_name, directory)
+      if (manifests.has(key) || extraTargets.some(target => targetKey(target.full_name, target.directory) === key)) continue
+      extraTargets.push({ full_name: repo.full_name, directory })
+    }
+  }
+  if (extraTargets.length) {
+    const extra = await loadPackageManifests(extraTargets)
+    for (const [key, value] of extra.manifests) manifests.set(key, value)
+    for (const [key, value] of extra.headCommits) headCommits.set(key, value)
+  }
+
+  const allTargets = [...initialTargets, ...extraTargets]
+  const fetchedKeys = new Set([...manifests.keys()])
+  const bundleCandidates = allTargets.flatMap(target => {
+    const key = targetKey(target.full_name, target.directory)
+    if (!fetchedKeys.has(key)) return []
+    const check = validateBundleManifest(manifests.get(key))
+    return check.valid ? [{ ...target, key, patch: check.patch, packageName: check.packageName, profile: check.profile }] : []
+  })
+  const bundlePatches = await loadBundlePatches(bundleCandidates)
+  const bundleMeta = new Map(bundleCandidates.map(candidate => [candidate.key, candidate]))
+
+  const partialRatio = graphqlRequests.total ? graphqlRequests.partial / graphqlRequests.total : 0
+  const maxPartialRatio = Number(process.env.DSH_MAX_PARTIAL_RATIO ?? 0.05)
+  if (partialRatio > maxPartialRatio) {
+    throw new Error(`GitHub GraphQL returned partial data for ${graphqlRequests.partial}/${graphqlRequests.total} requests (limit ${maxPartialRatio}); refusing to publish a partially validated snapshot.`)
+  }
+
+  function targetVerification(fullName, directory = '', id = '') {
+    const key = targetKey(fullName, directory)
+    const cached = manifestCache.get(String(id).toLowerCase()) || manifestCache.get(key)
+    const pushedAt = pushedAtFor(fullName)
+    const fetched = fetchedKeys.has(key)
+    const unchanged = !fetched && cached && cached.pushedAt === pushedAt && (!cached.shapeValid || cached.patchStatus)
+    if (unchanged) {
+      return {
+        checked: true,
+        manifestShapeValid: cached.shapeValid,
+        patchExists: cached.patchStatus === 'exists' ? true : (cached.patchStatus === 'missing' ? false : (cached.patchStatus === 'invalid' ? 'invalid' : null)),
+        verifiedCommit: cached.verifiedCommit,
+        profile: cached.profile,
+        packageName: cached.packageName,
+      }
+    }
+    if (!fetched) {
+      return { checked: false, manifestShapeValid: false, patchExists: null, verifiedCommit: cached?.verifiedCommit }
+    }
+    const check = validateBundleManifest(manifests.get(key))
+    const meta = bundleMeta.get(key)
+    return {
+      checked: true,
+      manifestShapeValid: check.valid,
+      patchExists: check.valid ? (bundlePatches.has(key) ? bundlePatches.get(key) : null) : null,
+      verifiedCommit: headCommits.get(key),
+      profile: check.profile || meta?.profile,
+      packageName: check.packageName || meta?.packageName,
+    }
   }
 
   const curated = curatedRegistry.plugins.map(plugin => {
     const key = repositoryKey(plugin)
-    const normalized = normalizeCurated(plugin, metadata.get(key))
-    const repository = repositoryByKey.get(key)
-    if (!repository) return normalized
-    const evidence = repositoryVerification(repository)
-    if (!evidence.manifestShapeValid) return normalized
-    return {
-      ...normalized,
-      ...(evidence.verifiedCommit ? { verifiedCommit: evidence.verifiedCommit } : {}),
-      verification: {
-        manifest: 'shape_validated',
-        patch: evidence.patchExists === true ? 'exists' : (evidence.patchExists === false ? 'missing' : 'not_checked'),
-        installation: 'not_tested',
-      },
-    }
+    const directory = bundleDirectoryFromUrl(plugin.url)
+    const evidence = TOKEN
+      ? targetVerification(githubFullName(plugin), directory, plugin.id)
+      : { checked: false }
+    return normalizeCurated(plugin, metadata.get(key), evidence)
   })
-  const normalizedCandidates = newCandidates
-    .map(repo => {
-      const evidence = repositoryVerification(repo)
-      return normalizeDiscovered(repo, evidence.manifestShapeValid, evidence.patchExists, evidence.verifiedCommit)
+  const discoveredRoots = newCandidates.flatMap(repo => {
+    const evidence = targetVerification(repo.full_name, '', repo.full_name)
+    const root = normalizeDiscovered(repo, evidence.manifestShapeValid, evidence.patchExists, evidence.verifiedCommit, {
+      profile: evidence.profile,
+      packageName: evidence.packageName,
     })
+    const extras = extraTargets
+      .filter(target => target.full_name.toLowerCase() === repo.full_name.toLowerCase())
+      .map(target => {
+        const extra = targetVerification(target.full_name, target.directory, `${target.full_name}#${target.directory}`)
+        return normalizeDiscovered(repo, extra.manifestShapeValid, extra.patchExists, extra.verifiedCommit, {
+          directory: target.directory,
+          profile: extra.profile,
+          packageName: extra.packageName,
+          url: repo.html_url,
+        })
+      })
+    return [root, ...extras]
+  })
+  const normalizedCandidates = discoveredRoots
   const blocked = new Map((blocklist.repositories || []).map(entry => [String(entry.repo).toLowerCase(), entry]))
   const candidateQuarantined = normalizedCandidates.flatMap(plugin => {
     const block = blocked.get(repoKey(plugin.owner, plugin.name))
@@ -372,7 +466,15 @@ async function main() {
     return !blocked.has(repoKey(plugin.owner, plugin.name)) && (plugin.listingEligible || hasDshCandidateContext(plugin))
   })
   const discovered = eligibleCandidates.filter(plugin => plugin.listingEligible)
-  const pendingReview = eligibleCandidates.filter(plugin => !plugin.listingEligible).map(plugin => ({
+  function pendingReason(plugin) {
+    if (plugin.verification.patch === 'missing') return 'dsh.bundle.patch does not resolve to a file at repository HEAD'
+    if (plugin.verification.patch === 'invalid') return 'dsh.bundle.patch is not a valid plugin row file'
+    return 'package.json does not declare a valid dsh.bundle object'
+  }
+  const pendingReview = [
+    ...eligibleCandidates.filter(plugin => !plugin.listingEligible),
+    ...curated.filter(plugin => !plugin.listingEligible),
+  ].map(plugin => ({
     id: plugin.id,
     name: plugin.name,
     owner: plugin.owner,
@@ -380,9 +482,7 @@ async function main() {
     description: plugin.description,
     category: plugin.category,
     trustLevel: 'pending_review',
-    reason: plugin.verification.patch === 'missing'
-      ? 'dsh.bundle.patch does not resolve to a file at repository HEAD'
-      : 'package.json does not declare a valid dsh.bundle object',
+    reason: pendingReason(plugin),
     stars: plugin.stars,
     forks: plugin.forks,
     language: plugin.language,
@@ -395,6 +495,8 @@ async function main() {
   const quarantined = [...new Map([...candidateQuarantined, ...governed.quarantined].map(plugin => [plugin.id.toLowerCase(), plugin])).values()]
   const publishedCurated = plugins.filter(plugin => plugin.source === 'curated').length
   const publishedDiscovered = plugins.filter(plugin => plugin.source === 'discovered').length
+  const blockedRepos = new Map((blocklist.repositories || []).map(entry => [String(entry.repo).toLowerCase(), entry]))
+  const curatedSource = curatedRegistry.plugins.filter(plugin => !blockedRepos.has(repositoryKey(plugin))).length
 
   const document = {
     schemaVersion: 2,
@@ -403,6 +505,7 @@ async function main() {
     stats: {
       topicCandidates: uniqueRepositories.length,
       curated: publishedCurated,
+      curatedSource,
       automaticallyDiscovered: publishedDiscovered,
       patchFilesConfirmed: plugins.filter(plugin => plugin.verification.patch === 'exists').length,
       published: plugins.length,

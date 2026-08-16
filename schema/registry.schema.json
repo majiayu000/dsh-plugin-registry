@@ -86,11 +86,13 @@
             "additionalProperties": false,
             "properties": {
               "manifest": { "enum": ["not_checked", "shape_validated"] },
-              "patch": { "enum": ["not_checked", "exists", "missing"] },
+              "patch": { "enum": ["not_checked", "exists", "missing", "invalid"] },
               "installation": { "const": "not_tested" }
             }
           },
-          "install": { "type": "string", "pattern": "^dsh plugin --profile web add [^\\s]+$" },
+          "install": { "type": "string", "pattern": "^dsh plugin --profile (web|tui|headless) add [^\\s]+$" },
+          "profile": { "enum": ["web", "tui", "headless"] },
+          "packageName": { "type": "string", "minLength": 1 },
           "icon": { "type": "string", "pattern": "^https://(?:github\\.com|avatars\\.githubusercontent\\.com)/" }
         }
       }

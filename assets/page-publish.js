@@ -1,5 +1,6 @@
 await import('/assets/i18n.js');
 const { validateBundleManifest } = await import('/assets/bundle-manifest.js');
+const { validateBundlePatch } = await import('/assets/bundle-patch.js');
 const { buildGitHubSubmissionUrl } = await import('/assets/github-submission.js');
 const { evaluateRepository, findRegistryEntry, githubFailureMessage, manifestFailureMessage, parseGitHubRepository, repositoryCheckerCopy } = await import('/assets/repository-checker.js');
 (function () {
@@ -129,13 +130,19 @@ const { evaluateRepository, findRegistryEntry, githubFailureMessage, manifestFai
       var bundleCheck = { valid: false, reason_code: 'package_missing', reason: copy.packageMissing };
       if (packageResponse.ok) bundleCheck = validateBundleManifest(await packageResponse.text());
       else if (packageResponse.status !== 404) { var packageError = new Error('package fetch failed'); packageError.status = packageResponse.status; throw packageError; }
+      var patchCheck = { valid: false, reason_code: 'patch_file_missing', reason: copy.patch_file_missing };
+      if (bundleCheck.valid) {
+        var patchResponse = await fetch('https://api.github.com/repos/' + repo + '/contents/' + bundleCheck.patch.replace(/^\.\//, ''), { headers: { accept: 'application/vnd.github.raw+json' } });
+        if (patchResponse.ok) patchCheck = validateBundlePatch(await patchResponse.text(), { packageName: bundleCheck.packageName });
+        else if (patchResponse.status !== 404) { var patchError = new Error('patch fetch failed'); patchError.status = patchResponse.status; throw patchError; }
+      }
       var registryEntry = null;
       try {
         var registryResponse = await fetch('data/plugins.json');
         if (registryResponse.ok) registryEntry = findRegistryEntry(await registryResponse.json(), repo);
       } catch (_) { /* Registry status is supplementary and must not block repository checks. */ }
-      var check = evaluateRepository({ repository: data, bundleCheck: bundleCheck, registryEntry: registryEntry });
-      var checkKeys = { repository_public: 'repo', discovery_topic: 'topic', bundle_manifest: 'bundle', repository_status: 'status' };
+      var check = evaluateRepository({ repository: data, bundleCheck: bundleCheck, patchCheck: patchCheck, registryEntry: registryEntry });
+      var checkKeys = { repository_public: 'repo', discovery_topic: 'topic', bundle_manifest: 'bundle', bundle_patch: 'patch', repository_status: 'status' };
       check.signals.forEach(function (item) { setCheck(checkKeys[item.signal_type], item.signal.passed); });
       enableSubmission(repo, check);
       message.textContent = check.auto_discoverable

@@ -31,12 +31,14 @@ function resultSignal(signalType, passed, reason) {
   }
 }
 
-export function evaluateRepository({ repository, bundleCheck, registryEntry = null }) {
+export function evaluateRepository({ repository, bundleCheck, patchCheck = null, registryEntry = null }) {
   const topics = Array.isArray(repository?.topics) ? repository.topics : []
+  const patchPassed = patchCheck ? Boolean(patchCheck.valid) : Boolean(bundleCheck?.valid)
   const signals = [
     resultSignal('repository_public', Boolean(repository), repository ? 'repository metadata is public' : 'repository metadata is unavailable'),
     resultSignal('discovery_topic', topics.includes('dsh-plugin'), topics.includes('dsh-plugin') ? 'dsh-plugin topic is present' : 'dsh-plugin topic is missing'),
     resultSignal('bundle_manifest', Boolean(bundleCheck?.valid), bundleCheck?.reason || 'package.json does not declare a valid dsh.bundle'),
+    resultSignal('bundle_patch', patchPassed, patchCheck?.reason || (bundleCheck?.valid ? 'patch file was not checked' : 'patch file cannot be checked until dsh.bundle is valid')),
     resultSignal('repository_status', Boolean(repository && !repository.archived && !repository.fork), repository?.archived ? 'repository is archived' : repository?.fork ? 'repository is a fork' : 'repository is active and is not a fork'),
   ]
 
@@ -51,7 +53,10 @@ export function evaluateRepository({ repository, bundleCheck, registryEntry = nu
 
 export function findRegistryEntry(registry, repository) {
   const key = String(repository || '').toLowerCase()
-  return (registry?.plugins || []).find(plugin => String(plugin.id || '').toLowerCase() === key) || null
+  const plugins = registry?.plugins || []
+  return plugins.find(plugin => String(plugin.id || '').toLowerCase() === key)
+    || plugins.find(plugin => String(plugin.id || '').toLowerCase().split('#')[0] === key)
+    || null
 }
 
 const CHECKER_COPY = {
@@ -67,6 +72,12 @@ const CHECKER_COPY = {
     bundle_not_object: 'dsh.bundle 必须是对象。',
     patch_missing: 'dsh.bundle.patch 必须是非空字符串。',
     patch_unsafe: 'dsh.bundle.patch 必须是以“./”开头的安全相对路径。',
+    profile_invalid: 'dsh.bundle.profile 必须是 web、tui 或 headless。',
+    patch_empty: 'Patch 文件是空的。',
+    patch_not_array: 'Patch 文件必须是插件行组成的 YAML 数组。',
+    patch_no_plugin_row: 'Patch 文件必须至少声明一行带 id 和 name 的插件。',
+    patch_name_mismatch: 'Patch 中的 name 必须与 package.json 的 name 一致。',
+    patch_file_missing: '引用的 Patch 文件在仓库中不存在。',
     repositoryMissing: '找不到这个公开仓库。请检查地址，或确认仓库不是私有仓库。',
     rateLimited: 'GitHub 暂时限制了检查频率，请稍后再试。',
     unavailable: '暂时无法读取 GitHub 仓库，请稍后再试。',
@@ -86,6 +97,12 @@ const CHECKER_COPY = {
     bundle_not_object: 'dsh.bundle must be an object.',
     patch_missing: 'dsh.bundle.patch must be a non-empty string.',
     patch_unsafe: 'dsh.bundle.patch must be a safe relative path beginning with "./".',
+    profile_invalid: 'dsh.bundle.profile must be web, tui, or headless.',
+    patch_empty: 'The patch file is empty.',
+    patch_not_array: 'The patch file must be a YAML array of plugin rows.',
+    patch_no_plugin_row: 'The patch file must declare at least one plugin row with id and name.',
+    patch_name_mismatch: 'The patch name must match the package.json name.',
+    patch_file_missing: 'The referenced patch file does not exist in the repository.',
     repositoryMissing: 'This public repository could not be found. Check the URL or confirm that the repository is not private.',
     rateLimited: 'GitHub has temporarily rate-limited checks. Try again later.',
     unavailable: 'The GitHub repository cannot be read right now. Try again later.',

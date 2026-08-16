@@ -76,15 +76,23 @@ The scheduled GitHub Actions workflow refreshes the snapshot every two hours. Wh
 For automatic discovery:
 
 1. Publish a real, public, non-fork GitHub repository.
-2. Declare an installable `dsh.bundle` object in the root `package.json`.
-3. Add the `dsh-plugin` GitHub topic.
-4. Wait for the next registry sync.
+2. Declare an installable `dsh.bundle` object in the plugin `package.json` (root or a path listed in `dsh.bundles`).
+3. Make sure the referenced patch file exists and declares at least one plugin row with `id` and `name`.
+4. Add the `dsh-plugin` GitHub topic.
+5. Wait for the next registry sync.
+
+Check a local checkout before publishing:
+
+```bash
+npm run check:plugin -- ./hello-plugin
+```
 
 Use the repository checker at <http://localhost:5173/publish.html>. When the Cloudflare submission channel is configured, authors can submit a trackable review request without leaving the page; GitHub remains available as a fallback. See [submission review setup](docs/submission-review.md).
 
 ## Known limitations
 
-- Manifest and patch-file verification confirm the install entry exists; they are not an installation test, security audit, or endorsement of plugin code.
+- Manifest and patch-file verification confirm the install entry exists and looks like a plugin layer; they are not an installation test, security audit, or endorsement of plugin code.
+- GitHub install commands are pinned to `verifiedCommit` when that SHA was recorded. npm-style specs are not commit-pinned.
 - Stars, Forks, descriptions, Topics, and primary languages are point-in-time GitHub metadata and can lag until the next sync.
 - A complete discovery refresh requires a GitHub token; unauthenticated runs inspect only recent candidates and cannot overwrite a complete snapshot.
 - The browser-based repository checker uses the unauthenticated GitHub API and may encounter rate limits.

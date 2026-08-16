@@ -45,7 +45,7 @@
   <section class="page-head">
     <p class="eyebrow rise">DeepSeek Harness · Plugin Registry</p>
     <h1 class="page-title rise rise-1">给 Harness 装上能力。<span class="caret"></span></h1>
-    <p class="page-sub rise rise-2">社区精选与 GitHub 自动发现的插件都在这里 —— Manifest 校验、commit 锁定、安装命令，都已替你做好。</p>
+    <p class="page-sub rise rise-2">社区精选与 GitHub 自动发现的插件都在这里。可安装条目会校验 dsh.bundle；有 verifiedCommit 时，安装命令会钉到该 commit。</p>
 
     <div class="discovery-row rise rise-3">
       <div class="searchbar">
@@ -72,7 +72,7 @@
     </div>
 
     <div class="statstrip rise rise-4">
-      <div class="ss"><b class="num" id="st-count">—</b><span>可浏览仓库</span></div>
+      <div class="ss"><b class="num" id="st-count">—</b><span>可安装插件</span></div>
       <div class="ss"><b class="num" id="st-stars">—</b><span>GitHub Stars</span></div>
       <div class="ss"><b class="num" id="st-author">—</b><span>插件作者</span></div>
       <div class="ss"><b class="num" id="st-auto">—</b><span>Manifest 检查通过</span></div>
@@ -109,7 +109,7 @@
         <label class="sr-only" for="sort">排序方式</label>
         <select class="sel" id="sort" aria-label="排序方式">
           <option value="relevance">智能推荐（质量 + 维护 + 信任）</option>
-          <option value="stars">按 Stars（含候选仓库）</option>
+          <option value="stars">按 Stars</option>
           <option value="manifest">Manifest 检查通过优先</option>
           <option value="forks">按 Forks</option>
           <option value="new">按最近更新</option>
@@ -121,7 +121,7 @@
 
   <section>
     <div class="section-label">
-      <h2>插件与候选仓库</h2>
+      <h2>插件</h2>
     </div>
     <div class="plist" id="list"></div>
     <div class="load-more-wrap" id="load-more-wrap"><button class="btn" id="load-more">加载更多</button></div>

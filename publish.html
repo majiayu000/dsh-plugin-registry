@@ -53,6 +53,7 @@
           <li class="check-row" data-check="repo"><span class="check-ic" aria-hidden="true">—</span><span class="check-label">公开仓库存在</span><span class="check-state">待检查</span></li>
           <li class="check-row" data-check="topic"><span class="check-ic" aria-hidden="true">—</span><span class="check-label">包含 dsh-plugin Topic</span><span class="check-state">待检查</span></li>
           <li class="check-row" data-check="bundle"><span class="check-ic" aria-hidden="true">—</span><span class="check-label">声明有效的 dsh.bundle</span><span class="check-state">待检查</span></li>
+          <li class="check-row" data-check="patch"><span class="check-ic" aria-hidden="true">—</span><span class="check-label">Patch 文件存在且含插件行</span><span class="check-state">待检查</span></li>
           <li class="check-row" data-check="status"><span class="check-ic" aria-hidden="true">—</span><span class="check-label">仓库未归档且不是 Fork</span><span class="check-state">待检查</span></li>
         </ul>
         <p class="form-hint" id="check-message" role="status" aria-live="polite" tabindex="-1"></p>
@@ -87,14 +88,18 @@
 
     <aside class="panel publish-guide" aria-labelledby="publish-guide-title">
       <h2 class="panel-title" id="publish-guide-title">发布前准备</h2>
-      <p class="psub">自动发现要求根目录 package.json 声明 dsh.bundle。</p>
+      <p class="psub">自动发现要求根目录或子包 package.json 声明 dsh.bundle，且 patch 里至少有一行带 id 和 name 的插件。</p>
       <pre class="codeblock"><code>{
+  <span class="k">"name"</span>: <span class="k">"dsh-hello-plugin"</span>,
   <span class="k">"dsh"</span>: {
     <span class="k">"bundle"</span>: {
-      <span class="k">"patch"</span>: <span class="k">"./cordis.patch.yml"</span>
+      <span class="k">"patch"</span>: <span class="k">"./cordis.patch.yml"</span>,
+      <span class="k">"profile"</span>: <span class="k">"web"</span>
     }
   }
 }</code></pre>
+      <p class="psub">从 GitHub 安装会拉取源码，不是构建产物。TypeScript 包需要自包含的 <code>prepare</code> 脚本；用户可能还要在 profile 的 <code>pnpm-workspace.yaml</code> 里允许 <code>allowBuilds</code>。更稳妥的方式是发布到 npm，或让用户安装 <code>github:owner/repo#commit</code>。</p>
+      <p class="psub">官方打包说明：<a href="https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/develop/basic/publish.md" target="_blank" rel="noopener">Package and install a plugin</a></p>
       <h2 class="panel-title">审核会怎样进行</h2>
       <ol class="publish-list">
         <li>系统创建公开审核 Issue，并指派维护者。</li>
