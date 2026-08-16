@@ -70,6 +70,7 @@ jobs:
       - name: Open or update the sync alert issue
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           number=$(gh issue list --state open --limit 100 --json number,title --jq '.[] | select(.title == "[registry-sync] Scheduled sync failed") | .number' | head -n 1)
