@@ -1,5 +1,22 @@
 const MAX_SEARCH_RESULTS = 1_000
 const ONE_SECOND = 1_000
+export const REPOSITORY_METADATA_BATCH_SIZE = 40
+
+const REPOSITORY_METADATA_FIELDS = `
+  nameWithOwner
+  url
+  description
+  stargazerCount
+  forkCount
+  pushedAt
+  isArchived
+  isFork
+  primaryLanguage { name }
+  licenseInfo { spdxId }
+  latestRelease { tagName publishedAt }
+  owner { avatarUrl }
+  repositoryTopics(first: 20) { nodes { topic { name } } }
+`
 
 export const REPOSITORY_DISCOVERY_QUERY = `
   query RegistryRepositoryDiscovery($searchQuery: String!, $cursor: String) {
@@ -64,6 +81,34 @@ export function mapGraphqlRepository(repository) {
     topics: repository.repositoryTopics?.nodes?.map(node => node.topic.name) || [],
     owner: { avatar_url: repository.owner?.avatarUrl || '' },
   }
+}
+
+export function buildRepositoryMetadataQuery(repositoryKeys) {
+  const fields = repositoryKeys.map((key, index) => {
+    const [owner, name] = String(key).split('/')
+    return `r${index}: repository(owner: ${JSON.stringify(owner)}, name: ${JSON.stringify(name)}) {${REPOSITORY_METADATA_FIELDS}}`
+  }).join('\n')
+  return `query CuratedRepositoryMetadata { ${fields} }`
+}
+
+export function mapGraphqlRepositoryMetadataBatch(data, repositoryKeys) {
+  return new Map(repositoryKeys.flatMap((key, index) => {
+    const repository = data?.[`r${index}`]
+    return repository ? [[String(key).toLowerCase(), {
+      stargazerCount: repository.stargazerCount ?? 0,
+      forkCount: repository.forkCount ?? 0,
+      language: repository.primaryLanguage?.name || '',
+      license: repository.licenseInfo?.spdxId || '',
+      latestRelease: repository.latestRelease ? {
+        tag: repository.latestRelease.tagName,
+        publishedAt: repository.latestRelease.publishedAt,
+      } : null,
+      pushedAt: repository.pushedAt || null,
+      isArchived: Boolean(repository.isArchived),
+      repositoryTopics: { nodes: repository.repositoryTopics?.nodes || [] },
+      avatarUrl: repository.owner?.avatarUrl || '',
+    }]] : []
+  }))
 }
 
 export async function discoverGitHubRepositories({

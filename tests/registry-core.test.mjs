@@ -79,15 +79,64 @@ test('curated entries override discovered duplicates', () => {
 
 test('curated monorepo entries use the repository URL as identity', () => {
   const plugin = normalizeCurated({
-    owner: 'sjh9714',
-    name: 'dsh-movein-permissions',
-    url: 'https://github.com/sjh9714/dsh-movein/tree/main/plugin',
-    description: { zh: '权限规则', en: 'Permission rules' },
+    owner: 'vectorize-io',
+    name: 'hindsight#coding-agents',
+    url: 'https://github.com/vectorize-io/hindsight/tree/main/hindsight-integrations/coding-agents',
+    description: { zh: '长期记忆', en: 'Long-term memory' },
   })
-  assert.equal(plugin.id, 'sjh9714/dsh-movein#dsh-movein-permissions')
-  assert.equal(plugin.owner, 'sjh9714')
-  assert.equal(plugin.name, 'dsh-movein-permissions')
-  assert.equal(repositoryKey(plugin), 'sjh9714/dsh-movein')
+  assert.equal(plugin.id, 'vectorize-io/hindsight#coding-agents')
+  assert.equal(plugin.owner, 'vectorize-io')
+  assert.equal(plugin.name, 'hindsight#coding-agents')
+  assert.equal(repositoryKey(plugin), 'vectorize-io/hindsight')
+})
+
+test('curated monorepo entries apply current repository metadata', () => {
+  const plugin = normalizeCurated({
+    owner: 'vectorize-io',
+    name: 'hindsight#coding-agents',
+    url: 'https://github.com/vectorize-io/hindsight/tree/main/hindsight-integrations/coding-agents',
+    stars: 19_981,
+    description: { zh: '长期记忆', en: 'Long-term memory' },
+  }, {
+    stargazerCount: 20_005,
+    forkCount: 1_413,
+    language: 'Python',
+    license: 'MIT',
+    latestRelease: { tag: 'v1.0.0', publishedAt: '2026-08-15T00:00:00Z' },
+    pushedAt: '2026-08-16T00:00:00Z',
+    repositoryTopics: { nodes: [{ topic: { name: 'memory' } }] },
+    avatarUrl: 'https://avatars.example/vectorize-io',
+  })
+
+  assert.equal(plugin.stars, 20_005)
+  assert.equal(plugin.forks, 1_413)
+  assert.equal(plugin.language, 'Python')
+  assert.equal(plugin.license, 'MIT')
+  assert.deepEqual(plugin.latestRelease, { tag: 'v1.0.0', publishedAt: '2026-08-15T00:00:00Z' })
+  assert.equal(plugin.pushedAt, '2026-08-16T00:00:00Z')
+  assert.deepEqual(plugin.topics, ['memory'])
+  assert.equal(plugin.icon, 'https://avatars.example/vectorize-io')
+})
+
+test('curated entries keep source fallbacks when repository metadata is unavailable', () => {
+  const curatedPlugin = {
+    owner: 'deleted-owner',
+    name: 'deleted-repo#plugin',
+    url: 'https://github.com/deleted-owner/deleted-repo/tree/main/plugin',
+    stars: 12,
+    forks: 7,
+    language: 'JavaScript',
+    license: 'MIT',
+    description: { zh: '精选', en: 'Curated' },
+  }
+  const plugin = normalizeCurated(curatedPlugin)
+
+  assert.equal(plugin.stars, 12)
+  assert.equal(plugin.forks, 7)
+  assert.equal(plugin.language, 'JavaScript')
+  assert.equal(plugin.license, 'MIT')
+  assert.equal(plugin.archived, false)
+  assert.equal(normalizeCurated(curatedPlugin, { forkCount: 0 }).forks, 0)
 })
 
 test('repository governance blocks every entry from a curated monorepo', () => {

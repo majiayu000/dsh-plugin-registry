@@ -1,6 +1,13 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
-import { discoverGitHubRepositories, mapGraphqlRepository, REPOSITORY_DISCOVERY_QUERY } from './github-discovery.mjs'
+import {
+  buildRepositoryMetadataQuery,
+  discoverGitHubRepositories,
+  mapGraphqlRepository,
+  mapGraphqlRepositoryMetadataBatch,
+  REPOSITORY_DISCOVERY_QUERY,
+  REPOSITORY_METADATA_BATCH_SIZE,
+} from './github-discovery.mjs'
 import { validateBundleManifest } from '../assets/bundle-manifest.js'
 import { hasDshCandidateContext } from '../assets/candidate-relevance.js'
 import {
@@ -134,6 +141,33 @@ async function githubSearchPage({ searchQuery, cursor }) {
   }
 }
 
+async function loadCuratedRepositoryMetadata(repositoryKeys) {
+  if (!TOKEN || repositoryKeys.length === 0) return new Map()
+
+  const batches = []
+  for (let offset = 0; offset < repositoryKeys.length; offset += REPOSITORY_METADATA_BATCH_SIZE) {
+    batches.push(repositoryKeys.slice(offset, offset + REPOSITORY_METADATA_BATCH_SIZE))
+  }
+  const metadata = new Map()
+  let nextBatch = 0
+
+  async function worker() {
+    while (nextBatch < batches.length) {
+      const batch = batches[nextBatch]
+      nextBatch += 1
+      try {
+        const data = await githubGraphql(buildRepositoryMetadataQuery(batch), {}, { allowPartial: true })
+        for (const [key, value] of mapGraphqlRepositoryMetadataBatch(data, batch)) metadata.set(key, value)
+      } catch (error) {
+        console.warn(`Curated repository metadata unavailable for batch; keeping curated fallbacks: ${error.message}`)
+      }
+    }
+  }
+
+  await Promise.all(Array.from({ length: Math.min(4, batches.length) }, () => worker()))
+  return metadata
+}
+
 async function discoverRepositories() {
   if (!TOKEN) {
     console.warn('No GitHub token found; syncing the 100 most recently updated candidates only.')
@@ -225,6 +259,12 @@ async function main() {
   const curatedKeys = new Set(curatedRegistry.plugins.map(repositoryKey))
   const newCandidates = uniqueRepositories.filter(repo => !curatedKeys.has(repo.full_name.toLowerCase()))
   const repositoryByKey = new Map(uniqueRepositories.map(repo => [repo.full_name.toLowerCase(), repo]))
+  const curatedRepositoryKeys = [...new Set(curatedRegistry.plugins.map(repositoryKey))]
+  const missingCuratedRepositoryKeys = curatedRepositoryKeys.filter(key => !repositoryByKey.has(key))
+  const curatedRepositoryMetadata = await loadCuratedRepositoryMetadata(missingCuratedRepositoryKeys)
+  if (missingCuratedRepositoryKeys.length > 0) {
+    console.log(`Curated metadata: ${curatedRepositoryMetadata.size}/${missingCuratedRepositoryKeys.length} repository roots resolved.`)
+  }
   const manifestCache = new Map()
   for (const plugin of previous?.plugins || []) {
     manifestCache.set(repositoryKey(plugin), {
@@ -253,20 +293,23 @@ async function main() {
   })
   const bundlePatches = await loadBundlePatches(bundleCandidates)
 
-  const metadata = new Map(uniqueRepositories.map(repo => [repo.full_name.toLowerCase(), {
-    stargazerCount: repo.stargazers_count,
-    forkCount: repo.forks_count,
-    language: repo.language || '',
-    license: repo.license || '',
-    latestRelease: repo.latest_release ? {
-      tag: repo.latest_release.tag || '',
-      publishedAt: repo.latest_release.published_at || null,
-    } : null,
-    pushedAt: repo.pushed_at,
-    isArchived: repo.archived,
-    repositoryTopics: { nodes: (repo.topics || []).map(name => ({ topic: { name } })) },
-    avatarUrl: repo.owner?.avatar_url,
-  }]))
+  const metadata = new Map([
+    ...uniqueRepositories.map(repo => [repo.full_name.toLowerCase(), {
+      stargazerCount: repo.stargazers_count,
+      forkCount: repo.forks_count,
+      language: repo.language || '',
+      license: repo.license || '',
+      latestRelease: repo.latest_release ? {
+        tag: repo.latest_release.tag || '',
+        publishedAt: repo.latest_release.published_at || null,
+      } : null,
+      pushedAt: repo.pushed_at,
+      isArchived: repo.archived,
+      repositoryTopics: { nodes: (repo.topics || []).map(name => ({ topic: { name } })) },
+      avatarUrl: repo.owner?.avatar_url,
+    }]),
+    ...curatedRepositoryMetadata,
+  ])
   function repositoryVerification(repository) {
     const key = repository.full_name.toLowerCase()
     const cached = manifestCache.get(key)

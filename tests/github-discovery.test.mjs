@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { discoverGitHubRepositories, mapGraphqlRepository } from '../scripts/github-discovery.mjs'
+import {
+  buildRepositoryMetadataQuery,
+  discoverGitHubRepositories,
+  mapGraphqlRepository,
+  mapGraphqlRepositoryMetadataBatch,
+} from '../scripts/github-discovery.mjs'
 
 function page(repositoryCount, names, hasNextPage = false, endCursor = null) {
   return {
@@ -85,4 +90,41 @@ test('GraphQL repositories map to the registry normalization contract', () => {
     topics: ['dsh-plugin'],
     owner: { avatar_url: 'https://avatars.example/acme' },
   })
+})
+
+test('curated repository metadata is queried in one GraphQL batch and skips missing roots', () => {
+  const repositoryKeys = ['vectorize-io/hindsight', 'missing/private-repository']
+  const query = buildRepositoryMetadataQuery(repositoryKeys)
+  assert.equal((query.match(/repository\(owner:/g) || []).length, 2)
+  assert.match(query, /r0: repository\(owner: "vectorize-io", name: "hindsight"\)/)
+  assert.match(query, /forkCount/)
+  assert.match(query, /repositoryTopics\(first: 20\)/)
+
+  const metadata = mapGraphqlRepositoryMetadataBatch({
+    r0: {
+      stargazerCount: 20_005,
+      forkCount: 1_413,
+      primaryLanguage: { name: 'Python' },
+      licenseInfo: { spdxId: 'MIT' },
+      latestRelease: { tagName: 'v1.0.0', publishedAt: '2026-08-15T00:00:00Z' },
+      pushedAt: '2026-08-16T00:00:00Z',
+      isArchived: false,
+      repositoryTopics: { nodes: [{ topic: { name: 'memory' } }] },
+      owner: { avatarUrl: 'https://avatars.example/vectorize-io' },
+    },
+    r1: null,
+  }, repositoryKeys)
+
+  assert.deepEqual(metadata.get('vectorize-io/hindsight'), {
+    stargazerCount: 20_005,
+    forkCount: 1_413,
+    language: 'Python',
+    license: 'MIT',
+    latestRelease: { tag: 'v1.0.0', publishedAt: '2026-08-15T00:00:00Z' },
+    pushedAt: '2026-08-16T00:00:00Z',
+    isArchived: false,
+    repositoryTopics: { nodes: [{ topic: { name: 'memory' } }] },
+    avatarUrl: 'https://avatars.example/vectorize-io',
+  })
+  assert.equal(metadata.has('missing/private-repository'), false)
 })

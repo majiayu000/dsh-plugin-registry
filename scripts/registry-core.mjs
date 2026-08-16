@@ -116,7 +116,7 @@ export function normalizeCurated(plugin, metadata = {}) {
     description,
     category: inferCategory({ id: identity.id, name, description, topics }, plugin.category || 'tools'),
     stars: metadata.stargazerCount ?? plugin.stars ?? 0,
-    forks: metadata.forkCount ?? 0,
+    forks: metadata.forkCount ?? plugin.forks ?? 0,
     language: metadata.language || plugin.language || '',
     license: metadata.license || plugin.license || '',
     latestRelease: metadata.latestRelease || plugin.latestRelease || null,
