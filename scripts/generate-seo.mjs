@@ -18,6 +18,13 @@ export function pluginRoute(plugin) {
   return `plugins/${segments.map(segment => encodeURIComponent(segment)).join('/')}/`
 }
 
+const STATIC_PAGES = [
+  { file: 'index.html', path: '' },
+  { file: 'publish.html', path: 'publish.html' },
+  { file: 'policy.html', path: 'policy.html' },
+  { file: 'dashboard.html', path: 'dashboard.html' },
+]
+
 function localizedDescription(plugin) {
   return plugin.description?.zh || plugin.description?.en || `${plugin.name} — DeepSeek Harness community plugin.`
 }
@@ -65,6 +72,24 @@ export function renderPluginPage(template, plugin, homepage) {
     .replace('<body>', `<body data-plugin-id="${escapeHtml(plugin.id)}">`)
 }
 
+export function renderStaticPage(page, path, homepage) {
+  const canonical = new URL(path, homepage).href
+  const title = page.match(/<title>([^<]*)<\/title>/)?.[1]
+  if (!title) throw new Error(`Static page ${canonical} is missing a <title> element for SEO tags.`)
+  const description = page.match(/<meta name="description" content="([^"]*)" ?\/>/)?.[1]
+  const icon = page.match(/<link rel="icon" href="([^"]+)"[^>]*>/)?.[1]
+  const tags = [
+    `<link rel="canonical" href="${escapeHtml(canonical)}" />`,
+    '<meta property="og:type" content="website" />',
+    `<meta property="og:title" content="${escapeHtml(title)}" />`,
+    description ? `<meta property="og:description" content="${escapeHtml(description)}" />` : '',
+    `<meta property="og:url" content="${escapeHtml(canonical)}" />`,
+    icon ? `<meta property="og:image" content="${escapeHtml(new URL(icon, canonical).href)}" />` : '',
+    '<meta name="twitter:card" content="summary" />',
+  ].filter(Boolean)
+  return page.replace('</head>', tags.join('\n') + '\n</head>')
+}
+
 export async function generateSeoFiles({
   distDir = resolve('dist'),
   registryPath = resolve('public/data/plugins.json'),
@@ -77,7 +102,19 @@ export async function generateSeoFiles({
   ])
   homepage ||= packageDocument.homepage
   if (!homepage) throw new Error('package.json homepage is required to generate canonical plugin URLs.')
-  const urls = [homepage, ...['publish.html', 'policy.html', 'dashboard.html'].map(page => new URL(page, homepage).href)]
+  const urls = STATIC_PAGES.map(({ path }) => new URL(path, homepage).href)
+
+  let staticPageCount = 0
+  for (const { file, path } of STATIC_PAGES) {
+    const target = join(distDir, file)
+    const page = await readFile(target, 'utf8').catch(error => {
+      if (error.code === 'ENOENT') return null
+      throw error
+    })
+    if (page === null) continue
+    await writeFile(target, renderStaticPage(page, path, homepage))
+    staticPageCount += 1
+  }
 
   for (const plugin of registry.plugins) {
     const route = pluginRoute(plugin)
@@ -92,7 +129,7 @@ export async function generateSeoFiles({
     writeFile(join(distDir, 'sitemap.xml'), sitemap),
     writeFile(join(distDir, 'robots.txt'), `User-agent: *\nAllow: /\nSitemap: ${new URL('sitemap.xml', homepage).href}\n`),
   ])
-  console.log(`SEO pages generated: ${registry.plugins.length} plugin pages and sitemap.xml.`)
+  console.log(`SEO pages generated: ${registry.plugins.length} plugin pages, ${staticPageCount} static pages, and sitemap.xml.`)
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

@@ -1,4 +1,4 @@
-name: Deploy GitHub Pages
+name: Deploy Cloudflare Pages
 
 on:
   push:
@@ -8,18 +8,13 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
-  group: github-pages
+  group: cloudflare-pages
   cancel-in-progress: true
 
 jobs:
   deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -27,14 +22,11 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - uses: actions/configure-pages@v5
       - run: npm ci
       - run: npm test
       - run: npm run validate:registry
-      - run: npm run build -- --base /dsh-plugin-registry/
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: dist
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - run: npm run build
+      - name: Deploy to Cloudflare Pages
+        run: npx wrangler pages deploy dist --project-name dsh-plugin-registry --branch main
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

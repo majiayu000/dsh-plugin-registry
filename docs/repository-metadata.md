@@ -26,7 +26,7 @@ This record follows the ShipWise discoverability checklist. Public GitHub settin
 | README | verified locally | Positioning, quickstart, data query, limitations, proof, and support are present |
 | Package metadata | verified locally | Private app metadata includes description, repository, bugs, keywords, and Node requirement |
 | Support path | verified | Public Issues and private vulnerability reporting are enabled |
-| Homepage | verified | GitHub Pages and the public registry JSON return HTTP 200; URL is set in GitHub About |
+| Homepage | verified | Cloudflare Pages and the public registry JSON return HTTP 200; URL is set in GitHub About |
 | Social preview | missing | Create and upload a 1280×640 repository social preview in GitHub Settings |
 | Release | missing | Define a release/version strategy after the deployment decision |
 | License | verified locally | MIT License selected by the repository owner and recorded in `LICENSE` and `package.json` |

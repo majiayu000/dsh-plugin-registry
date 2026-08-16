@@ -10,7 +10,7 @@
 - Verification date: 2026-08-15
 - Recommendation: improve before launch
 
-The project has a deployed registry UI, a validated schema, a real data snapshot, an MIT License, and a support path. The GitHub Pages access path is verified; formal launch readiness still depends on a release strategy and social preview.
+The project has a deployed registry UI, a validated schema, a real data snapshot, an MIT License, and a support path. The Cloudflare Pages access path is verified; formal launch readiness still depends on a release strategy and social preview.
 
 ## Status legend
 
@@ -25,7 +25,7 @@ The project has a deployed registry UI, a validated schema, a real data snapshot
 | Check | Status | Evidence | Next action |
 |---|---|---|---|
 | Target user named | verified | README names DSH users and plugin authors | Validate wording with initial users |
-| Install/access path works | verified | GitHub Pages and the public registry JSON return HTTP 200 | Monitor the Pages deployment workflow |
+| Install/access path works | verified | Cloudflare Pages (<https://plugin.dshdesk.com/>) and the public registry JSON return HTTP 200 | Monitor the Cloudflare Pages deployment workflows |
 | Quickstart works | verified locally | `npm run dev -- --host 127.0.0.1` served the registry | Recheck from a clean clone before release |
 | Real proof asset exists | verified | [`docs/assets/harness-registry.png`](assets/harness-registry.png) uses the current registry snapshot | Keep it current when the UI changes materially |
 | License is present | verified locally | MIT License selected by the repository owner and recorded in `LICENSE` and `package.json` | Push and verify GitHub license detection |

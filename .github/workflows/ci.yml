@@ -25,5 +25,5 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm test
       - run: npm run validate:registry
-      - run: npm run build -- --base /dsh-plugin-registry/
+      - run: npm run build
       - run: npm run test:e2e
