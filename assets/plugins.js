@@ -156,6 +156,12 @@ import { hasDshCandidateContext } from './candidate-relevance.js'
     var dialog = ensureInstallDialog();
     var manifestChecked = manifestShapeValidated(plugin);
     var patchStatus = plugin.verification && plugin.verification.patch;
+    var verifiedCommit = typeof plugin.verifiedCommit === 'string' && /^[0-9a-f]{40}$/.test(plugin.verifiedCommit) ? plugin.verifiedCommit : '';
+    var commitLine = verifiedCommit
+      ? '<p class="install-dialog-commit">' + (english ? 'Manifest checked against HEAD commit ' : 'Manifest 校验时的仓库 HEAD：') +
+        '<a href="https://github.com/' + escapeHtml(String(plugin.id).split('#')[0]) + '/commit/' + escapeHtml(verifiedCommit) + '" target="_blank" rel="noopener">' + escapeHtml(verifiedCommit.slice(0, 7)) + '</a>' +
+        (english ? '. Installing always pulls the latest repository state.' : '。安装命令始终拉取仓库最新状态。') + '</p>'
+      : '';
     dialog.querySelector('#install-dialog-title').textContent = manifestChecked
       ? (english ? 'How to install ' + plugin.name : '安装 ' + plugin.name + ' 的步骤')
       : (english ? 'Install information for ' + plugin.name : plugin.name + ' 的安装信息');
@@ -165,7 +171,7 @@ import { hasDshCandidateContext } from './candidate-relevance.js'
       ? (patchStatus === 'exists'
         ? (english ? 'The root package.json matched dsh.bundle and the referenced patch file existed at synchronization time. Installation was not run or tested.' : '同步时，仓库根目录 package.json 符合 dsh.bundle 格式，且引用的 Patch 文件存在；本站没有运行或测试安装。')
         : (english ? 'The root package.json matched dsh.bundle, but the referenced patch file was not confirmed. Installation was not run or tested.' : '仓库根目录 package.json 符合 dsh.bundle 格式，但引用的 Patch 文件尚未确认；本站没有运行或测试安装。'))
-      : (english ? 'This command came from the community catalog. The registry did not check the repository manifest or confirm that the command installs successfully.' : '这条命令来自社区目录；本站没有检查仓库 Manifest，也没有确认命令能够成功安装。')) + '</p>';
+      : (english ? 'This command came from the community catalog. The registry did not check the repository manifest or confirm that the command installs successfully.' : '这条命令来自社区目录；本站没有检查仓库 Manifest，也没有确认命令能够成功安装。')) + '</p>' + commitLine;
     var copyButton = dialog.querySelector('[data-install-copy]');
     copyButton.textContent = english ? 'Copy install command' : '复制安装命令';
     copyButton.classList.remove('done', 'error');
@@ -284,6 +290,25 @@ import { hasDshCandidateContext } from './candidate-relevance.js'
     };
   }
 
+  function updateFreshness(registry) {
+    var nodes = document.querySelectorAll('[data-freshness]');
+    if (!nodes.length || !registry || !registry.generatedAt) return;
+    var generated = Date.parse(registry.generatedAt);
+    if (Number.isNaN(generated)) return;
+    var hours = Math.max(0, (Date.now() - generated) / 36e5);
+    var english = locale() === 'en';
+    var text;
+    if (hours < 1) text = english ? 'Data updated just now' : '数据刚刚更新';
+    else if (hours < 24) text = english ? 'Data updated ' + Math.floor(hours) + 'h ago' : '数据更新于 ' + Math.floor(hours) + ' 小时前';
+    else text = english ? 'Data updated ' + Math.floor(hours / 24) + 'd ago' : '数据更新于 ' + Math.floor(hours / 24) + ' 天前';
+    nodes.forEach(function (el) {
+      el.textContent = text;
+      el.hidden = false;
+      el.classList.toggle('stale', hours >= 24);
+      el.title = (english ? 'Snapshot generated at ' : '快照生成时间：') + registry.generatedAt;
+    });
+  }
+
   async function loadRegistry() {
     var responses = await Promise.all([
       fetch('data/plugins.json', { cache: 'no-cache' }),
@@ -304,6 +329,7 @@ import { hasDshCandidateContext } from './candidate-relevance.js'
     HR.PUBLISHED = registry.plugins;
     HR.PENDING = candidates;
     HR.PLUGINS = registry.plugins.concat(candidates);
+    updateFreshness(registry);
     return registry;
   }
 

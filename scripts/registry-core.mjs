@@ -137,7 +137,7 @@ export function normalizeCurated(plugin, metadata = {}) {
   }
 }
 
-export function normalizeDiscovered(repository, manifestShapeValid, patchExists = null) {
+export function normalizeDiscovered(repository, manifestShapeValid, patchExists = null, verifiedCommit = '') {
   const [owner, name] = repository.full_name.split('/')
   const listingEligible = Boolean(manifestShapeValid && patchExists !== false)
   return {
@@ -145,6 +145,7 @@ export function normalizeDiscovered(repository, manifestShapeValid, patchExists 
     name,
     owner,
     url: repository.html_url,
+    ...(verifiedCommit ? { verifiedCommit } : {}),
     description: {
       zh: repository.description || '',
       en: repository.description || '',

@@ -11,22 +11,26 @@ test('publish flow uses semantic steps, code, and heading order', async () => {
 })
 
 test('repository checker is an accessible keyboard-submittable form', async () => {
-  const html = await readFile('publish.html', 'utf8')
-  assert.match(html, /<form id="repo-checker-form" novalidate>/)
-  assert.match(html, /type="submit"/)
-  assert.match(html, /addEventListener\('submit'/)
-  assert.match(html, /aria-invalid/)
-  assert.match(html, /role="status" aria-live="polite"/)
-  assert.match(html, /class="check-state"/)
-  assert.match(html, /id="review-fields" hidden/)
-  assert.match(html, /id="review-submit" type="button" disabled/)
-  assert.match(html, /id="submission-receipt" hidden tabindex="-1"/)
-  assert.match(html, /buildGitHubSubmissionUrl/)
-  assert.match(html, /enableSubmission\(repo, check\)/)
-  assert.match(html, /addEventListener\('input', disableSubmission\)/)
-  assert.match(html, /issues\/new\?template=plugin_submission\.yml/)
-  assert.match(html, /fetch\('\/api\/submissions'/)
-  assert.match(html, /plugin_submission/)
+  const [html, script] = await Promise.all([
+    readFile('publish.html', 'utf8'),
+    readFile('assets/page-publish.js', 'utf8'),
+  ])
+  const source = html + '\n' + script
+  assert.match(source, /<form id="repo-checker-form" novalidate>/)
+  assert.match(source, /type="submit"/)
+  assert.match(script, /addEventListener\('submit'/)
+  assert.match(script, /aria-invalid/)
+  assert.match(source, /role="status" aria-live="polite"/)
+  assert.match(source, /class="check-state"/)
+  assert.match(source, /id="review-fields" hidden/)
+  assert.match(source, /id="review-submit" type="button" disabled/)
+  assert.match(source, /id="submission-receipt" hidden tabindex="-1"/)
+  assert.match(script, /buildGitHubSubmissionUrl/)
+  assert.match(script, /enableSubmission\(repo, check\)/)
+  assert.match(script, /addEventListener\('input', disableSubmission\)/)
+  assert.match(source, /issues\/new\?template=plugin_submission\.yml/)
+  assert.match(script, /fetch\('\/api\/submissions'/)
+  assert.match(source, /plugin_submission/)
 })
 
 test('repository field and result states have matching styles', async () => {

@@ -93,3 +93,16 @@ test('GitHub identities reject markup before registry data reaches HTML renderer
 
   assert.match(result.errors.join(' '), /valid GitHub repository URL/)
 })
+
+test('icons must stay on GitHub-hosted domains', () => {
+  assert.deepEqual(validateRegistry(registry({ icon: 'https://cdn.example.com/acme.png' })).errors, [
+    'plugins[0].icon must be an HTTPS URL hosted on github.com or avatars.githubusercontent.com.',
+  ])
+  assert.deepEqual(validateRegistry(registry({ icon: 'https://avatars.githubusercontent.com/u/1?v=4' })).errors, [])
+})
+
+test('verified commit pins must be full 40-character SHAs', () => {
+  assert.deepEqual(validateRegistry(registry({ verifiedCommit: 'a'.repeat(40) })).errors, [])
+  const result = validateRegistry(registry({ verifiedCommit: 'abc123' }))
+  assert.match(result.errors.join(' '), /verifiedCommit must be a 40-character commit SHA/)
+})

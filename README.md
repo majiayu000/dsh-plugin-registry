@@ -22,10 +22,13 @@ Open <http://localhost:5173> to browse, search, filter, and inspect the registry
 ## What it provides
 
 - A searchable web directory with categories, trust labels, Stars, Forks, and install commands.
-- Curated entries imported from the community registry.
+- Curated entries vendored from the community catalog into [`sources/curated.json`](sources/curated.json).
 - Automatic discovery from the GitHub `dsh-plugin` topic.
 - Manifest verification: discovered repositories must declare a valid `dsh.bundle` object in `package.json`, and its referenced patch file must exist.
+- Supply-chain pinning: each verified plugin records the exact `verifiedCommit` HEAD its manifest was checked against.
 - A public JSON snapshot with schema validation, health gates, and a separate audit queue.
+- Snapshot freshness on every page, with a stale warning past 24 hours and an automatic GitHub issue when a scheduled sync fails.
+- Strict per-page Content-Security-Policy with icons restricted to GitHub-hosted domains.
 - A repository checker that explains whether a plugin is eligible for automatic discovery.
 - An optional on-site review form that creates an assigned, public GitHub Issue through a protected Cloudflare Pages Function.
 
@@ -59,14 +62,14 @@ GH_TOKEN=... npm run backfill:languages
 ## How discovery works
 
 ```text
-Curated registry ─┐
-                  ├─ normalize ─ verify ─ governance ─ public registry
-GitHub topic ─────┘                              └──── audit queue
+Vendored curated catalog (sources/curated.json) ─┐
+                                                 ├─ normalize ─ verify ─ governance ─ public registry
+GitHub topic ────────────────────────────────────┘                              └──── audit queue
 ```
 
 Curated repositories receive the `curated` trust level. Automatically discovered repositories are installable only when their root `package.json` contains a valid `dsh.bundle`; these receive `manifest_verified`. Pending repositories remain visible as GitHub candidates without an install command, while blocked and quarantined repositories stay hidden. The full policy is documented in [registry governance](docs/registry-governance.md).
 
-The scheduled GitHub Actions workflow refreshes the snapshot every two hours. When the registry changes, the same workflow commits the snapshot and deploys its verified build artifact to GitHub Pages, so sync commits created with `GITHUB_TOKEN` do not depend on a second `push` event. A health gate prevents an unauthenticated partial discovery run or an unexpectedly smaller complete snapshot from replacing healthy data.
+The scheduled GitHub Actions workflow refreshes the snapshot every two hours. When the registry changes, the same workflow commits the snapshot and deploys its verified build artifact to Cloudflare Pages, so sync commits created with `GITHUB_TOKEN` do not depend on a second `push` event. A health gate prevents an unauthenticated partial discovery run, an unexpectedly smaller complete snapshot, or a partially answered GitHub GraphQL batch from replacing healthy data. If a scheduled sync fails, the workflow opens a titled tracking issue and closes it once the next run is healthy again.
 
 ## Add a plugin
 
@@ -85,7 +88,7 @@ Use the repository checker at <http://localhost:5173/publish.html>. When the Clo
 - Stars, Forks, descriptions, Topics, and primary languages are point-in-time GitHub metadata and can lag until the next sync.
 - A complete discovery refresh requires a GitHub token; unauthenticated runs inspect only recent candidates and cannot overwrite a complete snapshot.
 - The browser-based repository checker uses the unauthenticated GitHub API and may encounter rate limits.
-- The GitHub Pages site tracks `main`; formal versioned releases are not yet available.
+- The Cloudflare Pages site tracks `main`; formal versioned releases are not yet available.
 
 ## Development
 
@@ -100,6 +103,12 @@ To refresh registry data, provide a GitHub token with public repository read acc
 
 ```bash
 GITHUB_TOKEN=... npm run sync:plugins
+```
+
+To regenerate the vendored curated catalog from the current snapshot:
+
+```bash
+npm run export:curated
 ```
 
 Do not commit tokens or generated credentials. See [CONTRIBUTING.md](CONTRIBUTING.md) for the change workflow.

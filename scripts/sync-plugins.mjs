@@ -24,7 +24,7 @@ import {
 } from './registry-core.mjs'
 import { validateRegistry } from './validate-registry.mjs'
 
-const CURATED_URL = 'https://awesome-dsh-plugin.com/plugins.json'
+const CURATED_SOURCE = resolve('sources/curated.json')
 const GITHUB_API = 'https://api.github.com'
 const OUTPUT = resolve(process.env.DSH_REGISTRY_OUTPUT || 'public/data/plugins.json')
 const AUDIT_OUTPUT = resolve(process.env.DSH_REGISTRY_AUDIT_OUTPUT || 'public/data/registry-audit.json')
@@ -90,26 +90,15 @@ async function loadConfig(path) {
   return JSON.parse(await readFile(path, 'utf8'))
 }
 
-async function loadCurated(previous) {
-  try {
-    return await fetchJson(CURATED_URL, { headers: { accept: 'application/json' } })
-  } catch (error) {
-    if (previous?.plugins?.length) {
-      console.warn(`Curated source unavailable; keeping the previous snapshot: ${error.message}`)
-      return {
-        updated: previous.generatedAt,
-        categories: previous.categories,
-        plugins: previous.plugins.filter(plugin => plugin.source === 'curated').map(plugin => ({
-          ...plugin,
-          description: plugin.description,
-          category: plugin.category,
-          added: plugin.addedAt,
-        })),
-      }
-    }
-    throw error
+async function loadCurated() {
+  const curated = JSON.parse(await readFile(CURATED_SOURCE, 'utf8'))
+  if (!Array.isArray(curated.plugins)) {
+    throw new Error(`Vendored curated source must provide a plugins array: ${CURATED_SOURCE}`)
   }
+  return curated
 }
+
+const graphqlRequests = { total: 0, partial: 0 }
 
 async function githubGraphql(query, variables, options = {}) {
   for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -118,9 +107,14 @@ async function githubGraphql(query, variables, options = {}) {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ query, variables }),
     })
-    if (!response.errors?.length) return response.data
+    if (!response.errors?.length) {
+      graphqlRequests.total += 1
+      return response.data
+    }
     const message = response.errors.map(error => error.message).join('; ')
     if (options.allowPartial && response.data) {
+      graphqlRequests.total += 1
+      graphqlRequests.partial += 1
       console.warn(`GitHub GraphQL returned partial data: ${message}`)
       return response.data
     }
@@ -191,8 +185,9 @@ async function discoverRepositories() {
 }
 
 async function loadPackageManifests(repositories) {
-  if (!TOKEN || repositories.length === 0) return new Map()
+  if (!TOKEN || repositories.length === 0) return { manifests: new Map(), headCommits: new Map() }
   const manifests = new Map()
+  const headCommits = new Map()
   const batchSize = 40
   const batches = []
   for (let offset = 0; offset < repositories.length; offset += batchSize) batches.push(repositories.slice(offset, offset + batchSize))
@@ -205,10 +200,15 @@ async function loadPackageManifests(repositories) {
       nextBatch += 1
       const fields = batch.map((repo, index) => {
         const [owner, name] = repo.full_name.split('/')
-        return `r${index}: repository(owner: ${JSON.stringify(owner)}, name: ${JSON.stringify(name)}) { object(expression: "HEAD:package.json") { ... on Blob { text } } }`
+        return `r${index}: repository(owner: ${JSON.stringify(owner)}, name: ${JSON.stringify(name)}) { object(expression: "HEAD:package.json") { ... on Blob { text } } defaultBranchRef { target { ... on Commit { oid } } } }`
       }).join('\n')
       const data = await githubGraphql(`query { ${fields} }`, {}, { allowPartial: true })
-      batch.forEach((repo, index) => manifests.set(repoKey(...repo.full_name.split('/')), data?.[`r${index}`]?.object?.text || ''))
+      batch.forEach((repo, index) => {
+        const key = repoKey(...repo.full_name.split('/'))
+        manifests.set(key, data?.[`r${index}`]?.object?.text || '')
+        const oid = data?.[`r${index}`]?.defaultBranchRef?.target?.oid
+        if (typeof oid === 'string' && /^[0-9a-f]{40}$/.test(oid)) headCommits.set(key, oid)
+      })
       completed += batch.length
       if (completed === batch.length || completed === repositories.length || completed % 400 < batchSize) {
         console.log(`Manifest validation: ${completed}/${repositories.length}`)
@@ -216,7 +216,7 @@ async function loadPackageManifests(repositories) {
     }
   }
   await Promise.all(Array.from({ length: Math.min(4, batches.length) }, () => worker()))
-  return manifests
+  return { manifests, headCommits }
 }
 
 async function loadBundlePatches(candidates) {
@@ -250,7 +250,7 @@ async function loadBundlePatches(candidates) {
 async function main() {
   const [previous, previousAudit] = await Promise.all([loadPrevious(), loadPreviousAudit()])
   const [blocklist, overrides] = await Promise.all([loadConfig(BLOCKLIST), loadConfig(OVERRIDES)])
-  const curatedRegistry = await loadCurated(previous)
+  const curatedRegistry = await loadCurated()
   const repositories = await discoverRepositories()
   console.log(`Discovery complete: ${repositories.length} topic candidates.`)
   const uniqueRepositories = [...new Map(repositories.map(repo => [repo.full_name.toLowerCase(), repo])).values()]
@@ -271,6 +271,7 @@ async function main() {
       pushedAt: plugin.pushedAt,
       shapeValid: plugin.verification?.manifest === 'shape_validated',
       patchStatus: plugin.verification?.patch,
+      verifiedCommit: typeof plugin.verifiedCommit === 'string' ? plugin.verifiedCommit : undefined,
     })
   }
   for (const plugin of previousAudit?.pendingReview || []) {
@@ -286,12 +287,18 @@ async function main() {
     return cached?.pushedAt !== repo.pushed_at || (cached.shapeValid && !cached.patchStatus)
   })
   console.log(`Manifest cache: ${uniqueRepositories.length - candidatesToValidate.length} unchanged, ${candidatesToValidate.length} to validate.`)
-  const manifests = await loadPackageManifests(candidatesToValidate)
+  const { manifests, headCommits } = await loadPackageManifests(candidatesToValidate)
   const bundleCandidates = candidatesToValidate.flatMap(repository => {
     const check = validateBundleManifest(manifests.get(repository.full_name.toLowerCase()))
     return check.valid ? [{ repository, patch: check.patch }] : []
   })
   const bundlePatches = await loadBundlePatches(bundleCandidates)
+
+  const partialRatio = graphqlRequests.total ? graphqlRequests.partial / graphqlRequests.total : 0
+  const maxPartialRatio = Number(process.env.DSH_MAX_PARTIAL_RATIO ?? 0.05)
+  if (partialRatio > maxPartialRatio) {
+    throw new Error(`GitHub GraphQL returned partial data for ${graphqlRequests.partial}/${graphqlRequests.total} requests (limit ${maxPartialRatio}); refusing to publish a partially validated snapshot.`)
+  }
 
   const metadata = new Map([
     ...uniqueRepositories.map(repo => [repo.full_name.toLowerCase(), {
@@ -318,7 +325,8 @@ async function main() {
     const patchExists = unchanged
       ? (cached.patchStatus === 'exists' ? true : (cached.patchStatus === 'missing' ? false : null))
       : bundlePatches.get(key)
-    return { manifestShapeValid, patchExists }
+    const verifiedCommit = unchanged ? cached?.verifiedCommit : headCommits.get(key)
+    return { manifestShapeValid, patchExists, verifiedCommit }
   }
 
   const curated = curatedRegistry.plugins.map(plugin => {
@@ -330,6 +338,7 @@ async function main() {
     if (!evidence.manifestShapeValid) return normalized
     return {
       ...normalized,
+      ...(evidence.verifiedCommit ? { verifiedCommit: evidence.verifiedCommit } : {}),
       verification: {
         manifest: 'shape_validated',
         patch: evidence.patchExists === true ? 'exists' : (evidence.patchExists === false ? 'missing' : 'not_checked'),
@@ -340,7 +349,7 @@ async function main() {
   const normalizedCandidates = newCandidates
     .map(repo => {
       const evidence = repositoryVerification(repo)
-      return normalizeDiscovered(repo, evidence.manifestShapeValid, evidence.patchExists)
+      return normalizeDiscovered(repo, evidence.manifestShapeValid, evidence.patchExists, evidence.verifiedCommit)
     })
   const blocked = new Map((blocklist.repositories || []).map(entry => [String(entry.repo).toLowerCase(), entry]))
   const candidateQuarantined = normalizedCandidates.flatMap(plugin => {
@@ -402,9 +411,10 @@ async function main() {
       pendingReview: pendingReview.length,
       quarantined: quarantined.length,
       discoveryMode: TOKEN ? 'complete' : 'recent',
+      ...(process.env.DSH_SYNC_ALLOW_UNSAFE === '1' ? { healthGateOverridden: true } : {}),
     },
     sources: {
-      curated: CURATED_URL,
+      curated: 'sources/curated.json',
       discovery: 'https://github.com/topics/dsh-plugin',
     },
     plugins,

@@ -39,7 +39,8 @@ test('primary pages expose keyboard and assistive-technology navigation', async 
   const index = htmlPages[0]
   assert.match(index, /<label class="sr-only" for="q">/)
   assert.match(index, /id="sort" aria-label="排序方式"/)
-  assert.match(index, /aria-pressed/)
+  const browse = index + '\n' + await readFile('assets/page-browse.js', 'utf8')
+  assert.match(browse, /aria-pressed/)
 })
 
 test('homepage links to the registry GitHub repository', async () => {
@@ -53,14 +54,18 @@ test('homepage links to the registry GitHub repository', async () => {
 })
 
 test('plugin detail describes only verifiable registry signals', async () => {
-  const html = await readFile('plugin-detail.html', 'utf8')
-  assert.doesNotMatch(html, /为什么被收录|人工精选且可安装|已通过社区精选库/)
-  assert.doesNotMatch(html, />README</)
-  assert.match(html, />插件信息</)
-  assert.match(html, /验证范围/)
-  assert.match(html, /本站不审计插件安全性/)
-  assert.match(html, /本站没有检查 Manifest/)
-  assert.match(html, /安装前请确认/)
+  const [html, script] = await Promise.all([
+    readFile('plugin-detail.html', 'utf8'),
+    readFile('assets/page-detail.js', 'utf8'),
+  ])
+  const detail = html + '\n' + script
+  assert.doesNotMatch(detail, /为什么被收录|人工精选且可安装|已通过社区精选库/)
+  assert.doesNotMatch(detail, />README</)
+  assert.match(detail, />插件信息</)
+  assert.match(detail, /验证范围/)
+  assert.match(detail, /本站不审计插件安全性/)
+  assert.match(detail, /本站没有检查 Manifest/)
+  assert.match(detail, /安装前请确认/)
 })
 
 test('plugin rows expose topics and update dates as decision signals', async () => {
@@ -102,7 +107,11 @@ test('directory places plugin results directly after the filters', async () => {
 
 test('install actions open an accessible shared guide instead of silently copying', async () => {
   const shared = await readFile('assets/plugins.js', 'utf8')
-  const detail = await readFile('plugin-detail.html', 'utf8')
+  const [detailHtml, detailScript] = await Promise.all([
+    readFile('plugin-detail.html', 'utf8'),
+    readFile('assets/page-detail.js', 'utf8'),
+  ])
+  const detail = detailHtml + '\n' + detailScript
   assert.match(shared, /document\.createElement\('dialog'\)/)
   assert.match(shared, /aria-labelledby/)
   assert.match(shared, /dialog\.showModal\(\)/)

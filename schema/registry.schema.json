@@ -74,6 +74,7 @@
               { "type": "null" }
             ]
           },
+          "verifiedCommit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
           "source": { "enum": ["curated", "discovered"] },
           "trustLevel": { "enum": ["curated", "manifest_verified"] },
           "special": { "type": "boolean" },
@@ -89,7 +90,7 @@
             }
           },
           "install": { "type": "string", "pattern": "^dsh plugin --profile web add [^\\s]+$" },
-          "icon": { "type": "string", "pattern": "^https://" }
+          "icon": { "type": "string", "pattern": "^https://(?:github\\.com|avatars\\.githubusercontent\\.com)/" }
         }
       }
     }

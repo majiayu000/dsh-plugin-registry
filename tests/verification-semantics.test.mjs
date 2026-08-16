@@ -30,14 +30,15 @@ test('published snapshot contains explicit evidence and no ambiguous booleans', 
 })
 
 test('plugin details expose both manifest and installation-test status', async () => {
-  const [html, shared, dashboard] = await Promise.all([
+  const [html, script, shared, dashboard] = await Promise.all([
     readFile('plugin-detail.html', 'utf8'),
+    readFile('assets/page-detail.js', 'utf8'),
     readFile('assets/plugins.js', 'utf8'),
     readFile('dashboard.html', 'utf8'),
   ])
   assert.match(html, /id="manifest-status"/)
   assert.match(html, /id="patch-status"/)
   assert.match(html, /id="installation-test-status"/)
-  assert.match(html, /没有运行插件、测试安装或审计安全性/)
+  assert.match(script, /没有运行插件、测试安装或审计安全性/)
   assert.match(shared + dashboard, /Manifest 格式检查通过/)
 })

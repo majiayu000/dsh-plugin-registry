@@ -6,6 +6,9 @@ test('public source labels describe the community catalog without implying endor
   const files = await Promise.all([
     readFile('assets/plugins.js', 'utf8'),
     readFile('assets/repository-checker.js', 'utf8'),
+    readFile('assets/page-browse.js', 'utf8'),
+    readFile('assets/page-dashboard.js', 'utf8'),
+    readFile('assets/page-detail.js', 'utf8'),
     readFile('plugin-detail.html', 'utf8'),
     readFile('index.html', 'utf8'),
     readFile('dashboard.html', 'utf8'),

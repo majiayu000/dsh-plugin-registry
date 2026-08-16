@@ -4,6 +4,8 @@ import { resolve } from 'node:path'
 import { repoKey } from './registry-core.mjs'
 
 const INSTALL_PATTERN = /^dsh plugin --profile ([A-Za-z0-9._-]+) add ([^\s]+)$/
+const ICON_PATTERN = /^https:\/\/(?:github\.com|avatars\.githubusercontent\.com)\//
+const VERIFIED_COMMIT_PATTERN = /^[0-9a-f]{40}$/
 const GITHUB_OWNER_PATTERN = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/
 const GITHUB_REPOSITORY_PATTERN = /^[A-Za-z0-9._-]{1,100}$/
 
@@ -48,7 +50,7 @@ export function validateRegistry(registry) {
       existingRepositoryIds.add(String(plugin.id).toLowerCase())
       repositoryIds.set(key, existingRepositoryIds)
     }
-    if (!/^https:\/\//.test(plugin?.icon || '')) errors.push(`${label}.icon must be an HTTPS URL.`)
+    if (!ICON_PATTERN.test(plugin?.icon || '')) errors.push(`${label}.icon must be an HTTPS URL hosted on github.com or avatars.githubusercontent.com.`)
     if (!categories.has(plugin?.category)) errors.push(`${label}.category is unknown: ${plugin?.category}.`)
     if (!Number.isInteger(plugin?.stars) || plugin.stars < 0) errors.push(`${label}.stars must be a non-negative integer.`)
     if (!Number.isInteger(plugin?.forks) || plugin.forks < 0) errors.push(`${label}.forks must be a non-negative integer.`)
@@ -62,6 +64,9 @@ export function validateRegistry(registry) {
     }
     if (plugin?.pushedAt !== undefined && plugin.pushedAt !== null && (typeof plugin.pushedAt !== 'string' || Number.isNaN(Date.parse(plugin.pushedAt)))) {
       errors.push(`${label}.pushedAt must be a valid ISO date or null.`)
+    }
+    if (plugin?.verifiedCommit !== undefined && !VERIFIED_COMMIT_PATTERN.test(plugin.verifiedCommit)) {
+      errors.push(`${label}.verifiedCommit must be a 40-character commit SHA.`)
     }
     if (!['curated', 'discovered'].includes(plugin?.source)) errors.push(`${label}.source is invalid.`)
     const expectedTrust = plugin?.source === 'curated' ? 'curated' : 'manifest_verified'

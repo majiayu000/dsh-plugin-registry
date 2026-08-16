@@ -86,7 +86,7 @@
     '插件数据暂时无法加载，请稍后重试。': 'Plugin data is temporarily unavailable. Please try again later.',
     '插件数据暂时无法加载。': 'Plugin data is temporarily unavailable.', '作者暂未提供简介。': 'No description provided.',
     '社区目录收录': 'Community catalog', '查看 GitHub': 'View on GitHub', '验证范围': 'Verification scope', '社区数据': 'Community data',
-    '来源': 'Source', '安装测试': 'Installation test', '未执行': 'Not performed', '它能做什么': 'What it does', '安装前请确认': 'Before installing',
+    '来源': 'Source', '安装测试': 'Installation test', '未执行': 'Not performed', '它能做什么': 'What it does', '安装前请确认': 'Before installing', '校验 Commit': 'Verified commit',
     '查看 GitHub 仓库中的 README、依赖和额外配置。': 'Review the README, dependencies, and additional setup in the GitHub repository.',
     '本站不审计插件安全性，也没有执行安装测试。': 'This registry does not audit plugin security or perform installation tests.',
     '本站收录': 'Listed here', '同类插件': 'Similar plugins', '报告条目信息问题 ↗': 'Report listing data ↗',

@@ -15,6 +15,7 @@ jobs:
     timeout-minutes: 30
     permissions:
       contents: write
+      issues: write
     outputs:
       registry_changed: ${{ steps.registry_changes.outputs.changed }}
     steps:
@@ -29,7 +30,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: npm test
       - run: npm run validate:registry
-      - run: npm run build -- --base /dsh-plugin-registry/
+      - run: npm run build
       - name: Commit changed registry snapshot
         id: registry_changes
         run: |
@@ -43,23 +44,36 @@ jobs:
           git commit -m "chore: refresh DSH plugin registry"
           git push
           echo "changed=true" >> "$GITHUB_OUTPUT"
-      - name: Upload verified Pages artifact
+      - name: Deploy verified build to Cloudflare Pages
         if: steps.registry_changes.outputs.changed == 'true'
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: dist
+        run: npx wrangler pages deploy dist --project-name dsh-plugin-registry --branch main
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      - name: Close the sync alert issue after a healthy run
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          number=$(gh issue list --state open --limit 100 --json number,title --jq '.[] | select(.title == "[registry-sync] Scheduled sync failed") | .number' | head -n 1)
+          if [ -n "$number" ]; then
+            gh issue close "$number" --comment "The latest registry sync completed successfully; closing this alert."
+          fi
 
-  deploy:
-    needs: sync
-    if: needs.sync.outputs.registry_changed == 'true'
+  alert:
+    needs: [sync]
+    if: ${{ always() && needs.sync.result == 'failure' }}
     runs-on: ubuntu-latest
     permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      issues: write
     steps:
-      - name: Deploy synchronized registry to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Open or update the sync alert issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          number=$(gh issue list --state open --limit 100 --json number,title --jq '.[] | select(.title == "[registry-sync] Scheduled sync failed") | .number' | head -n 1)
+          if [ -n "$number" ]; then
+            gh issue comment "$number" --body "The scheduled registry sync failed again: ${RUN_URL}"
+          else
+            gh issue create --title "[registry-sync] Scheduled sync failed" --body "The scheduled registry sync failed and the public snapshot may be stale. Investigate: ${RUN_URL}"
+          fi

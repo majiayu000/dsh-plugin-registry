@@ -173,6 +173,12 @@ h1, h2, h3 {
   background: var(--surface-warm);
 }
 .cli-tag::before { content: '● '; color: var(--success); font-size: 9px; }
+.freshness {
+  font-family: var(--font-mono); font-size: var(--text-xs); color: var(--muted);
+  padding: 5px 12px; border-radius: var(--radius-pill); background: var(--surface);
+  white-space: nowrap;
+}
+.freshness.stale { color: #a16207; background: rgba(234, 179, 8, 0.12); }
 .avatar-dot { width: 28px; height: 28px; border-radius: 50%; background: var(--surface); box-shadow: var(--elev-ring); }
 
 /* ---------- 按钮（药丸是系统签名） ---------- */

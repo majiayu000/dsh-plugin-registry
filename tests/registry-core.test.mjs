@@ -188,3 +188,12 @@ test('health gate rejects partial and unexpectedly smaller snapshots', () => {
   assert.match(validateHealth({ plugins: plugins.slice(0, 70), stats: { published: 70, curated: 10, discoveryMode: 'complete' } }, previous).join(' '), /dropped/)
   assert.deepEqual(validateHealth({ plugins: plugins.slice(0, 90), stats: { published: 90, curated: 18, discoveryMode: 'complete' } }, previous), [])
 })
+
+test('verified commit pins record the checked HEAD without altering trust', () => {
+  const commit = 'a'.repeat(40)
+  const pinned = normalizeDiscovered({ full_name: 'acme/plugin', html_url: 'https://github.com/acme/plugin' }, true, true, commit)
+  assert.equal(pinned.verifiedCommit, commit)
+  assert.equal(pinned.trustLevel, 'manifest_verified')
+  const unpinned = normalizeDiscovered({ full_name: 'acme/plugin', html_url: 'https://github.com/acme/plugin' }, true, true)
+  assert.equal('verifiedCommit' in unpinned, false)
+})
