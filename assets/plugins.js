@@ -368,12 +368,13 @@ import { trackPluginEvent } from './track.js'
     if (!('caches' in window)) return;
     try {
       var cache = await caches.open(SNAPSHOT_CACHE);
+      // audit 拉取失败时写入空 pending 列表，避免上一版 registry-audit.json 挂在新 version 下
+      var auditBody = auditText == null ? JSON.stringify({ pendingReview: [] }) : auditText;
       await Promise.all([
         ['data/version.json', versionText],
         ['data/plugins.json', registryText],
-        ['data/registry-audit.json', auditText],
+        ['data/registry-audit.json', auditBody],
       ].map(async function (entry) {
-        if (entry[1] == null) return;
         await cache.put(snapshotUrl(entry[0]), new Response(entry[1], { headers: { 'content-type': 'application/json' } }));
       }));
     } catch (_) {

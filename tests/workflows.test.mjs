@@ -57,4 +57,7 @@ test('sync CI commits the version file and rebases before pushing', async () => 
   // 运行期间 main 可能前进：非快进推送失败会触发误报告警，必须先 fetch + rebase
   assert.match(workflow, /git fetch origin main/)
   assert.match(workflow, /git rebase origin\/main/)
+  assert.match(workflow, /git rebase --abort/)
+  // rebase 成功后 dist/（gitignore）仍是 rebase 前产物，必须重建再 push/deploy
+  assert.match(workflow, /if ! git rebase origin\/main[\s\S]*npm run build[\s\S]*git push/)
 })

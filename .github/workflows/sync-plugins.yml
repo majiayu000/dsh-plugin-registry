@@ -48,7 +48,19 @@ jobs:
           git commit -m "chore: refresh DSH plugin registry"
           # 运行期间 main 可能合入了新提交：先 rebase 再 push，避免非快进推送失败造成误报告警
           git fetch origin main
-          git rebase origin/main
+          pre_rebase=$(git rev-parse HEAD)
+          if ! git rebase origin/main; then
+            git rebase --abort || true
+            echo "Could not rebase the snapshot commit onto origin/main" >&2
+            exit 1
+          fi
+          # dist/ 被 gitignore：rebase 一旦重写提交，必须按新树重建并再校验后再 deploy
+          if [ "$(git rev-parse HEAD)" != "$pre_rebase" ]; then
+            npm test
+            npm run validate:registry
+            npm run check:ranking
+            npm run build
+          fi
           git push
           echo "changed=true" >> "$GITHUB_OUTPUT"
       - name: Deploy verified build to Cloudflare Pages

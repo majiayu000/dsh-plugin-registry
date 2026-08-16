@@ -54,7 +54,10 @@ export async function handleTrack(context) {
   // 缺少 TRACK_SALT 时跳过而不是回退到某个公共盐：公共盐会让存储的摘要可被离线暴力枚举，
   // 静默降级等于放弃"匿名访问者摘要"的承诺。
   const salt = context.env.TRACK_SALT
-  if (!salt) return noContent({ 'x-track': 'skipped' })
+  if (!salt) {
+    console.warn('TRACK_SALT is not set; skipping plugin tracking')
+    return noContent({ 'x-track': 'skipped' })
+  }
 
   const visitor = await visitorDigest(context.request.headers.get('CF-Connecting-IP'), salt)
   dataset.writeDataPoint({

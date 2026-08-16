@@ -22,6 +22,7 @@ GitHub Issue 是审核记录，不改变当前每两小时一次的目录自动�
 - `TURNSTILE_SITE_KEY`：Turnstile 公共 site key。
 - `GITHUB_REGISTRY_REPOSITORY`：可选，默认 `majiayu000/dsh-plugin-registry`。
 - `GITHUB_REVIEWER`：可选，默认 `majiayu000`。
+- `TRACK_SALT`：加密 Secret。给 `/api/track` 的访问者摘要加盐。未配置时埋点直接跳过，不会回退到公共盐。
 
 Turnstile Widget 需要允许 `plugin.dshdesk.com`。生产环境不要使用测试密钥。
 
