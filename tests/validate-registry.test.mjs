@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { validateRegistry } from '../scripts/validate-registry.mjs'
+import { INSTALL_PATTERN, validateRegistry } from '../scripts/validate-registry.mjs'
 
 function registry(plugin = {}) {
   return {
@@ -105,4 +105,25 @@ test('verified commit pins must be full 40-character SHAs', () => {
   assert.deepEqual(validateRegistry(registry({ verifiedCommit: 'a'.repeat(40) })).errors, [])
   const result = validateRegistry(registry({ verifiedCommit: 'abc123' }))
   assert.match(result.errors.join(' '), /verifiedCommit must be a 40-character commit SHA/)
+})
+
+test('the JSON schema install pattern stays in lockstep with the validator', async () => {
+  const { readFile } = await import('node:fs/promises')
+  const schema = JSON.parse(await readFile('schema/registry.schema.json', 'utf8'))
+  const schemaPattern = new RegExp(schema.properties.plugins.items.properties.install.pattern)
+  const samples = [
+    ['dsh plugin --profile web add github:acme/plugin', true],
+    ['dsh plugin --profile tui add github:acme/plugin', true],
+    ['dsh plugin add github:acme/plugin', false],
+    ['dsh plugin --profile web add', false],
+  ]
+  for (const [command, expected] of samples) {
+    assert.equal(INSTALL_PATTERN.test(command), expected, `validator: ${command}`)
+    assert.equal(schemaPattern.test(command), expected, `schema: ${command}`)
+  }
+
+  // 已提交的快照必须同时满足两份契约，防止二者再度漂移
+  const snapshot = JSON.parse(await readFile('public/data/plugins.json', 'utf8'))
+  const offenders = snapshot.plugins.filter(plugin => !schemaPattern.test(plugin.install))
+  assert.deepEqual(offenders.map(plugin => plugin.id), [])
 })

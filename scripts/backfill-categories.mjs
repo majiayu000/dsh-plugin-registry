@@ -9,7 +9,9 @@ const AUDIT_OUTPUT = resolve(process.env.DSH_REGISTRY_AUDIT_OUTPUT || 'public/da
 function classify(plugin) {
   return {
     ...plugin,
-    category: inferCategory(plugin),
+    // 与同步管线（normalizeCurated/normalizeDiscovered）一致：已声明的分类作为回退，
+    // 只有命中明确规则时才改判，避免把已声明分类的条目批量重归到 'tools'。
+    category: inferCategory(plugin, plugin.category || 'tools'),
   }
 }
 

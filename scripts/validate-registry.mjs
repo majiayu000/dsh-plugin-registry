@@ -3,7 +3,7 @@ import { pathToFileURL } from 'node:url'
 import { resolve } from 'node:path'
 import { repoKey } from './registry-core.mjs'
 
-const INSTALL_PATTERN = /^dsh plugin --profile ([A-Za-z0-9._-]+) add ([^\s]+)$/
+export const INSTALL_PATTERN = /^dsh plugin --profile ([A-Za-z0-9._-]+) add ([^\s]+)$/
 const ICON_PATTERN = /^https:\/\/(?:github\.com|avatars\.githubusercontent\.com)\//
 const VERIFIED_COMMIT_PATTERN = /^[0-9a-f]{40}$/
 const GITHUB_OWNER_PATTERN = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/

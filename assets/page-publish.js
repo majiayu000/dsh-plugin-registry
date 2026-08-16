@@ -65,6 +65,10 @@ const { evaluateRepository, findRegistryEntry, githubFailureMessage, manifestFai
     document.getElementById('turnstile-shell').hidden = false;
     turnstileWidgetId = window.turnstile.render('#turnstile-widget', { sitekey: siteKey, action: 'plugin_submission', theme: 'light', callback: function (token) { turnstileToken = token; updateSubmissionState(); }, 'expired-callback': function () { turnstileToken = ''; updateSubmissionState(); }, 'error-callback': function () { turnstileToken = ''; updateSubmissionState(); } });
   }
+  function resetTurnstile() {
+    turnstileToken = '';
+    if (window.turnstile && turnstileWidgetId !== null) window.turnstile.reset(turnstileWidgetId);
+  }
   function detailsValid() {
     var summary = document.getElementById('summary-input').value.trim();
     return /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/.test(document.getElementById('submitter-input').value.trim().replace(/^@/, '')) && summary.length >= 20 && summary.length <= 300 && document.getElementById('ownership-confirmed').checked && document.getElementById('public-review-confirmed').checked;
@@ -98,8 +102,9 @@ const { evaluateRepository, findRegistryEntry, githubFailureMessage, manifestFai
       var receipt = document.getElementById('submission-receipt'); receipt.hidden = false;
       document.getElementById('receipt-copy').textContent = (result.duplicate ? dynamicCopy.duplicate : dynamicCopy.received).replace('{number}', result.issueNumber);
       document.getElementById('receipt-link').href = result.issueUrl; receipt.focus();
+      resetTurnstile();
     } catch (error) {
-      turnstileToken = ''; if (window.turnstile && turnstileWidgetId !== null) window.turnstile.reset(turnstileWidgetId); updateSubmissionState();
+      resetTurnstile(); updateSubmissionState();
       submissionHelp.textContent = error.message || dynamicCopy.failed; reviewSubmit.querySelector('span').textContent = dynamicCopy.retry;
     }
   });

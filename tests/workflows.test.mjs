@@ -48,3 +48,13 @@ test('sync aborts instead of silently accepting partial GraphQL results', async 
   assert.match(sync, /DSH_MAX_PARTIAL_RATIO/)
   assert.match(sync, /refusing to publish a partially validated snapshot/)
 })
+
+test('sync CI commits the version file and rebases before pushing', async () => {
+  const workflow = await readFile('.github/workflows/sync-plugins.yml', 'utf8')
+  assert.match(workflow, /fetch-depth: 0/)
+  assert.match(workflow, /- run: npm run check:ranking/)
+  assert.match(workflow, /git add public\/data\/plugins\.json public\/data\/registry-audit\.json public\/data\/version\.json/)
+  // 运行期间 main 可能前进：非快进推送失败会触发误报告警，必须先 fetch + rebase
+  assert.match(workflow, /git fetch origin main/)
+  assert.match(workflow, /git rebase origin\/main/)
+})

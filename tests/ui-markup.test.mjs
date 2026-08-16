@@ -68,6 +68,35 @@ test('plugin detail describes only verifiable registry signals', async () => {
   assert.match(detail, /安装前请确认/)
 })
 
+test('plugin detail loads a per-plugin data file and hides install actions for pending candidates', async () => {
+  const script = await readFile('assets/page-detail.js', 'utf8')
+  assert.match(script, /window\.HR_DEFER_REGISTRY = true/)
+  assert.match(script, /fetch\('data\/plugins\/' \+ pluginDataFilename\(requested\) \+ '\.json'\)/)
+  assert.match(script, /HR\.startRegistryLoad\(\)/)
+  assert.match(script, /var isPending = HR\.pendingReview\(plugin\)/)
+  assert.match(script, /document\.getElementById\('install-box'\)\.hidden = true/)
+  assert.match(script, /if \(!isPending\) \{/)
+  assert.match(script, /plugin\.forks == null \? '—' : plugin\.forks\.toLocaleString\(\)/)
+})
+
+test('dynamic i18n skips registry-rendered content marked data-dyn', async () => {
+  const i18n = await readFile('assets/i18n.js', 'utf8')
+  const listing = await readFile('assets/plugins.js', 'utf8')
+  assert.match(i18n, /closest\('\[data-dyn\]'\)\) return/)
+  assert.match(i18n, /!node\.parentElement\.closest\('\[data-dyn\]'\)/)
+  assert.match(listing, /prow-name" data-dyn/)
+  assert.match(listing, /prow-desc" data-dyn/)
+  assert.match(listing, /prow-meta"><b data-dyn/)
+})
+
+test('registry snapshot loads through the Cache API keyed by version.json', async () => {
+  const script = await readFile('assets/plugins.js', 'utf8')
+  assert.match(script, /SNAPSHOT_CACHE = 'harness-registry-snapshot-v1'/)
+  assert.match(script, /fetch\('data\/version\.json', \{ cache: 'no-cache' \}\)/)
+  assert.match(script, /caches\.open\(SNAPSHOT_CACHE\)/)
+  assert.match(script, /HR\.startRegistryLoad = startRegistryLoad/)
+})
+
 test('plugin rows expose topics and update dates as decision signals', async () => {
   const script = await readFile('assets/plugins.js', 'utf8')
   assert.match(script, /prow-topic/)

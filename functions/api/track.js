@@ -7,7 +7,6 @@
 
 const EVENTS = new Set(['view', 'copy', 'outbound'])
 const PLUGIN_ID_PATTERN = /^[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+(?:#[A-Za-z0-9._-]+)?$/
-const VISITOR_SALT_FALLBACK = 'dsh-registry-track-v1'
 const MAX_BODY_BYTES = 512
 
 function noContent(headers = {}) {
@@ -23,7 +22,7 @@ export function validateTrackPayload(input) {
   return { value: { pluginId, event } }
 }
 
-export async function visitorDigest(ip, salt = VISITOR_SALT_FALLBACK) {
+export async function visitorDigest(ip, salt) {
   const address = String(ip || 'unknown')
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${salt}:${address}`))
   return [...new Uint8Array(digest)].slice(0, 8).map(byte => byte.toString(16).padStart(2, '0')).join('')
@@ -52,10 +51,12 @@ export async function handleTrack(context) {
   const dataset = context.env?.TRACKING
   if (!dataset?.writeDataPoint) return noContent({ 'x-track': 'skipped' })
 
-  const visitor = await visitorDigest(
-    context.request.headers.get('CF-Connecting-IP'),
-    context.env.TRACK_SALT || VISITOR_SALT_FALLBACK,
-  )
+  // 缺少 TRACK_SALT 时跳过而不是回退到某个公共盐：公共盐会让存储的摘要可被离线暴力枚举，
+  // 静默降级等于放弃"匿名访问者摘要"的承诺。
+  const salt = context.env.TRACK_SALT
+  if (!salt) return noContent({ 'x-track': 'skipped' })
+
+  const visitor = await visitorDigest(context.request.headers.get('CF-Connecting-IP'), salt)
   dataset.writeDataPoint({
     blobs: [validation.value.event, validation.value.pluginId, visitor],
     indexes: [validation.value.pluginId],

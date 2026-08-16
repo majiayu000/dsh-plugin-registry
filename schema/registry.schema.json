@@ -90,7 +90,7 @@
               "installation": { "const": "not_tested" }
             }
           },
-          "install": { "type": "string", "pattern": "^dsh plugin --profile web add [^\\s]+$" },
+          "install": { "type": "string", "pattern": "^dsh plugin --profile [A-Za-z0-9._-]+ add [^\\s]+$" },
           "icon": { "type": "string", "pattern": "^https://(?:github\\.com|avatars\\.githubusercontent\\.com)/" }
         }
       }

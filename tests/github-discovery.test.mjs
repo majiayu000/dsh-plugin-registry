@@ -5,6 +5,7 @@ import {
   discoverGitHubRepositories,
   mapGraphqlRepository,
   mapGraphqlRepositoryMetadataBatch,
+  mapRestRepository,
 } from '../scripts/github-discovery.mjs'
 
 function page(repositoryCount, names, hasNextPage = false, endCursor = null) {
@@ -127,4 +128,38 @@ test('curated repository metadata is queried in one GraphQL batch and skips miss
     avatarUrl: 'https://avatars.example/vectorize-io',
   })
   assert.equal(metadata.has('missing/private-repository'), false)
+})
+
+test('REST search items are normalized to the GraphQL shape with a string license', () => {
+  const mapped = mapRestRepository({
+    full_name: 'acme/dsh-plugin',
+    html_url: 'https://github.com/acme/dsh-plugin',
+    description: null,
+    stargazers_count: 12,
+    forks_count: 0,
+    language: null,
+    license: { key: 'mit', name: 'MIT License', spdx_id: 'MIT' },
+    pushed_at: '2026-08-01T00:00:00Z',
+    archived: false,
+    fork: false,
+    topics: ['dsh-plugin'],
+    owner: { avatar_url: 'https://avatars.githubusercontent.com/u/1?v=4' },
+  })
+  assert.deepEqual(mapped, {
+    full_name: 'acme/dsh-plugin',
+    html_url: 'https://github.com/acme/dsh-plugin',
+    description: '',
+    stargazers_count: 12,
+    forks_count: 0,
+    language: '',
+    license: 'MIT',
+    latest_release: null,
+    pushed_at: '2026-08-01T00:00:00Z',
+    archived: false,
+    fork: false,
+    topics: ['dsh-plugin'],
+    owner: { avatar_url: 'https://avatars.githubusercontent.com/u/1?v=4' },
+  })
+  // REST license 为 null（无许可证）时必须是空字符串而非对象，否则下游契约校验会失败
+  assert.equal(mapRestRepository({ full_name: 'a/b', license: null }).license, '')
 })

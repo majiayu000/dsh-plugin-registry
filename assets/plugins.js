@@ -272,13 +272,13 @@ import { trackPluginEvent } from './track.js'
       '<span class="prow-idx">' + String(index + 1).padStart(3, '0') + '</span>' +
       '<span class="prow-av"></span>' +
       '<div class="prow-main">' +
-        '<div class="prow-name"><a href="' + escapeHtml(nameHref) + '"' + nameTarget + '>' + escapeHtml(plugin.name) + '</a>' + sourcePill(plugin) + '</div>' +
-        '<div class="prow-desc">' + escapeHtml(description(plugin) || (isPending
+        '<div class="prow-name" data-dyn><a href="' + escapeHtml(nameHref) + '"' + nameTarget + '>' + escapeHtml(plugin.name) + '</a>' + sourcePill(plugin) + '</div>' +
+        '<div class="prow-desc" data-dyn>' + escapeHtml(description(plugin) || (isPending
           ? (locale() === 'en' ? 'GitHub found this repository, but it has no recognizable plugin install entry yet.' : 'GitHub 已发现该仓库，但它还没有可识别的插件安装入口。')
           : (locale() === 'en' ? 'No description provided. Review the GitHub source before installing.' : '作者未提供简介；安装前请先查看 GitHub 源码。'))) + '</div>' +
-        '<div class="prow-signals">' + topicSignals(plugin) + (updatedLabel(plugin.pushedAt) ? '<span class="prow-updated">' + updatedLabel(plugin.pushedAt) + '</span>' : '') + '</div>' +
+        '<div class="prow-signals" data-dyn>' + topicSignals(plugin) + (updatedLabel(plugin.pushedAt) ? '<span class="prow-updated">' + updatedLabel(plugin.pushedAt) + '</span>' : '') + '</div>' +
       '</div>' +
-      '<div class="prow-meta"><b>@' + escapeHtml(plugin.owner) + '</b><br>' + escapeHtml(category) + '</div>' +
+      '<div class="prow-meta"><b data-dyn>@' + escapeHtml(plugin.owner) + '</b><br>' + escapeHtml(category) + '</div>' +
       '<div class="prow-stars">' + STAR + '<b>' + fmtNumber(plugin.stars) + '</b><small>Stars</small></div>' +
       '<div class="prow-forks">' + (plugin.forks == null ? '<b>—</b>' : FORK + '<b>' + fmtNumber(plugin.forks) + '</b>') + '<small>Forks</small></div>' +
       '<div class="prow-act"></div>';
@@ -330,16 +330,59 @@ import { trackPluginEvent } from './track.js'
     });
   }
 
-  async function loadRegistry() {
-    var responses = await Promise.all([
-      fetch('data/plugins.json', { cache: 'no-cache' }),
-      fetch('data/registry-audit.json', { cache: 'no-cache' }).catch(function () { return null; })
-    ]);
-    var response = responses[0];
-    if (!response.ok) throw new Error('Registry HTTP ' + response.status);
-    var registry = await response.json();
+  var SNAPSHOT_CACHE = 'harness-registry-snapshot-v1';
+
+  function snapshotUrl(path) {
+    return new URL(path, document.baseURI).href;
+  }
+
+  async function currentSnapshotVersion() {
+    try {
+      var response = await fetch('data/version.json', { cache: 'no-cache' });
+      if (!response.ok) return null;
+      return ((await response.json()) || {}).generatedAt || null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  async function readCachedSnapshot() {
+    if (!('caches' in window)) return null;
+    try {
+      var cache = await caches.open(SNAPSHOT_CACHE);
+      var versionResponse = await cache.match(snapshotUrl('data/version.json'));
+      var pluginsResponse = await cache.match(snapshotUrl('data/plugins.json'));
+      if (!versionResponse || !pluginsResponse) return null;
+      var auditResponse = await cache.match(snapshotUrl('data/registry-audit.json'));
+      return {
+        version: ((await versionResponse.json()) || {}).generatedAt || '',
+        registry: await pluginsResponse.json(),
+        audit: auditResponse ? await auditResponse.json() : { pendingReview: [] },
+      };
+    } catch (_) {
+      return null;
+    }
+  }
+
+  async function cacheSnapshot(versionText, registryText, auditText) {
+    if (!('caches' in window)) return;
+    try {
+      var cache = await caches.open(SNAPSHOT_CACHE);
+      await Promise.all([
+        ['data/version.json', versionText],
+        ['data/plugins.json', registryText],
+        ['data/registry-audit.json', auditText],
+      ].map(async function (entry) {
+        if (entry[1] == null) return;
+        await cache.put(snapshotUrl(entry[0]), new Response(entry[1], { headers: { 'content-type': 'application/json' } }));
+      }));
+    } catch (_) {
+      /* 缓存写入失败不影响本次渲染，下次加载会重新拉取 */
+    }
+  }
+
+  function applyRegistry(registry, audit) {
     if (!Array.isArray(registry.plugins)) throw new Error('Invalid registry document');
-    var audit = responses[1] && responses[1].ok ? await responses[1].json() : { pendingReview: [] };
     var publishedIds = new Set(registry.plugins.map(function (plugin) { return plugin.id.toLowerCase(); }));
     var candidates = Array.isArray(audit.pendingReview)
       ? audit.pendingReview.filter(function (entry) {
@@ -352,6 +395,28 @@ import { trackPluginEvent } from './track.js'
     HR.PLUGINS = registry.plugins.concat(candidates);
     updateFreshness(registry);
     return registry;
+  }
+
+  async function loadRegistry() {
+    var version = await currentSnapshotVersion();
+    if (version) {
+      var cached = await readCachedSnapshot();
+      if (cached && cached.version === version) {
+        return applyRegistry(cached.registry, cached.audit || { pendingReview: [] });
+      }
+    }
+    var responses = await Promise.all([
+      fetch('data/plugins.json', { cache: 'no-cache' }),
+      fetch('data/registry-audit.json', { cache: 'no-cache' }).catch(function () { return null; })
+    ]);
+    var response = responses[0];
+    if (!response.ok) throw new Error('Registry HTTP ' + response.status);
+    var registryText = await response.text();
+    var auditText = responses[1] && responses[1].ok ? await responses[1].text() : null;
+    if (version) {
+      await cacheSnapshot(JSON.stringify({ schemaVersion: 1, generatedAt: version }), registryText, auditText);
+    }
+    return applyRegistry(JSON.parse(registryText), auditText ? JSON.parse(auditText) : { pendingReview: [] });
   }
 
   var HR = window.HR = {
@@ -378,11 +443,21 @@ import { trackPluginEvent } from './track.js'
     track: trackPluginEvent,
     detailHref: detailHref,
     row: row,
-    escapeHtml: escapeHtml
+    escapeHtml: escapeHtml,
+    loadRegistry: loadRegistry,
+    updateFreshness: updateFreshness,
+    ready: null
   };
-  HR.ready = loadRegistry().catch(function (error) {
-    console.error(error);
-    document.documentElement.classList.add('registry-error');
-    throw error;
-  });
+  function startRegistryLoad() {
+    HR.ready = loadRegistry().catch(function (error) {
+      console.error(error);
+      document.documentElement.classList.add('registry-error');
+      throw error;
+    });
+    return HR.ready;
+  }
+  /* 页面可在 import 本模块前设置 HR_DEFER_REGISTRY（详情页先取单插件小数据，缺失时再全量加载） */
+  HR.startRegistryLoad = startRegistryLoad;
+  if (window.HR_DEFER_REGISTRY) HR.ready = null;
+  else startRegistryLoad();
 })();

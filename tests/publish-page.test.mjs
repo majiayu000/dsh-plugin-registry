@@ -33,6 +33,14 @@ test('repository checker is an accessible keyboard-submittable form', async () =
   assert.match(source, /plugin_submission/)
 })
 
+test('the turnstile token resets after both successful and failed submissions', async () => {
+  const script = await readFile('assets/page-publish.js', 'utf8')
+  // token 服务端一次性消费：成功与失败路径都必须 reset，否则第二次提交会被静默拒绝
+  const calls = script.match(/(?<!function )resetTurnstile\(\);/g) || []
+  assert.equal(calls.length, 2)
+  assert.match(script, /catch \(error\) \{[\s\S]*?resetTurnstile\(\); updateSubmissionState\(\)/)
+})
+
 test('repository field and result states have matching styles', async () => {
   const css = await readFile('assets/registry.css', 'utf8')
   assert.match(css, /\.field-label\s*\{/)

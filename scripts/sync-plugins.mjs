@@ -1,10 +1,12 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import {
   buildRepositoryMetadataQuery,
   discoverGitHubRepositories,
   mapGraphqlRepository,
   mapGraphqlRepositoryMetadataBatch,
+  mapRestRepository,
   REPOSITORY_DISCOVERY_QUERY,
   REPOSITORY_METADATA_BATCH_SIZE,
 } from './github-discovery.mjs'
@@ -28,6 +30,7 @@ const CURATED_SOURCE = resolve('sources/curated.json')
 const GITHUB_API = 'https://api.github.com'
 const OUTPUT = resolve(process.env.DSH_REGISTRY_OUTPUT || 'public/data/plugins.json')
 const AUDIT_OUTPUT = resolve(process.env.DSH_REGISTRY_AUDIT_OUTPUT || 'public/data/registry-audit.json')
+const VERSION_OUTPUT = resolve(process.env.DSH_REGISTRY_VERSION_OUTPUT || 'public/data/version.json')
 const BLOCKLIST = resolve('sources/blocklist.json')
 const OVERRIDES = resolve('sources/overrides.json')
 const TOKEN = process.env.GITHUB_TOKEN || process.env.GH_TOKEN || ''
@@ -70,11 +73,13 @@ async function fetchJson(url, options = {}) {
   throw new Error(`Unable to fetch ${url}`)
 }
 
-async function loadPrevious() {
+export async function loadPrevious() {
   try {
     return JSON.parse(await readFile(OUTPUT, 'utf8'))
-  } catch {
-    return null
+  } catch (error) {
+    if (error?.code === 'ENOENT') return null
+    // 损坏的上次快照不能静默当作"没有基线"：那会绕过 health gate 覆盖发布数据。
+    throw new Error(`Previous registry snapshot at ${OUTPUT} is unreadable; refusing to sync without a health baseline: ${error.message}`)
   }
 }
 
@@ -166,7 +171,7 @@ async function discoverRepositories() {
   if (!TOKEN) {
     console.warn('No GitHub token found; syncing the 100 most recently updated candidates only.')
     const params = new URLSearchParams({ q: 'topic:dsh-plugin', sort: 'updated', order: 'desc', per_page: String(MAX_UNAUTHENTICATED_CANDIDATES) })
-    return (await fetchJson(`${GITHUB_API}/search/repositories?${params}`)).items
+    return (await fetchJson(`${GITHUB_API}/search/repositories?${params}`)).items.map(mapRestRepository)
   }
   console.log('Starting complete GitHub topic discovery with GraphQL pagination.')
   return discoverGitHubRepositories({
@@ -440,10 +445,14 @@ async function main() {
   await mkdir(dirname(AUDIT_OUTPUT), { recursive: true })
   await writeFile(OUTPUT, `${JSON.stringify(document, null, 2)}\n`)
   await writeFile(AUDIT_OUTPUT, `${JSON.stringify(audit, null, 2)}\n`)
+  // 极小的版本戳：浏览器用它做新鲜度门控，避免每次导航都重新拉取并解析整份快照。
+  await writeFile(VERSION_OUTPUT, `${JSON.stringify({ schemaVersion: 1, generatedAt: document.generatedAt })}\n`)
   console.log(`Registry synced: ${plugins.length} published (${publishedCurated} curated + ${publishedDiscovered} manifest verified), ${pendingReview.length} pending review, ${quarantined.length} quarantined, ${contract.warnings.length} description warnings.`)
 }
 
-main().catch(error => {
-  console.error(error)
-  process.exitCode = 1
-})
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch(error => {
+    console.error(error)
+    process.exitCode = 1
+  })
+}

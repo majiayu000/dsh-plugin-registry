@@ -13,10 +13,26 @@ test('SEO generation creates crawlable plugin pages and a sitemap', async () => 
   await writeFile(join(distDir, 'plugin-detail.html'), '<html><head><title>Plugin</title><meta name="description" content="Generic" /></head><body></body></html>')
   await writeFile(join(distDir, 'index.html'), '<html><head><title>Registry</title><meta name="description" content="Browse plugins" /><link rel="icon" href="/assets/logo.png" type="image/png" /></head><body></body></html>')
   await writeFile(join(distDir, 'publish.html'), '<html><head><title>Publish</title></head><body></body></html>')
-  await writeFile(registryPath, JSON.stringify({ plugins: [{
-    id: 'acme/tools#terminal', name: 'Terminal', owner: 'acme', url: 'https://github.com/acme/tools',
-    icon: 'https://github.com/acme.png', description: { zh: '终端插件', en: 'Terminal plugin' },
-  }] }))
+  await writeFile(registryPath, JSON.stringify({
+    generatedAt: '2026-08-16T00:00:00.000Z',
+    categories: { tools: { zh: '工具', en: 'Tools' } },
+    plugins: [
+      {
+        id: 'acme/tools#terminal', name: 'Terminal', owner: 'acme', url: 'https://github.com/acme/tools',
+        icon: 'https://github.com/acme.png', description: { zh: '终端插件', en: 'Terminal plugin' }, category: 'tools',
+      },
+      {
+        id: 'acme/toolbox', name: 'Toolbox', owner: 'acme', url: 'https://github.com/acme/toolbox',
+        icon: 'https://github.com/acme.png', description: { zh: '工具箱', en: 'Toolbox plugin' }, category: 'tools',
+        stars: 10, trustLevel: 'curated',
+      },
+      {
+        // 限定符是仓库内路径，可含 `/`：数据文件必须仍是单段文件名（曾导致 ENOENT 崩溃）
+        id: 'acme/mono#pkgs/core', name: 'Mono Core', owner: 'acme', url: 'https://github.com/acme/mono',
+        icon: 'https://github.com/acme.png', description: { zh: '子包', en: 'Subpackage' }, category: 'ui',
+      },
+    ],
+  }))
 
   await generateSeoFiles({ distDir, registryPath, homepage: 'https://example.com/registry/' })
   const route = pluginRoute({ id: 'acme/tools#terminal' })
@@ -26,6 +42,21 @@ test('SEO generation creates crawlable plugin pages and a sitemap', async () => 
   assert.match(page, /rel="canonical" href="https:\/\/example.com\/registry\/plugins\/acme\/tools\/terminal\/"/)
   assert.match(page, /application\/ld\+json/)
   assert.match(sitemap, /https:\/\/example.com\/registry\/plugins\/acme\/tools\/terminal\//)
+
+  // 详情页改读单插件小数据：限定符编码为 `~~`，同类推荐随文件一起生成
+  const dataFile = JSON.parse(await readFile(join(distDir, 'data', 'plugins', 'acme__tools~~terminal.json'), 'utf8'))
+  assert.equal(dataFile.schemaVersion, 1)
+  assert.equal(dataFile.generatedAt, '2026-08-16T00:00:00.000Z')
+  assert.equal(dataFile.plugin.id, 'acme/tools#terminal')
+  assert.deepEqual(dataFile.categories, { tools: { zh: '工具', en: 'Tools' } })
+  assert.deepEqual(dataFile.related.map(related => related.id), ['acme/toolbox'])
+  assert.deepEqual(dataFile.related[0], {
+    id: 'acme/toolbox', name: 'Toolbox', owner: 'acme', url: 'https://github.com/acme/toolbox',
+    stars: 10, trustLevel: 'curated',
+  })
+  const monoFile = JSON.parse(await readFile(join(distDir, 'data', 'plugins', 'acme__mono~~pkgs~2fcore.json'), 'utf8'))
+  assert.equal(monoFile.plugin.id, 'acme/mono#pkgs/core')
+  assert.deepEqual(monoFile.related, [])
 
   const home = await readFile(join(distDir, 'index.html'), 'utf8')
   assert.match(home, /rel="canonical" href="https:\/\/example.com\/registry\/"/)
