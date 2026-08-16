@@ -14,6 +14,7 @@ test('a changed registry deploys the verified build without relying on a bot pus
   assert.match(workflow, /if: steps\.registry_changes\.outputs\.changed == 'true'/)
   assert.match(workflow, /npx wrangler pages deploy dist --project-name dsh-plugin-registry --branch main/)
   assert.match(workflow, /CLOUDFLARE_API_TOKEN: \$\{\{ secrets\.CLOUDFLARE_API_TOKEN \}\}/)
+  assert.match(workflow, /CLOUDFLARE_ACCOUNT_ID: \$\{\{ secrets\.CLOUDFLARE_ACCOUNT_ID \}\}/)
   assert.doesNotMatch(workflow, /deploy-pages@v4|upload-pages-artifact|--base \/dsh-plugin-registry\//)
 })
 
@@ -21,6 +22,7 @@ test('pushes to main deploy straight to Cloudflare Pages', async () => {
   const workflow = await readFile('.github/workflows/deploy-pages.yml', 'utf8')
   assert.match(workflow, /npx wrangler pages deploy dist --project-name dsh-plugin-registry --branch main/)
   assert.match(workflow, /CLOUDFLARE_API_TOKEN: \$\{\{ secrets\.CLOUDFLARE_API_TOKEN \}\}/)
+  assert.match(workflow, /CLOUDFLARE_ACCOUNT_ID: \$\{\{ secrets\.CLOUDFLARE_ACCOUNT_ID \}\}/)
   assert.doesNotMatch(workflow, /deploy-pages@v4|upload-pages-artifact|configure-pages|pages: write/)
 })
 
