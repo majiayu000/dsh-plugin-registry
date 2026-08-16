@@ -17,6 +17,7 @@ const { findPluginById } = await import('/assets/plugin-detail.js');
     return;
   }
   document.title = plugin.name + ' — DeepSeek Harness Plugin Registry';
+  HR.track(plugin.id, 'view');
   document.getElementById('plugin-name').textContent = plugin.name;
   document.getElementById('plugin-owner').textContent = '@' + plugin.owner;
   var pluginDescription = HR.description(plugin) || (english ? 'No description provided. Review the GitHub source before installing.' : '作者未提供简介；安装前请先查看 GitHub 源码。');
@@ -86,7 +87,11 @@ const { findPluginById } = await import('/assets/plugin-detail.js');
       ? (english ? 'The manifest matched dsh.bundle and its referenced patch file existed at synchronization time.' : '同步时，Manifest 符合 dsh.bundle 格式，且引用的 Patch 文件真实存在。')
       : (english ? 'The manifest matched dsh.bundle, but the referenced patch file was not confirmed.' : 'Manifest 符合 dsh.bundle 格式，但引用的 Patch 文件尚未确认。'))
     : (english ? 'The registry has not checked this repository manifest; confirm its installation instructions in the repository.' : '本站没有检查这个仓库的 Manifest，请先在仓库中确认安装说明。');
-  ['repo-button', 'repo-link'].forEach(function (id) { document.getElementById(id).href = plugin.url; });
+  ['repo-button', 'repo-link'].forEach(function (id) {
+    var element = document.getElementById(id);
+    element.href = plugin.url;
+    element.addEventListener('click', function () { HR.track(plugin.id, 'outbound'); });
+  });
   document.getElementById('install-btn').textContent = HR.installActionLabel(plugin);
   document.getElementById('install-btn').classList.toggle('btn-primary', manifestShapeValidated);
   document.getElementById('repo-button').classList.toggle('btn-primary', !manifestShapeValidated);
@@ -97,7 +102,7 @@ const { findPluginById } = await import('/assets/plugin-detail.js');
   document.getElementById('topic-list').innerHTML = (plugin.topics || []).map(function (topic) { return '<span class="topic-chip">' + HR.escapeHtml(topic) + '</span>'; }).join('') || '<span class="topic-chip">dsh-plugin</span>';
   document.getElementById('install-btn').addEventListener('click', function () { HR.openInstallDialog(plugin); });
   var related = HR.PLUGINS.filter(function (candidate) { return candidate.id !== plugin.id && candidate.category === plugin.category; })
-    .sort(function (a, b) { return b.stars - a.stars; })
+    .sort(function (a, b) { return HR.compareByRanking(a, b); })
     .slice(0, 3);
   if (related.length) {
     document.getElementById('related-section').hidden = false;
@@ -111,6 +116,7 @@ const { findPluginById } = await import('/assets/plugin-detail.js');
   }
   document.getElementById('copy-btn').addEventListener('click', function () {
     HR.copyText(this, plugin.install).then(function (copied) {
+      if (copied) HR.track(plugin.id, 'copy');
       installCopyStatus.textContent = copied
         ? (english ? 'Command copied. The plugin is not installed yet. Paste and run it in your terminal.' : '命令已复制，插件尚未安装。请粘贴到终端并执行。')
         : (english ? 'Copy failed. Select the command above and copy it manually.' : '复制失败，请选中上方命令手动复制。');

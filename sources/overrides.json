@@ -10,6 +10,12 @@
       "install": "dsh plugin --profile tui add dsh-mini-tui@latest",
       "special": true,
       "recommendationSource": "x"
+    },
+    "mr-remon219/dsh-search-boost": {
+      "origin": "issue"
+    },
+    "michengai/dsh-skills-manager": {
+      "origin": "issue"
     }
   }
 }

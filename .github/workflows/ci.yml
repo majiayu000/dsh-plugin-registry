@@ -25,5 +25,6 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm test
       - run: npm run validate:registry
+      - run: npm run check:ranking
       - run: npm run build
       - run: npm run test:e2e

@@ -835,3 +835,8 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
   .footer-in { flex-wrap: wrap; }
   .footer-in .fr { margin-left: 0; width: 100%; overflow-wrap: anywhere; }
 }
+
+/* ---------- 智能推荐徽标 ---------- */
+.pill-rank { color: var(--success); background: rgba(22, 163, 74, 0.08); box-shadow: 0 0 0 1px rgba(22, 163, 74, 0.2); }
+.pill-new { color: #6d28d9; background: rgba(124, 58, 237, 0.08); box-shadow: 0 0 0 1px rgba(124, 58, 237, 0.2); }
+.rank-pills { display: inline-flex; align-items: center; gap: 4px; cursor: help; }

@@ -178,7 +178,7 @@ export function normalizeDiscovered(repository, manifestShapeValid, patchExists 
   }
 }
 
-const OVERRIDABLE_FIELDS = ['name', 'description', 'category', 'icon', 'install', 'special', 'recommendationSource']
+const OVERRIDABLE_FIELDS = ['name', 'description', 'category', 'icon', 'install', 'special', 'recommendationSource', 'origin']
 
 export function applyOverride(plugin, override = {}) {
   const next = { ...plugin }

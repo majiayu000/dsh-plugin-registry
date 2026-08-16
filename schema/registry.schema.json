@@ -79,6 +79,7 @@
           "trustLevel": { "enum": ["curated", "manifest_verified"] },
           "special": { "type": "boolean" },
           "recommendationSource": { "enum": ["x"] },
+          "origin": { "enum": ["issue"] },
           "verification": {
             "type": "object",
             "required": ["manifest", "patch", "installation"],

@@ -57,6 +57,8 @@ export function validateRegistry(registry) {
     if (plugin?.language !== undefined && typeof plugin.language !== 'string') errors.push(`${label}.language must be a string.`)
     if (plugin?.special !== undefined && typeof plugin.special !== 'boolean') errors.push(`${label}.special must be a boolean.`)
     if (plugin?.recommendationSource !== undefined && plugin.recommendationSource !== 'x') errors.push(`${label}.recommendationSource is invalid.`)
+    if (plugin?.origin !== undefined && plugin.origin !== 'issue') errors.push(`${label}.origin must be "issue" when present.`)
+    if (plugin?.origin === 'issue' && plugin?.source !== 'curated') errors.push(`${label}.origin "issue" requires source "curated" (issue submissions are human-reviewed).`)
     if (plugin?.license !== undefined && typeof plugin.license !== 'string') errors.push(`${label}.license must be a string.`)
     if (plugin?.latestRelease !== undefined && plugin.latestRelease !== null) {
       if (typeof plugin.latestRelease !== 'object' || typeof plugin.latestRelease.tag !== 'string') errors.push(`${label}.latestRelease is invalid.`)

@@ -1,7 +1,10 @@
+import { blendSearchQuality, compareByRankingScore, computeRankingScore } from './registry-ranking.js'
+
 export function createPluginSearchIndex(plugins, searchableText) {
   return plugins.map(function (plugin) {
     return {
       plugin,
+      score: computeRankingScore(plugin).score,
       text: String(searchableText(plugin)).toLowerCase(),
       id: String(plugin.id || '').toLowerCase(),
       name: String(plugin.name || '').toLowerCase(),
@@ -33,7 +36,7 @@ function defaultTier(plugin) {
 
 export function compareDefaultPluginOrder(a, b) {
   return defaultTier(a) - defaultTier(b)
-    || (b.stars || 0) - (a.stars || 0)
+    || compareByRankingScore(a, b)
     || String(a.id || '').localeCompare(String(b.id || ''))
 }
 
@@ -54,7 +57,7 @@ export function filterPluginSearchIndex(index, options = {}) {
     return !queryTerms.length || queryTerms.every(function (term) { return entry.text.includes(term) })
   }).sort(function (a, b) {
     if (!queryTerms.length) return 0
-    return relevanceScore(b, queryTerms) - relevanceScore(a, queryTerms)
+    return blendSearchQuality(relevanceScore(b, queryTerms), b.score) - blendSearchQuality(relevanceScore(a, queryTerms), a.score)
       || (b.plugin.stars || 0) - (a.plugin.stars || 0)
       || a.plugin.id.localeCompare(b.plugin.id)
   }).map(function (entry) {

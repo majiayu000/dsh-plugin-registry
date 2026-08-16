@@ -1,6 +1,8 @@
 /* Harness Registry — real registry loader and shared render helpers */
 import { writeClipboardText } from './clipboard.js'
 import { hasDshCandidateContext } from './candidate-relevance.js'
+import { computeRankingScore } from './registry-ranking.js'
+import { trackPluginEvent } from './track.js'
 
 (function () {
   'use strict';
@@ -135,8 +137,10 @@ import { hasDshCandidateContext } from './candidate-relevance.js'
     dialog.querySelector('[data-install-close]').addEventListener('click', function () { dialog.close(); });
     dialog.querySelector('[data-install-copy]').addEventListener('click', function () {
       if (!activeInstallPlugin) return;
+      var tracked = activeInstallPlugin;
       var status = dialog.querySelector('[data-install-status]');
-      copyText(this, activeInstallPlugin.install).then(function (copied) {
+      copyText(this, tracked.install).then(function (copied) {
+        if (copied) trackPluginEvent(tracked.id, 'copy');
         status.textContent = copied
           ? (english ? 'Command copied. The plugin is not installed yet. Switch to your terminal, paste the command, and press Enter.' : '命令已复制，插件尚未安装。请切换到终端，粘贴命令并按 Enter。')
           : (english ? 'Copy failed. Select the command above and copy it manually.' : '复制失败，请选中上方命令手动复制。');
@@ -192,6 +196,7 @@ import { hasDshCandidateContext } from './candidate-relevance.js'
       link.title = locale() === 'en'
         ? 'This candidate has no verified install command; review it on GitHub'
         : '该候选项没有经过验证的安装命令，请前往 GitHub 查看';
+      link.addEventListener('click', function () { trackPluginEvent(plugin.id, 'outbound'); });
       return link;
     }
     var button = document.createElement('button');
@@ -208,6 +213,22 @@ import { hasDshCandidateContext } from './candidate-relevance.js'
     return button;
   }
 
+  function rankPills(plugin) {
+    if (pendingReview(plugin)) return '';
+    var english = locale() === 'en';
+    var ranking = computeRankingScore(plugin);
+    var pills = [];
+    if (ranking.badges.issueSubmitted) pills.push('<span class="pill pill-rank">' + (english ? 'Issue submitted' : 'Issue 收录') + '</span>');
+    if (ranking.badges.newListing) pills.push('<span class="pill pill-new">' + (english ? 'New listing' : '新收录') + '</span>');
+    if (ranking.badges.maintained && pills.length < 2) pills.push('<span class="pill pill-rank">' + (english ? 'Actively maintained' : '活跃维护') + '</span>');
+    if (!pills.length) return '';
+    var b = ranking.breakdown;
+    var tooltip = english
+      ? 'Recommendation ' + ranking.score.toFixed(2) + ' · popularity ' + b.pop.toFixed(2) + ' · maintenance ' + b.maint.toFixed(2) + ' · trust ×' + b.trust.toFixed(2)
+      : '推荐分 ' + ranking.score.toFixed(2) + ' · 热度 ' + b.pop.toFixed(2) + ' · 维护 ' + b.maint.toFixed(2) + ' · 信任 ×' + b.trust.toFixed(2);
+    return '<span class="rank-pills" title="' + escapeHtml(tooltip) + '">' + pills.join('') + '</span>';
+  }
+
   function sourcePill(plugin) {
     var manifestClass = manifestShapeValidated(plugin) ? 'pill-manifest' : (pendingReview(plugin) ? 'pill-pending' : 'pill-unchecked');
     var special = plugin.special
@@ -216,7 +237,7 @@ import { hasDshCandidateContext } from './candidate-relevance.js'
     var manifest = manifestShapeValidated(plugin) || pendingReview(plugin)
       ? '<span class="pill ' + manifestClass + '">' + escapeHtml(manifestLabel(plugin)) + '</span>'
       : '';
-    return special + '<span class="pill pill-source">' + escapeHtml(sourceLabel(plugin)) + '</span>' +
+    return special + rankPills(plugin) + '<span class="pill pill-source">' + escapeHtml(sourceLabel(plugin)) + '</span>' +
       manifest;
   }
 
@@ -345,6 +366,7 @@ import { hasDshCandidateContext } from './candidate-relevance.js'
     categoryName: categoryName,
     avatar: avatar,
     copyText: copyText,
+    compareByRanking: function (a, b) { return computeRankingScore(b).score - computeRankingScore(a).score; },
     openInstallDialog: openInstallDialog,
     installBtn: installBtn,
     manifestShapeValidated: manifestShapeValidated,
@@ -353,6 +375,7 @@ import { hasDshCandidateContext } from './candidate-relevance.js'
     manifestLabel: manifestLabel,
     installActionLabel: installActionLabel,
     sourcePill: sourcePill,
+    track: trackPluginEvent,
     detailHref: detailHref,
     row: row,
     escapeHtml: escapeHtml

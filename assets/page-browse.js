@@ -1,6 +1,7 @@
 await import('/assets/i18n.js');
 await import('/assets/plugins.js');
 const { compareDefaultPluginOrder, createPluginSearchIndex, filterPluginSearchIndex } = await import('/assets/registry-search.js');
+const { computeRankingScore, rankPlugins } = await import('/assets/registry-ranking.js');
 (async function () {
   'use strict';
   var initialParams = new URLSearchParams(location.search);
@@ -65,7 +66,9 @@ const { compareDefaultPluginOrder, createPluginSearchIndex, filterPluginSearchIn
       query: state.q,
     });
     if (state.language !== 'all') rows = rows.filter(function (plugin) { return plugin.language === state.language; });
-    if (state.sort !== 'relevance' || !state.q) rows.sort(function (a, b) {
+    if (!state.q && state.sort === 'relevance') {
+      rows = rankPlugins(rows);
+    } else if (state.sort !== 'relevance' || !state.q) rows.sort(function (a, b) {
       if (state.sort === 'relevance') return compareDefaultPluginOrder(a, b);
       if (state.sort === 'forks') return b.forks - a.forks;
       if (state.sort === 'new') return String(b.pushedAt || '').localeCompare(String(a.pushedAt || ''));

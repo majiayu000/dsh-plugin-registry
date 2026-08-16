@@ -3,5 +3,12 @@
   "name": "dsh-plugin-registry",
   "compatibility_date": "2026-08-15",
   "compatibility_flags": ["nodejs_compat"],
-  "pages_build_output_dir": "./dist"
+  "pages_build_output_dir": "./dist",
+  // 行为打点（view/copy/outbound）数据集；查询侧在 sync 时通过 Analytics Engine SQL API 聚合
+  "analytics_engine_datasets": [
+    {
+      "binding": "TRACKING",
+      "dataset": "dsh_registry_events"
+    }
+  ]
 }

@@ -8451,6 +8451,7 @@
       },
       "pushedAt": "2026-08-16T08:37:33Z",
       "addedAt": "2026-08-16",
+      "origin": "issue",
       "source": "curated",
       "trustLevel": "curated",
       "verification": {
@@ -14263,6 +14264,7 @@
       "latestRelease": null,
       "pushedAt": "2026-08-16T08:50:39Z",
       "addedAt": "2026-08-16",
+      "origin": "issue",
       "source": "curated",
       "trustLevel": "curated",
       "verification": {
