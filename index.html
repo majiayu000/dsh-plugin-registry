@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://github.com https://avatars.githubusercontent.com; connect-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'" />
 <title>DeepSeek Harness Plugin Registry</title>
-<meta name="description" content="搜索、筛选并比较 DeepSeek Harness 社区插件，查看数据来源、Manifest 格式状态、GitHub 数据和安装方式。" />
+<meta name="description" content="搜索、筛选并比较 DeepSeek Harness 社区插件。每一条可安装插件都经过 Manifest 校验并锁定 commit，附 GitHub 指标与可复制的安装命令。" />
 <link rel="icon" href="assets/dsh-desk-logo.png" type="image/png" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -45,7 +45,7 @@
   <section class="page-head">
     <p class="eyebrow rise">DeepSeek Harness · Plugin Registry</p>
     <h1 class="page-title rise rise-1">给 Harness 装上能力。<span class="caret"></span></h1>
-    <p class="page-sub rise rise-2">路由、检索、评测、通知 —— 社区插件和 GitHub 候选仓库都在这里。先看数据来源和 Manifest 状态，再到仓库确认依赖与配置。</p>
+    <p class="page-sub rise rise-2">社区精选与 GitHub 自动发现的插件都在这里 —— Manifest 校验、commit 锁定、安装命令，都已替你做好。</p>
 
     <div class="discovery-row rise rise-3">
       <div class="searchbar">
@@ -71,10 +71,11 @@
       <button type="button" data-intent="记忆">记忆</button>
     </div>
 
-    <div class="statstrip rise rise-4">      <div class="ss"><b class="num" id="st-count">—</b><span>可浏览仓库</span></div>
+    <div class="statstrip rise rise-4">
+      <div class="ss"><b class="num" id="st-count">—</b><span>可浏览仓库</span></div>
       <div class="ss"><b class="num" id="st-stars">—</b><span>GitHub Stars</span></div>
       <div class="ss"><b class="num" id="st-author">—</b><span>插件作者</span></div>
-      <div class="ss"><b class="num" id="st-auto">—</b><span>Manifest 格式检查</span></div>
+      <div class="ss"><b class="num" id="st-auto">—</b><span>Manifest 检查通过</span></div>
     </div>
   </section>
 
@@ -83,7 +84,11 @@
       <div class="chips" id="chips">
         <button class="chip on" data-cat="all">全部 <span class="chip-count" id="all-count">—</span></button>
       </div>
-      <div class="toolbar-r">
+    </div>
+    <div class="filterbar">
+      <span class="fb-note" id="list-note" aria-live="polite"></span>
+      <div class="fb-r">
+        <button class="fb-clear" id="clear-filters" type="button" hidden>清除筛选</button>
         <label class="sr-only" for="source">插件来源</label>
         <select class="sel filter-source" id="source" aria-label="插件来源">
           <option value="all">全部来源</option>
@@ -103,9 +108,9 @@
         </select>
         <label class="sr-only" for="sort">排序方式</label>
         <select class="sel" id="sort" aria-label="排序方式">
-          <option value="relevance">按 Stars（正式优先）</option>
-          <option value="stars">按 Stars（含候选）</option>
-          <option value="manifest">Manifest 格式通过优先</option>
+          <option value="relevance">按 Stars（已收录优先）</option>
+          <option value="stars">按 Stars（含候选仓库）</option>
+          <option value="manifest">Manifest 检查通过优先</option>
           <option value="forks">按 Forks</option>
           <option value="new">按最近更新</option>
           <option value="added">按最近收录</option>
@@ -117,7 +122,6 @@
   <section>
     <div class="section-label">
       <h2>插件与候选仓库</h2>
-      <span class="sl-note" id="list-note"></span>
     </div>
     <div class="plist" id="list"></div>
     <div class="load-more-wrap" id="load-more-wrap"><button class="btn" id="load-more">加载更多</button></div>

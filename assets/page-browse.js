@@ -15,6 +15,7 @@ const { compareDefaultPluginOrder, createPluginSearchIndex, filterPluginSearchIn
   };
   var list = document.getElementById('list');
   var note = document.getElementById('list-note');
+  var clearBtn = document.getElementById('clear-filters');
 
   try { await HR.ready; }
   catch (error) {
@@ -33,7 +34,7 @@ const { compareDefaultPluginOrder, createPluginSearchIndex, filterPluginSearchIn
   animateNum('st-count', HR.PLUGINS.length, '');
   animateNum('st-stars', totalStars, '');
   animateNum('st-author', Object.keys(authors).length, '');
-  animateNum('st-auto', HR.registry.stats.automaticallyDiscovered || 0, '');
+  animateNum('st-auto', HR.PLUGINS.filter(HR.manifestShapeValidated).length, '');
 
   function animateNum(id, target, suffix) {
     var el = document.getElementById(id);
@@ -49,6 +50,13 @@ const { compareDefaultPluginOrder, createPluginSearchIndex, filterPluginSearchIn
   }
 
   /* 列表渲染 + 筛选 */
+  function bundleTerm(english) {
+    var tip = english
+      ? 'The install manifest a plugin declares in its root package.json via dsh.bundle.patch. Repos without a valid declaration are listed as candidates with no install command; they become installable automatically once added.'
+      : '插件在仓库根目录 package.json 中通过 dsh.bundle.patch 声明的安装清单。缺少有效声明的仓库仅作为候选展示，暂无安装命令；补充后会自动转为可安装。';
+    return '<span class="term" tabindex="0">dsh.bundle<i class="term-q">?</i><span class="term-tip" role="tooltip">' + tip + '</span></span>';
+  }
+
   function apply() {
     var rows = filterPluginSearchIndex(searchIndex, {
       category: state.cat,
@@ -77,9 +85,11 @@ const { compareDefaultPluginOrder, createPluginSearchIndex, filterPluginSearchIn
     }
     var pendingCount = rows.filter(HR.pendingReview).length;
     var english = window.HRI18N.locale === 'en-US';
-    note.textContent = rows.length + (english ? ' results' : ' 个结果') + (pendingCount
-      ? ' · ' + pendingCount + (english ? ' need a valid dsh.bundle' : ' 个待补充 dsh.bundle')
+    note.innerHTML = rows.length + (english ? ' results' : ' 个结果') + (pendingCount
+      ? ' · ' + pendingCount + (english ? ' candidate repositories need a valid ' : ' 个候选仓库待补充 ') + bundleTerm(english)
       : '');
+    clearBtn.textContent = english ? 'Clear filters' : '清除筛选';
+    clearBtn.hidden = state.source === 'all' && state.manifest === 'all' && state.language === 'all';
     document.getElementById('load-more-wrap').hidden = rows.length <= state.limit;
     syncUrl();
   }
@@ -100,6 +110,12 @@ const { compareDefaultPluginOrder, createPluginSearchIndex, filterPluginSearchIn
   document.getElementById('manifest').addEventListener('change', function (e) { state.manifest = e.target.value; state.limit = 60; apply(); });
   document.getElementById('language').addEventListener('change', function (e) { state.language = e.target.value; state.limit = 60; apply(); });
   document.getElementById('sort').addEventListener('change', function (e) { state.sort = e.target.value; state.limit = 60; apply(); });
+  clearBtn.addEventListener('click', function () {
+    state.source = 'all'; state.manifest = 'all'; state.language = 'all';
+    ['source', 'manifest', 'language'].forEach(function (id) { document.getElementById(id).value = 'all'; });
+    state.limit = 60;
+    apply();
+  });
   document.getElementById('load-more').addEventListener('click', function () { state.limit += 60; apply(); });
   document.getElementById('chips').addEventListener('click', function (e) {
     var c = e.target.closest('.chip');

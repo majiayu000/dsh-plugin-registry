@@ -9,7 +9,7 @@ await import('/assets/plugins.js');
   document.getElementById('k-stars').textContent = plugins.reduce(function (sum, plugin) { return sum + plugin.stars; }, 0).toLocaleString();
   document.getElementById('k-count').textContent = plugins.length.toLocaleString();
   document.getElementById('k-author').textContent = Object.keys(authors).length.toLocaleString();
-  document.getElementById('k-auto').textContent = (HR.registry.stats.automaticallyDiscovered || 0).toLocaleString();
+  document.getElementById('k-auto').textContent = plugins.filter(HR.manifestShapeValidated).length.toLocaleString();
 
   function bars(target, rows) {
     var max = Math.max.apply(null, rows.map(function (row) { return row.value; })) || 1;

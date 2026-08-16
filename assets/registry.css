@@ -325,16 +325,23 @@ html.modal-open, html.modal-open body { overflow: hidden; }
 }
 
 /* ---------- 统计条 ---------- */
-.statstrip { display: flex; gap: 0; margin-top: 26px; border-top: 1px solid var(--border-soft); }
-.statstrip .ss { padding: 15px 36px 0 0; margin-right: 36px; border-right: 1px solid var(--border-soft); }
+.statstrip { display: flex; gap: 0; margin-top: 24px; border-top: 1px solid var(--border-soft); }
+.statstrip .ss { padding: 16px 32px 16px 0; margin-right: 32px; border-right: 1px solid var(--border-soft); }
 .statstrip .ss:last-child { border-right: 0; }
 .ss b { display: block; font: 300 30px/1.15 var(--font-display); letter-spacing: var(--tracking-display); font-variant-numeric: tabular-nums; color: var(--fg); }
 .ss b::before { content: ''; }
 .ss span { font-size: var(--text-xs); color: var(--muted); letter-spacing: 0.06em; }
 
-/* ---------- 工具条（筛选） ---------- */
-.toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 26px 0 0; }
-.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+/* ---------- 工具条（分类 chips 单行横滚 + 独立筛选条） ---------- */
+.toolbar { margin: 24px 0 0; }
+.chips {
+  display: flex; gap: 6px; flex-wrap: nowrap;
+  overflow-x: auto; scrollbar-width: thin;
+  padding: 2px 2px 7px;
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 44px), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 44px), transparent);
+}
+.chips .chip { flex: 0 0 auto; white-space: nowrap; }
 .chip {
   font: 500 13px/1 var(--font-body); letter-spacing: 0.02em;
   padding: 8px 15px; border-radius: var(--radius-pill); cursor: pointer;
@@ -343,9 +350,41 @@ html.modal-open, html.modal-open body { overflow: hidden; }
 }
 .chip:hover { color: var(--fg); background: var(--surface-warm); }
 .chip.on { background: var(--accent); color: var(--accent-on); }
-.chip-count { margin-left: 3px; color: var(--muted); font: 500 10px/1 var(--font-mono); font-variant-numeric: tabular-nums; }
-.chip.on .chip-count { color: rgba(255, 255, 255, 0.66); }
-.toolbar-r { margin-left: auto; display: flex; align-items: center; gap: 14px; }
+.chip-count { display: none; margin-left: 7px; color: rgba(255, 255, 255, 0.66); font: 500 10px/1 var(--font-mono); font-variant-numeric: tabular-nums; }
+.chip.on .chip-count { display: inline; }
+.filterbar {
+  display: flex; align-items: center; gap: 14px;
+  margin-top: 14px; padding: 12px 0;
+  border-top: 1px solid var(--border-soft);
+  border-bottom: 1px solid var(--border-soft);
+}
+.fb-note { font: 400 12px/1.5 var(--font-mono); color: var(--muted); letter-spacing: 0.04em; white-space: nowrap; }
+.fb-r { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.fb-clear {
+  border: 0; background: none; cursor: pointer; white-space: nowrap;
+  padding: 8px 12px; border-radius: var(--radius-pill);
+  font: 500 12.5px var(--font-body); color: var(--muted);
+  transition: color var(--motion-fast) var(--ease-standard), background var(--motion-fast) var(--ease-standard);
+}
+.fb-clear:hover { color: var(--danger); background: rgba(220, 38, 38, 0.07); }
+.term { position: relative; color: var(--fg-2); border-bottom: 1px dashed var(--muted); cursor: help; outline: none; }
+.term:hover, .term:focus { border-bottom-color: var(--blue); color: var(--fg); }
+.term-q { font: 500 9px var(--font-mono); font-style: normal; color: var(--blue); vertical-align: super; margin-left: 1px; }
+.term-tip {
+  position: absolute; bottom: calc(100% + 10px); left: 50%;
+  transform: translateX(-50%) translateY(3px);
+  width: max-content; max-width: min(300px, 78vw);
+  padding: 11px 14px; border-radius: 12px;
+  background: var(--ink); color: var(--ink-fg);
+  font: 400 11.5px/1.65 var(--font-body); letter-spacing: 0.01em;
+  text-align: left; white-space: normal;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
+  opacity: 0; pointer-events: none;
+  transition: opacity var(--motion-fast) var(--ease-standard), transform var(--motion-fast) var(--ease-standard);
+  z-index: 20;
+}
+.term-tip::after { content: ''; position: absolute; top: 100%; left: 50%; margin-left: -5px; border: 5px solid transparent; border-top-color: var(--ink); }
+.term:hover .term-tip, .term:focus .term-tip { opacity: 1; transform: translateX(-50%) translateY(0); }
 .sel {
   font: 500 13px var(--font-body); color: var(--fg);
   border: 0; background: var(--surface); border-radius: var(--radius-pill);
@@ -363,7 +402,6 @@ html.modal-open, html.modal-open body { overflow: hidden; }
 .section-label { display: flex; align-items: baseline; gap: 16px; margin: 38px 0 18px; padding-bottom: 12px; border-bottom: 1px solid var(--border-soft); }
 .section-label h2 { font-size: var(--text-2xl); }
 .section-label h2::before { content: '## '; color: var(--blue); font-family: var(--font-mono); font-weight: 400; font-size: 0.7em; }
-.section-label .sl-note { font: 400 11px/1 var(--font-mono); color: var(--muted); letter-spacing: 0.06em; }
 /* ---------- 插件头像 ---------- */
 .pavatar {
   width: 40px; height: 40px; flex: none; border-radius: 12px;
@@ -751,12 +789,13 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
   .kpi { border-right: 0 !important; border-bottom: 1px solid var(--border-soft); }
   .kpi:last-child { border-bottom: 0; }
   .intent-row { margin-right: -16px; padding-right: 16px; }
-  .toolbar { align-items: stretch; }
-  .chips { width: calc(100vw - 32px); flex-wrap: nowrap; overflow-x: auto; padding: 2px 2px 7px; scrollbar-width: thin; }
-  .chips .chip { flex: 0 0 auto; white-space: nowrap; }
-  .toolbar-r { margin-left: 0; width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .toolbar-r .filter-source, .toolbar-r #sort { grid-column: 1 / -1; }
-  .toolbar-r .sel { width: 100%; min-width: 0; padding-inline: 12px; }
+  .chips { width: calc(100vw - 32px); }
+  .filterbar { flex-direction: column; align-items: stretch; gap: 10px; margin-top: 14px; padding: 10px 0; }
+  .fb-note { white-space: normal; }
+  .fb-r { margin-left: 0; width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .fb-r .filter-source, .fb-r #sort { grid-column: 1 / -1; }
+  .fb-r .sel { width: 100%; min-width: 0; padding-inline: 12px; }
+  .fb-clear { grid-column: 1 / -1; justify-self: start; }
   .perm-pick { grid-template-columns: 1fr; }
   .panel { padding: 20px 16px; }
   .github-route { grid-template-columns: 36px minmax(0, 1fr); margin: -4px 0 24px; }
