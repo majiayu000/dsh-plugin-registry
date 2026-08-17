@@ -1,9 +1,10 @@
 import { readFile } from 'node:fs/promises'
 import { pathToFileURL } from 'node:url'
 import { resolve } from 'node:path'
+import { INSTALL_PROFILES, githubSpecIsPinned, parseInstallCommand } from '../assets/install-command.js'
 import { repoKey } from './registry-core.mjs'
 
-export const INSTALL_PATTERN = /^dsh plugin --profile ([A-Za-z0-9._-]+) add ([^\s]+)$/
+export const INSTALL_PATTERN = /^dsh plugin --profile (web|tui|headless) add ([^\s]+)$/
 const ICON_PATTERN = /^https:\/\/(?:github\.com|avatars\.githubusercontent\.com)\//
 const VERIFIED_COMMIT_PATTERN = /^[0-9a-f]{40}$/
 const GITHUB_OWNER_PATTERN = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/
@@ -78,10 +79,17 @@ export function validateRegistry(registry) {
     }
     const allowedManifestStatuses = plugin?.source === 'curated' ? ['not_checked', 'shape_validated'] : ['shape_validated']
     if (!allowedManifestStatuses.includes(plugin?.verification?.manifest)) errors.push(`${label}.verification.manifest is invalid for ${plugin?.source}.`)
-    const allowedPatchStatuses = plugin?.verification?.manifest === 'shape_validated' ? ['not_checked', 'exists', 'missing'] : ['not_checked']
+    const allowedPatchStatuses = plugin?.verification?.manifest === 'shape_validated' ? ['not_checked', 'exists', 'missing', 'invalid'] : ['not_checked']
     if (!allowedPatchStatuses.includes(plugin?.verification?.patch)) errors.push(`${label}.verification.patch is invalid.`)
     if (plugin?.verification?.installation !== 'not_tested') errors.push(`${label}.verification.installation must be not_tested.`)
     if (!INSTALL_PATTERN.test(String(plugin?.install || ''))) errors.push(`${label}.install is invalid.`)
+    const parsedInstall = parseInstallCommand(plugin?.install)
+    if (plugin?.profile !== undefined && !INSTALL_PROFILES.includes(plugin.profile)) errors.push(`${label}.profile is invalid.`)
+    if (plugin?.profile && parsedInstall && plugin.profile !== parsedInstall.profile) errors.push(`${label}.profile must match the install command.`)
+    if (plugin?.packageName !== undefined && (typeof plugin.packageName !== 'string' || !plugin.packageName.trim())) errors.push(`${label}.packageName must be a non-empty string.`)
+    if (plugin?.verifiedCommit && parsedInstall && /^github:/i.test(parsedInstall.spec) && !githubSpecIsPinned(parsedInstall.spec, plugin.verifiedCommit)) {
+      errors.push(`${label}.install must pin the github spec to verifiedCommit.`)
+    }
     if (!plugin?.description?.zh && !plugin?.description?.en) warnings.push(`${label} has no description: ${plugin?.id}.`)
   })
 

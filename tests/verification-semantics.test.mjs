@@ -25,7 +25,10 @@ test('published snapshot contains explicit evidence and no ambiguous booleans', 
     assert.ok(plugin.source === 'curated'
       ? ['not_checked', 'shape_validated'].includes(plugin.verification.manifest)
       : plugin.verification.manifest === 'shape_validated')
-    assert.ok(['not_checked', 'exists', 'missing'].includes(plugin.verification.patch))
+    assert.ok(['not_checked', 'exists', 'missing', 'invalid'].includes(plugin.verification.patch))
+    if (plugin.verifiedCommit && /^github:/i.test(String(plugin.install).split(' add ').pop() || '')) {
+      assert.match(plugin.install, new RegExp(`#${plugin.verifiedCommit}$`))
+    }
   }
 })
 

@@ -23,6 +23,7 @@ test('repository evaluation returns structured signals for automatic discovery',
     'repository_public',
     'discovery_topic',
     'bundle_manifest',
+    'bundle_patch',
     'repository_status',
   ])
   result.signals.forEach(item => {
@@ -42,6 +43,21 @@ test('curated listing status stays distinct from automatic discovery eligibility
   assert.equal(result.auto_discoverable, false)
   assert.deepEqual(result.listing, { listed: true, source: 'curated', id: 'owner/repository' })
   assert.equal(findRegistryEntry({ plugins: [entry] }, 'OWNER/REPOSITORY'), entry)
+})
+
+test('registry lookup matches monorepo entries by repository key', () => {
+  const entry = { id: 'vectorize-io/hindsight#coding-agents', source: 'curated' }
+  assert.equal(findRegistryEntry({ plugins: [entry] }, 'vectorize-io/hindsight'), entry)
+})
+
+test('auto-discovery requires a valid patch file when one is checked', () => {
+  const result = evaluateRepository({
+    repository: { topics: ['dsh-plugin'], archived: false, fork: false },
+    bundleCheck: { valid: true, reason: 'valid bundle manifest' },
+    patchCheck: { valid: false, reason: 'The patch file is empty.' },
+  })
+  assert.equal(result.auto_discoverable, false)
+  assert.equal(result.signals.find(item => item.signal_type === 'bundle_patch').signal.passed, false)
 })
 
 test('checker messages are complete and actionable in both locales', () => {

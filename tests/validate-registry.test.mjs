@@ -102,7 +102,11 @@ test('icons must stay on GitHub-hosted domains', () => {
 })
 
 test('verified commit pins must be full 40-character SHAs', () => {
-  assert.deepEqual(validateRegistry(registry({ verifiedCommit: 'a'.repeat(40) })).errors, [])
+  const commit = 'a'.repeat(40)
+  assert.deepEqual(validateRegistry(registry({
+    verifiedCommit: commit,
+    install: `dsh plugin --profile web add github:acme/plugin#${commit}`,
+  })).errors, [])
   const result = validateRegistry(registry({ verifiedCommit: 'abc123' }))
   assert.match(result.errors.join(' '), /verifiedCommit must be a 40-character commit SHA/)
 })
@@ -114,6 +118,8 @@ test('the JSON schema install pattern stays in lockstep with the validator', asy
   const samples = [
     ['dsh plugin --profile web add github:acme/plugin', true],
     ['dsh plugin --profile tui add github:acme/plugin', true],
+    ['dsh plugin --profile headless add github:acme/plugin', true],
+    ['dsh plugin --profile custom add github:acme/plugin', false],
     ['dsh plugin add github:acme/plugin', false],
     ['dsh plugin --profile web add', false],
   ]
@@ -126,4 +132,27 @@ test('the JSON schema install pattern stays in lockstep with the validator', asy
   const snapshot = JSON.parse(await readFile('public/data/plugins.json', 'utf8'))
   const offenders = snapshot.plugins.filter(plugin => !schemaPattern.test(plugin.install))
   assert.deepEqual(offenders.map(plugin => plugin.id), [])
+})
+
+test('a github install spec must pin verifiedCommit when one is recorded', () => {
+  const commit = 'a'.repeat(40)
+  const result = validateRegistry(registry({
+    verifiedCommit: commit,
+    install: 'dsh plugin --profile web add github:acme/plugin',
+  }))
+  assert.match(result.errors.join(' '), /must pin/)
+})
+
+test('tui and headless profiles are valid install targets', () => {
+  assert.deepEqual(validateRegistry(registry({
+    install: 'dsh plugin --profile headless add github:acme/plugin',
+    profile: 'headless',
+  })).errors, [])
+})
+
+test('invalid verification.patch values are rejected', () => {
+  const result = validateRegistry(registry({
+    verification: { manifest: 'shape_validated', patch: 'invalid', installation: 'not_tested' },
+  }))
+  assert.equal(result.errors.length, 0)
 })

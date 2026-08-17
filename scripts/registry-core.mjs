@@ -1,4 +1,5 @@
 import { validateBundleManifest } from '../assets/bundle-manifest.js'
+import { INSTALL_PROFILES, buildInstallCommand, packageNameFromSpec, parseInstallCommand, pinInstallCommand } from '../assets/install-command.js'
 
 export const REGISTRY_CATEGORIES = {
   ui: { en: 'UI Enhancements', zh: 'UI 增强' },
@@ -86,6 +87,28 @@ export function repositoryKey(plugin) {
   return repoKey(plugin?.owner || '', String(plugin?.name || '').split('#')[0])
 }
 
+export function bundleDirectoryFromUrl(url) {
+  const match = String(url || '').match(/^https:\/\/github\.com\/[^/]+\/[^/]+\/tree\/[^/]+\/(.+?)\/?$/)
+  return match ? match[1].replace(/\/+$/, '') : ''
+}
+
+export function verificationCacheKey(repositoryName, directory = '') {
+  const repo = String(repositoryName || '').toLowerCase()
+  return directory ? `${repo}#${directory}` : repo
+}
+
+function patchStatusFromEvidence(manifestShapeValid, patchExists) {
+  if (!manifestShapeValid) return 'not_checked'
+  if (patchExists === true) return 'exists'
+  if (patchExists === false) return 'missing'
+  if (patchExists === 'invalid') return 'invalid'
+  return 'not_checked'
+}
+
+export function isInstallableEvidence({ manifestShapeValid, patchExists } = {}) {
+  return Boolean(manifestShapeValid && patchExists === true)
+}
+
 function curatedIdentity(plugin) {
   const match = String(plugin.url || '').match(/^https:\/\/github\.com\/([^/]+)\/([^/?#]+)/)
   if (!match) return { id: `${plugin.owner}/${plugin.name}`, owner: plugin.owner }
@@ -99,7 +122,7 @@ function curatedIdentity(plugin) {
   }
 }
 
-export function normalizeCurated(plugin, metadata = {}) {
+export function normalizeCurated(plugin, metadata = {}, evidence = {}) {
   const identity = curatedIdentity(plugin)
   const owner = identity.owner
   const name = plugin.name
@@ -108,13 +131,27 @@ export function normalizeCurated(plugin, metadata = {}) {
     zh: plugin.description?.zh || plugin.description?.en || '',
     en: plugin.description?.en || plugin.description?.zh || '',
   }
+  const declaredCategory = plugin.category
+  const category = Object.hasOwn(REGISTRY_CATEGORIES, declaredCategory)
+    ? declaredCategory
+    : inferCategory({ id: identity.id, name, description, topics }, declaredCategory || 'tools')
+  const checked = evidence.checked === true
+  const manifestShapeValid = evidence.manifestShapeValid === true
+  const patchExists = evidence.patchExists
+  const listingEligible = !checked || isInstallableEvidence({ manifestShapeValid, patchExists })
+  const parsedInstall = parseInstallCommand(plugin.install)
+  const repositoryName = String(identity.id).split('#')[0]
+  const spec = parsedInstall?.spec || `github:${repositoryName}`
+  const profile = parsedInstall?.profile || evidence.profile || 'web'
+  const verifiedCommit = evidence.verifiedCommit || metadata.verifiedCommit || ''
+  const packageName = evidence.packageName || packageNameFromSpec(spec)
   return {
     id: identity.id,
     name,
     owner,
     url: plugin.url || `https://github.com/${owner}/${name}`,
     description,
-    category: inferCategory({ id: identity.id, name, description, topics }, plugin.category || 'tools'),
+    category,
     stars: metadata.stargazerCount ?? plugin.stars ?? 0,
     forks: metadata.forkCount ?? plugin.forks ?? 0,
     language: metadata.language || plugin.language || '',
@@ -124,33 +161,41 @@ export function normalizeCurated(plugin, metadata = {}) {
     addedAt: plugin.added || null,
     source: 'curated',
     trustLevel: 'curated',
-    listingEligible: true,
+    listingEligible,
     verification: {
-      manifest: 'not_checked',
-      patch: 'not_checked',
+      manifest: checked ? (manifestShapeValid ? 'shape_validated' : 'not_validated') : 'not_checked',
+      patch: checked ? patchStatusFromEvidence(manifestShapeValid, patchExists) : 'not_checked',
       installation: 'not_tested',
     },
-    install: plugin.install || `dsh plugin --profile web add github:${owner}/${name}`,
+    install: buildInstallCommand({ profile, spec, verifiedCommit }),
+    profile: INSTALL_PROFILES.includes(profile) ? profile : 'web',
+    ...(packageName ? { packageName } : {}),
+    ...(verifiedCommit ? { verifiedCommit } : {}),
     archived: Boolean(metadata.isArchived),
     topics,
     icon: plugin.icon || metadata.avatarUrl || `https://github.com/${owner}.png?size=96`,
   }
 }
 
-export function normalizeDiscovered(repository, manifestShapeValid, patchExists = null, verifiedCommit = '') {
+export function normalizeDiscovered(repository, manifestShapeValid, patchExists = null, verifiedCommit = '', options = {}) {
   const [owner, name] = repository.full_name.split('/')
-  const listingEligible = Boolean(manifestShapeValid && patchExists !== false)
+  const listingEligible = isInstallableEvidence({ manifestShapeValid, patchExists }) || Boolean(manifestShapeValid && patchExists == null)
+  const directory = options.directory || ''
+  const qualifier = directory ? `#${directory.split('/').filter(Boolean).pop()}` : ''
+  const profile = INSTALL_PROFILES.includes(options.profile) ? options.profile : 'web'
+  const spec = options.spec || `github:${repository.full_name}`
+  const packageName = options.packageName || packageNameFromSpec(spec)
   return {
-    id: repository.full_name,
-    name,
+    id: options.id || `${repository.full_name}${qualifier}`,
+    name: options.name || (qualifier ? `${name}${qualifier}` : name),
     owner,
-    url: repository.html_url,
+    url: options.url || repository.html_url,
     ...(verifiedCommit ? { verifiedCommit } : {}),
     description: {
       zh: repository.description || '',
       en: repository.description || '',
     },
-    category: inferCategory(repository),
+    category: inferCategory({ ...repository, id: options.id || repository.full_name, name: options.name || name }),
     stars: repository.stargazers_count || 0,
     forks: repository.forks_count || 0,
     language: repository.language || '',
@@ -166,12 +211,12 @@ export function normalizeDiscovered(repository, manifestShapeValid, patchExists 
     listingEligible,
     verification: {
       manifest: manifestShapeValid ? 'shape_validated' : 'not_validated',
-      patch: manifestShapeValid
-        ? (patchExists === true ? 'exists' : (patchExists === false ? 'missing' : 'not_checked'))
-        : 'not_checked',
+      patch: patchStatusFromEvidence(manifestShapeValid, patchExists),
       installation: 'not_tested',
     },
-    install: `dsh plugin --profile web add github:${repository.full_name}`,
+    install: buildInstallCommand({ profile, spec, verifiedCommit }),
+    profile,
+    ...(packageName ? { packageName } : {}),
     archived: Boolean(repository.archived),
     topics: repository.topics || [],
     icon: repository.icon || repository.owner?.avatar_url || `https://github.com/${owner}.png?size=96`,
@@ -231,15 +276,15 @@ export function validateHealth(next, previous, options = {}) {
   const publishedRatio = options.publishedRatio ?? Number(process.env.DSH_MIN_PUBLISHED_RATIO || 0.8)
   const curatedRatio = options.curatedRatio ?? Number(process.env.DSH_MIN_CURATED_RATIO || 0.85)
   const previousPublished = previous.stats?.published ?? previous.plugins.length
-  const previousCurated = previous.stats?.curated ?? previous.plugins.filter(plugin => plugin.source === 'curated').length
+  const previousCuratedSource = previous.stats?.curatedSource ?? previous.stats?.curated ?? previous.plugins.filter(plugin => plugin.source === 'curated').length
   const nextPublished = next.stats?.published ?? next.plugins.length
-  const nextCurated = next.stats?.curated ?? next.plugins.filter(plugin => plugin.source === 'curated').length
+  const nextCuratedSource = next.stats?.curatedSource ?? next.stats?.curated ?? next.plugins.filter(plugin => plugin.source === 'curated').length
 
   if (nextPublished < Math.floor(previousPublished * publishedRatio)) {
     errors.push(`Published plugins dropped from ${previousPublished} to ${nextPublished} (minimum allowed: ${Math.floor(previousPublished * publishedRatio)}).`)
   }
-  if (nextCurated < Math.floor(previousCurated * curatedRatio)) {
-    errors.push(`Curated plugins dropped from ${previousCurated} to ${nextCurated} (minimum allowed: ${Math.floor(previousCurated * curatedRatio)}).`)
+  if (nextCuratedSource < Math.floor(previousCuratedSource * curatedRatio)) {
+    errors.push(`Curated source dropped from ${previousCuratedSource} to ${nextCuratedSource} (minimum allowed: ${Math.floor(previousCuratedSource * curatedRatio)}).`)
   }
   return errors
 }
@@ -255,5 +300,13 @@ export function mergePlugins(curated, discovered) {
 
 export function toPublicPlugin(plugin) {
   const { listingEligible, ...publicPlugin } = plugin
-  return publicPlugin
+  const install = pinInstallCommand(publicPlugin.install, { verifiedCommit: publicPlugin.verifiedCommit })
+  const parsed = parseInstallCommand(install)
+  const packageName = publicPlugin.packageName || packageNameFromSpec(parsed?.spec)
+  return {
+    ...publicPlugin,
+    install,
+    ...(parsed ? { profile: parsed.profile } : {}),
+    ...(packageName ? { packageName } : {}),
+  }
 }

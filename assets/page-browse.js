@@ -24,18 +24,20 @@ const { computeRankingScore, rankPlugins } = await import('/assets/registry-rank
     return;
   }
 
-  var searchIndex = createPluginSearchIndex(HR.PLUGINS, function (plugin) {
-    return plugin.id + ' ' + HR.description(plugin) + ' ' + plugin.owner + ' ' + HR.categoryName(plugin.category) + ' ' + (plugin.language || '') + ' ' + (plugin.topics || []).join(' ');
-  });
+  function searchableText(plugin) {
+    return plugin.id + ' ' + HR.description(plugin) + ' ' + plugin.owner + ' ' + HR.categoryName(plugin.category) + ' ' + (plugin.language || '') + ' ' + (plugin.topics || []).join(' ') + ' ' + (plugin.packageName || '') + ' ' + (plugin.profile || '');
+  }
+  var publishedIndex = createPluginSearchIndex(HR.PUBLISHED, searchableText);
+  var pendingIndex = createPluginSearchIndex(HR.PENDING || [], searchableText);
 
   /* 统计条 */
-  var totalStars = HR.PLUGINS.reduce(function (sum, plugin) { return sum + plugin.stars; }, 0);
+  var totalStars = HR.PUBLISHED.reduce(function (sum, plugin) { return sum + plugin.stars; }, 0);
   var authors = {};
-  HR.PLUGINS.forEach(function (p) { authors[p.owner] = 1; });
-  animateNum('st-count', HR.PLUGINS.length, '');
+  HR.PUBLISHED.forEach(function (p) { authors[p.owner] = 1; });
+  animateNum('st-count', HR.PUBLISHED.length, '');
   animateNum('st-stars', totalStars, '');
   animateNum('st-author', Object.keys(authors).length, '');
-  animateNum('st-auto', HR.PLUGINS.filter(HR.manifestShapeValidated).length, '');
+  animateNum('st-auto', HR.PUBLISHED.filter(HR.manifestShapeValidated).length, '');
 
   function animateNum(id, target, suffix) {
     var el = document.getElementById(id);
@@ -59,6 +61,7 @@ const { computeRankingScore, rankPlugins } = await import('/assets/registry-rank
   }
 
   function apply() {
+    var searchIndex = state.manifest === 'not_validated' ? publishedIndex.concat(pendingIndex) : publishedIndex;
     var rows = filterPluginSearchIndex(searchIndex, {
       category: state.cat,
       source: state.source,
@@ -137,7 +140,7 @@ const { computeRankingScore, rankPlugins } = await import('/assets/registry-rank
     chip.type = 'button';
     chip.setAttribute('aria-pressed', 'false');
     chip.dataset.cat = key;
-    var count = HR.PLUGINS.filter(function (plugin) { return plugin.category === key; }).length;
+    var count = HR.PUBLISHED.filter(function (plugin) { return plugin.category === key; }).length;
     chip.appendChild(document.createTextNode(HR.categoryName(key) + ' '));
     var countEl = document.createElement('span');
     countEl.className = 'chip-count';
@@ -145,7 +148,7 @@ const { computeRankingScore, rankPlugins } = await import('/assets/registry-rank
     chip.appendChild(countEl);
     document.getElementById('chips').appendChild(chip);
   });
-  document.getElementById('all-count').textContent = HR.PLUGINS.length.toLocaleString();
+  document.getElementById('all-count').textContent = HR.PUBLISHED.length.toLocaleString();
   if (state.cat !== 'all' && !HR.registry.categories[state.cat]) state.cat = 'all';
   document.querySelectorAll('#chips .chip').forEach(function (chip) {
     var active = chip.dataset.cat === state.cat;
@@ -153,7 +156,7 @@ const { computeRankingScore, rankPlugins } = await import('/assets/registry-rank
     chip.setAttribute('aria-pressed', String(active));
   });
   var languageSelect = document.getElementById('language');
-  var languageCounts = HR.PLUGINS.reduce(function (counts, plugin) {
+  var languageCounts = HR.PUBLISHED.reduce(function (counts, plugin) {
     if (plugin.language) counts[plugin.language] = (counts[plugin.language] || 0) + 1;
     return counts;
   }, {});
@@ -189,7 +192,7 @@ const { computeRankingScore, rankPlugins } = await import('/assets/registry-rank
   });
 
   /* 终端打字循环 */
-  var examples = HR.PLUGINS.filter(HR.manifestShapeValidated).slice(0, 3).map(function (p) { return p.install; });
+  var examples = HR.PUBLISHED.filter(HR.manifestShapeValidated).slice(0, 3).map(function (p) { return p.install; });
   var CMDS = examples.length ? examples : ['dsh plugin --profile web add github:owner/plugin'];
   var typer = document.getElementById('typer');
   var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;

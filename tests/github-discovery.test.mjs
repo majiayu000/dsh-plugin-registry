@@ -39,6 +39,28 @@ test('repository discovery splits timestamp windows beyond the GitHub 1000-resul
   assert.ok(progress.some(entry => entry.type === 'page' && entry.fetched === 2))
 })
 
+test('repository discovery splits a wide window when unique results fall outside live-index drift', async () => {
+  const queries = []
+  const repositories = await discoverGitHubRepositories({
+    from: new Date('2026-08-16T06:00:00Z'),
+    to: new Date('2026-08-16T16:00:00Z'),
+    async searchPage({ searchQuery }) {
+      queries.push(searchQuery)
+      if (searchQuery.includes('06:00:00Z..2026-08-16T16:00:00Z')) {
+        return page(200, Array.from({ length: 180 }, (_, index) => `acme/plugin-${index}`))
+      }
+      if (searchQuery.includes('06:00:00Z..2026-08-16T11:00:00Z')) {
+        return page(90, Array.from({ length: 90 }, (_, index) => `acme/plugin-${index}`))
+      }
+      return page(90, Array.from({ length: 90 }, (_, index) => `acme/plugin-${index + 90}`))
+    },
+  })
+
+  assert.equal(repositories.length, 180)
+  assert.ok(queries.some(query => query.includes('2026-08-16T06:00:00Z..2026-08-16T11:00:00Z')))
+  assert.ok(queries.some(query => query.includes('2026-08-16T11:00:01Z..2026-08-16T16:00:00Z')))
+})
+
 test('repository discovery refuses a partial page sequence', async () => {
   await assert.rejects(discoverGitHubRepositories({
     from: new Date('2026-08-15T00:00:00Z'),

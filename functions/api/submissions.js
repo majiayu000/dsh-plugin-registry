@@ -1,4 +1,5 @@
 import { validateBundleManifest } from '../../assets/bundle-manifest.js'
+import { validateBundlePatch } from '../../assets/bundle-patch.js'
 
 const DEFAULT_REGISTRY_REPOSITORY = 'majiayu000/dsh-plugin-registry'
 const DEFAULT_REVIEWER = 'majiayu000'
@@ -124,13 +125,29 @@ async function inspectRepository(fetcher, token, repository) {
     throw error
   }
 
+  let patchCheck = { valid: false, reason: '引用的 Patch 文件在仓库中不存在。' }
+  if (bundleCheck.valid) {
+    const patchResponse = await fetcher(`https://api.github.com/repos/${encodedRepository}/contents/${bundleCheck.patch.replace(/^\.\//, '')}`, {
+      method: 'GET',
+      headers: githubHeaders(token, 'application/vnd.github.raw+json'),
+    })
+    if (patchResponse.ok) patchCheck = validateBundlePatch(await patchResponse.text(), { packageName: bundleCheck.packageName })
+    else if (patchResponse.status !== 404) {
+      const error = new Error(`GitHub patch request failed with ${patchResponse.status}`)
+      error.status = patchResponse.status
+      throw error
+    }
+  }
+
   const topics = Array.isArray(metadata.topics) ? metadata.topics.map(topic => String(topic).toLowerCase()) : []
   return {
     repositoryPublic: metadata.visibility === 'public' || metadata.private === false,
     discoveryTopic: topics.includes('dsh-plugin'),
     bundleManifest: Boolean(bundleCheck.valid),
+    bundlePatch: Boolean(patchCheck.valid),
     repositoryStatus: !metadata.archived && !metadata.fork,
     bundleReason: bundleCheck.reason || '',
+    patchReason: patchCheck.reason || '',
   }
 }
 
@@ -139,6 +156,7 @@ export function buildIssueBody(submission, checks) {
     ['公开仓库可访问', checks.repositoryPublic],
     ['包含 dsh-plugin Topic', checks.discoveryTopic],
     ['声明有效的 dsh.bundle', checks.bundleManifest],
+    ['Patch 文件存在且含插件行', checks.bundlePatch],
     ['仓库未归档且不是 Fork', checks.repositoryStatus],
   ].map(([label, passed]) => `- [${passed ? 'x' : ' '}] ${label}`).join('\n')
 
@@ -155,6 +173,7 @@ export function buildIssueBody(submission, checks) {
     '## 服务端预检',
     checkRows,
     ...(!checks.bundleManifest && checks.bundleReason ? ['', `> Manifest：${checks.bundleReason}`] : []),
+    ...(!checks.bundlePatch && checks.patchReason ? ['', `> Patch：${checks.patchReason}`] : []),
     '',
     '## 补充说明',
     safeIssueText(submission.notes) || '无',

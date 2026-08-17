@@ -13,6 +13,8 @@ test('plugin detail shows real maintenance metadata with honest fallbacks', asyn
   assert.match(source, /id="updated-status"/)
   assert.match(source, /id="license-status"/)
   assert.match(source, /id="release-status"/)
+  assert.match(source, /id="package-status"/)
+  assert.match(source, /id="profile-status"/)
   assert.match(script, /plugin\.language/)
   assert.match(script, /plugin\.pushedAt/)
   assert.match(script, /最近更新/)

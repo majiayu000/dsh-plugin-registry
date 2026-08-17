@@ -131,7 +131,7 @@ test('pending GitHub candidates remain visible without exposing an install actio
 test('directory places plugin results directly after the filters', async () => {
   const html = await readFile('index.html', 'utf8')
   assert.doesNotMatch(html, /id="featured-sec"|热门精选|class="fcard"/)
-  assert.match(html, /id="language"[\s\S]*<h2>插件与候选仓库<\/h2>/)
+  assert.match(html, /id="language"[\s\S]*<h2>插件<\/h2>/)
 })
 
 test('install actions open an accessible shared guide instead of silently copying', async () => {

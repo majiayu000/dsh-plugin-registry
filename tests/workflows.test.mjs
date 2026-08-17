@@ -28,8 +28,9 @@ test('pushes to main deploy straight to Cloudflare Pages', async () => {
 
 test('registry sync imports the shared bundle parser before checking referenced patch files', async () => {
   const sync = await readFile('scripts/sync-plugins.mjs', 'utf8')
-  assert.match(sync, /import \{ validateBundleManifest \} from '\.\.\/assets\/bundle-manifest\.js'/)
+  assert.match(sync, /import \{ listBundleDirectories, validateBundleManifest \} from '\.\.\/assets\/bundle-manifest\.js'/)
   assert.match(sync, /validateBundleManifest\(manifests\.get/)
+  assert.match(sync, /validateBundlePatch/)
   assert.match(sync, /patchStatus: patchMissing \? 'missing'/)
 })
 

@@ -164,7 +164,7 @@ import { trackPluginEvent } from './track.js'
     var commitLine = verifiedCommit
       ? '<p class="install-dialog-commit">' + (english ? 'Manifest checked against HEAD commit ' : 'Manifest 校验时的仓库 HEAD：') +
         '<a href="https://github.com/' + escapeHtml(String(plugin.id).split('#')[0]) + '/commit/' + escapeHtml(verifiedCommit) + '" target="_blank" rel="noopener">' + escapeHtml(verifiedCommit.slice(0, 7)) + '</a>' +
-        (english ? '. Installing always pulls the latest repository state.' : '。安装命令始终拉取仓库最新状态。') + '</p>'
+        (english ? '. The command pins this commit so a later push cannot change what you install.' : '。安装命令钉在这个 commit 上，后续推送不会悄悄改掉你装到的版本。') + '</p>'
       : '';
     dialog.querySelector('#install-dialog-title').textContent = manifestChecked
       ? (english ? 'How to install ' + plugin.name : '安装 ' + plugin.name + ' 的步骤')
@@ -261,6 +261,17 @@ import { trackPluginEvent } from './track.js'
       .join('');
   }
 
+  function pluginSignals(plugin) {
+    var english = locale() === 'en';
+    var parts = [];
+    if (plugin.packageName) parts.push('<span class="prow-topic">' + escapeHtml(plugin.packageName) + '</span>');
+    if (plugin.profile && plugin.profile !== 'web') parts.push('<span class="prow-topic">' + escapeHtml(plugin.profile) + '</span>');
+    if (plugin.license) parts.push('<span class="prow-topic">' + escapeHtml(plugin.license) + '</span>');
+    if (plugin.latestRelease && plugin.latestRelease.tag) parts.push('<span class="prow-topic">' + escapeHtml(plugin.latestRelease.tag) + '</span>');
+    if (!parts.length && !english) return '';
+    return parts.join('');
+  }
+
   function row(plugin, index) {
     var element = document.createElement('div');
     var isPending = pendingReview(plugin);
@@ -276,7 +287,7 @@ import { trackPluginEvent } from './track.js'
         '<div class="prow-desc" data-dyn>' + escapeHtml(description(plugin) || (isPending
           ? (locale() === 'en' ? 'GitHub found this repository, but it has no recognizable plugin install entry yet.' : 'GitHub 已发现该仓库，但它还没有可识别的插件安装入口。')
           : (locale() === 'en' ? 'No description provided. Review the GitHub source before installing.' : '作者未提供简介；安装前请先查看 GitHub 源码。'))) + '</div>' +
-        '<div class="prow-signals" data-dyn>' + topicSignals(plugin) + (updatedLabel(plugin.pushedAt) ? '<span class="prow-updated">' + updatedLabel(plugin.pushedAt) + '</span>' : '') + '</div>' +
+        '<div class="prow-signals" data-dyn>' + topicSignals(plugin) + pluginSignals(plugin) + (updatedLabel(plugin.pushedAt) ? '<span class="prow-updated">' + updatedLabel(plugin.pushedAt) + '</span>' : '') + '</div>' +
       '</div>' +
       '<div class="prow-meta"><b data-dyn>@' + escapeHtml(plugin.owner) + '</b><br>' + escapeHtml(category) + '</div>' +
       '<div class="prow-stars">' + STAR + '<b>' + fmtNumber(plugin.stars) + '</b><small>Stars</small></div>' +
@@ -393,7 +404,7 @@ import { trackPluginEvent } from './track.js'
     HR.registry = registry;
     HR.PUBLISHED = registry.plugins;
     HR.PENDING = candidates;
-    HR.PLUGINS = registry.plugins.concat(candidates);
+    HR.PLUGINS = registry.plugins;
     updateFreshness(registry);
     return registry;
   }

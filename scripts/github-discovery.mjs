@@ -53,7 +53,7 @@ function splitWindow(from, to) {
   const fromTime = from.getTime()
   const toTime = to.getTime()
   const midpoint = Math.floor(((fromTime + toTime) / 2) / ONE_SECOND) * ONE_SECOND
-  if (midpoint < fromTime || midpoint >= toTime) {
+  if (midpoint <= fromTime || midpoint >= toTime) {
     throw new Error(`GitHub returned more than ${MAX_SEARCH_RESULTS} repositories inside one second; the discovery window cannot be split safely.`)
   }
   return [
@@ -80,6 +80,13 @@ export function mapRestRepository(item) {
     topics: item.topics || [],
     owner: { avatar_url: item.owner?.avatar_url || '' },
   }
+}
+
+function canSplitWindow(from, to) {
+  const fromTime = from.getTime()
+  const toTime = to.getTime()
+  const midpoint = Math.floor(((fromTime + toTime) / 2) / ONE_SECOND) * ONE_SECOND
+  return midpoint > fromTime && midpoint < toTime
 }
 
 export function mapGraphqlRepository(repository) {
@@ -167,6 +174,14 @@ export async function discoverGitHubRepositories({
     const missing = totalCount - uniqueRepositories.length
     const allowedDrift = totalCount >= 100 ? Math.max(5, Math.ceil(totalCount * 0.01)) : 0
     if (missing > allowedDrift) {
+      if (canSplitWindow(windowFrom, windowTo)) {
+        onProgress({ type: 'resplit', range, totalCount, fetched: uniqueRepositories.length, allowedDrift, depth, rateLimit: first.rateLimit })
+        const windows = splitWindow(windowFrom, windowTo)
+        return [
+          ...(await discoverWindow(windows[0][0], windows[0][1], depth + 1)),
+          ...(await discoverWindow(windows[1][0], windows[1][1], depth + 1)),
+        ]
+      }
       throw new Error(`GitHub discovery returned ${uniqueRepositories.length}/${totalCount} unique repositories for ${range}. Refusing to publish an incomplete window.`)
     }
     if (uniqueRepositories.length !== totalCount) {

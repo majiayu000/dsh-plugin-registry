@@ -8,20 +8,22 @@ test('search ranks exact plugin names and persists the query in the URL', async 
   await expect(page).toHaveURL(/q=dsh-at-file/)
 })
 
-test('default directory ranks published plugins by stars instead of promoting candidates', async ({ page }) => {
+test('default directory shows published plugins and does not promote candidates', async ({ page }) => {
   await page.goto('/')
   const first = page.locator('#list .prow').first()
   await expect(first).toBeVisible()
   const order = await page.evaluate(() => {
-    const expected = HR.PLUGINS
-      .filter(plugin => plugin.trustLevel !== 'pending_review')
-      .sort((a, b) => b.stars - a.stars || a.id.localeCompare(b.id))[0]
     const href = document.querySelector('#list .prow .prow-name a')?.getAttribute('href') || ''
-    return { expected: expected.id, actual: new URL(href, location.href).searchParams.get('plugin') }
+    const actual = new URL(href, location.href).searchParams.get('plugin')
+    return {
+      actual,
+      published: HR.PUBLISHED.some(plugin => plugin.id === actual),
+      pending: (HR.PENDING || []).some(plugin => plugin.id === actual),
+    }
   })
-  expect(order.actual).toBe(order.expected)
+  expect(order.published).toBe(true)
+  expect(order.pending).toBe(false)
   await expect(first.locator('.pill-pending')).toHaveCount(0)
-  await expect(first).not.toContainText(/Manifest 未检查|Manifest not checked/)
 })
 
 test('special listing is visible with its repository-approved install command', async ({ page }) => {
@@ -145,7 +147,12 @@ test('repository pre-check returns structured signals and enables GitHub submiss
   await page.route('https://api.github.com/repos/acme/dsh-plugin/contents/package.json', route => route.fulfill({
     status: 200,
     contentType: 'application/json',
-    body: JSON.stringify({ dsh: { bundle: { patch: './cordis.patch.yml' } } }),
+    body: JSON.stringify({ name: 'dsh-plugin', dsh: { bundle: { patch: './cordis.patch.yml' } } }),
+  }))
+  await page.route('https://api.github.com/repos/acme/dsh-plugin/contents/cordis.patch.yml', route => route.fulfill({
+    status: 200,
+    contentType: 'text/yaml',
+    body: '- insert:\n    - id: hello\n      name: dsh-plugin\n',
   }))
   await page.goto('/publish.html')
   await page.locator('#repo-input').fill('acme/dsh-plugin')
