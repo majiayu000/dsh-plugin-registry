@@ -16442,6 +16442,50 @@
       "added": "2026-08-16",
       "stars": 1,
       "forks": 0
+    },
+    {
+      "id": "Ayou-Claw/flowctx-dsh",
+      "name": "flowctx-dsh",
+      "url": "https://github.com/Ayou-Claw/flowctx-dsh",
+      "description": {
+        "zh": "本地优先上下文引擎：当前任务保留原文，临近历史可逆压缩，更早历史折叠为交接笔记，关键材料可按 hash 取回。",
+        "en": "Local-first context engine for DeepSeek Harness: keep the current task verbatim, reversibly compress nearby history, fold older history into engineer handoff notes, and retrieve originals by hash."
+      },
+      "category": "memory",
+      "topics": [
+        "ai-agents",
+        "context-compression",
+        "context-engine",
+        "deepseek-harness",
+        "dsh-plugin",
+        "llm",
+        "working-memory"
+      ],
+      "install": "dsh plugin --profile web add github:Ayou-Claw/flowctx-dsh",
+      "icon": "https://avatars.githubusercontent.com/u/304037416?v=4",
+      "added": "2026-08-18",
+      "stars": 1,
+      "forks": 0
+    },
+    {
+      "id": "raosay/dsh-kanban",
+      "name": "dsh-kanban",
+      "url": "https://github.com/raosay/dsh-kanban",
+      "description": {
+        "zh": "纯净的看板管理多线任务：侧栏入口、多列看板、本地持久化，按任务选择模型并交给 DSH session 执行。",
+        "en": "Minimal DSH web kanban for multi-track tasks: sidebar entry, multi-column board, local persistence, and per-task model selection through the user's DSH session."
+      },
+      "category": "ui",
+      "topics": [
+        "dsh",
+        "dsh-plugin",
+        "kanban"
+      ],
+      "install": "dsh plugin --profile web add github:raosay/dsh-kanban",
+      "icon": "https://avatars.githubusercontent.com/u/11383248?v=4",
+      "added": "2026-08-18",
+      "stars": 0,
+      "forks": 0
     }
   ]
 }

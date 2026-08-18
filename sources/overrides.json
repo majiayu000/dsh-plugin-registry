@@ -16,6 +16,12 @@
     },
     "michengai/dsh-skills-manager": {
       "origin": "issue"
+    },
+    "ayou-claw/flowctx-dsh": {
+      "origin": "issue"
+    },
+    "raosay/dsh-kanban": {
+      "origin": "issue"
     }
   }
 }
