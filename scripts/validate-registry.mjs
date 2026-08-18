@@ -2,19 +2,11 @@ import { readFile } from 'node:fs/promises'
 import { pathToFileURL } from 'node:url'
 import { resolve } from 'node:path'
 import { INSTALL_PROFILES, githubSpecIsPinned, parseInstallCommand } from '../assets/install-command.js'
-import { repoKey } from './registry-core.mjs'
+import { parseGithubRepositoryUrl, repoKey } from './registry-core.mjs'
 
 const INSTALL_PATTERN = /^dsh plugin --profile (web|tui|headless) add ([^\s]+)$/
 const ICON_PATTERN = /^https:\/\/(?:github\.com|avatars\.githubusercontent\.com)\//
 const VERIFIED_COMMIT_PATTERN = /^[0-9a-f]{40}$/
-const GITHUB_OWNER_PATTERN = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/
-const GITHUB_REPOSITORY_PATTERN = /^[A-Za-z0-9._-]{1,100}$/
-
-function parseGithubRepositoryUrl(value) {
-  const match = String(value || '').match(/^https:\/\/github\.com\/([^/]+)\/([^/?#]+)(?:\/tree\/[^/]+\/.+)?\/?$/)
-  if (!match || !GITHUB_OWNER_PATTERN.test(match[1]) || !GITHUB_REPOSITORY_PATTERN.test(match[2])) return null
-  return { owner: match[1], repository: match[2] }
-}
 
 export function validateRegistry(registry) {
   const errors = []
@@ -38,7 +30,7 @@ export function validateRegistry(registry) {
     const repositoryUrl = parseGithubRepositoryUrl(plugin?.url)
     const key = repositoryUrl ? repoKey(repositoryUrl.owner, repositoryUrl.repository) : ''
     const idRepository = String(plugin?.id || '').split('#')[0].toLowerCase()
-    if (!plugin?.id || idRepository !== key) errors.push(`${label}.id must match the GitHub repository URL.`)
+    if (!plugin?.id || idRepository !== key) errors.push(`${label}.id must match the GitHub repository URL (${plugin?.id} vs ${plugin?.url}).`)
     if (repositoryUrl && String(plugin?.owner).toLowerCase() !== repositoryUrl.owner.toLowerCase()) errors.push(`${label}.owner must match the GitHub repository URL.`)
     if (ids.has(String(plugin?.id).toLowerCase())) errors.push(`${label}.id is duplicated: ${plugin.id}.`)
     ids.add(String(plugin?.id).toLowerCase())

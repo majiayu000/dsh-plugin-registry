@@ -14,6 +14,7 @@ import { hasDshCandidateContext } from '../assets/candidate-relevance.js'
 import {
   applyGovernance,
   bundleDirectoryFromUrl,
+  hasPublishableGithubIdentity,
   mergeRegistryCategories,
   mergePlugins,
   normalizeCurated,
@@ -490,6 +491,12 @@ async function main() {
     topics: plugin.topics,
     icon: plugin.icon,
   }))
+  const unpublishable = [...curated, ...discovered].filter(plugin => (
+    plugin.listingEligible && !plugin.archived && !hasPublishableGithubIdentity(plugin)
+  ))
+  if (unpublishable.length) {
+    console.warn(`Skipping ${unpublishable.length} installable plugins with an unpublishable GitHub identity: ${unpublishable.map(plugin => plugin.id || plugin.url || '(missing)').join(', ')}`)
+  }
   const governed = applyGovernance(mergePlugins(curated, discovered), blocklist, overrides)
   const plugins = governed.plugins.map(toPublicPlugin)
   const quarantined = [...new Map([...candidateQuarantined, ...governed.quarantined].map(plugin => [plugin.id.toLowerCase(), plugin])).values()]

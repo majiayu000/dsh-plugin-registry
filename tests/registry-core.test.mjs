@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { applyGovernance, bundleDirectoryFromUrl, hasBundleManifest, inferCategory, mergePlugins, mergeRegistryCategories, normalizeCurated, normalizeDiscovered, repositoryKey, toPublicPlugin, validateHealth } from '../scripts/registry-core.mjs'
+import { applyGovernance, bundleDirectoryFromUrl, canonicalGithubHtmlUrl, hasBundleManifest, hasPublishableGithubIdentity, inferCategory, mergePlugins, mergeRegistryCategories, normalizeCurated, normalizeDiscovered, parseGithubRepositoryUrl, repositoryKey, toPublicPlugin, validateHealth } from '../scripts/registry-core.mjs'
 
 test('only a dsh.bundle with a safe relative patch passes manifest validation', () => {
   assert.equal(hasBundleManifest('{"dsh":{"bundle":{"patch":"./cordis.patch.yml"}}}'), true)
@@ -56,6 +56,32 @@ test('registry categories always use the canonical taxonomy', () => {
   assert.equal('custom' in categories, false)
   assert.equal(inferCategory({ name: 'unclassified-entry' }, 'channel'), 'notify')
   assert.equal(inferCategory({ name: 'unclassified-entry' }, 'agent'), 'tools')
+})
+
+test('discovered plugins synthesize a GitHub URL when html_url is missing', () => {
+  const plugin = normalizeDiscovered({
+    full_name: 'acme/dsh-memory',
+    description: 'Long-term memory for DSH',
+  }, true, true)
+  assert.equal(plugin.url, 'https://github.com/acme/dsh-memory')
+  assert.equal(hasPublishableGithubIdentity(plugin), true)
+})
+
+test('mergePlugins drops installable plugins whose GitHub identity cannot be published', () => {
+  const valid = normalizeDiscovered({
+    full_name: 'acme/good-plugin',
+    html_url: 'https://github.com/acme/good-plugin',
+  }, true, true)
+  const invalid = normalizeDiscovered({
+    full_name: '_bad/plugin',
+    html_url: 'https://github.com/_bad/plugin',
+  }, true, true)
+  assert.equal(parseGithubRepositoryUrl('https://github.com/_bad/plugin'), null)
+  assert.equal(canonicalGithubHtmlUrl('_bad/plugin', 'https://github.com/_bad/plugin'), '')
+  assert.equal(invalid.url, '')
+  assert.equal(invalid.listingEligible, true)
+  const merged = mergePlugins([], [valid, invalid])
+  assert.deepEqual(merged.map(plugin => plugin.id), ['acme/good-plugin'])
 })
 
 test('a manifest whose referenced patch is missing is not installable', () => {

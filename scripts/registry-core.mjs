@@ -79,6 +79,30 @@ export function repoKey(owner, name) {
   return `${owner}/${name}`.toLowerCase()
 }
 
+const GITHUB_OWNER_PATTERN = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/
+const GITHUB_REPOSITORY_PATTERN = /^[A-Za-z0-9._-]{1,100}$/
+
+export function parseGithubRepositoryUrl(value) {
+  const match = String(value || '').match(/^https:\/\/github\.com\/([^/]+)\/([^/?#]+)(?:\/tree\/[^/]+\/.+)?\/?$/)
+  if (!match || !GITHUB_OWNER_PATTERN.test(match[1]) || !GITHUB_REPOSITORY_PATTERN.test(match[2])) return null
+  return { owner: match[1], repository: match[2] }
+}
+
+export function canonicalGithubHtmlUrl(fullName, htmlUrl) {
+  if (parseGithubRepositoryUrl(htmlUrl)) {
+    return String(htmlUrl).replace(/[?#].*$/, '').replace(/\/+$/, '')
+  }
+  const [owner, name] = String(fullName || '').split('/')
+  const synthesized = owner && name ? `https://github.com/${owner}/${name}` : ''
+  return parseGithubRepositoryUrl(synthesized) ? synthesized : ''
+}
+
+export function hasPublishableGithubIdentity(plugin) {
+  const parsed = parseGithubRepositoryUrl(plugin?.url)
+  if (!parsed) return false
+  return String(plugin?.id || '').split('#')[0].toLowerCase() === repoKey(parsed.owner, parsed.repository)
+}
+
 export function repositoryKey(plugin) {
   const match = String(plugin?.url || '').match(/^https:\/\/github\.com\/([^/]+)\/([^/?#]+)/)
   if (match) return repoKey(match[1], match[2])
@@ -189,7 +213,7 @@ export function normalizeDiscovered(repository, manifestShapeValid, patchExists 
     id: options.id || `${repository.full_name}${qualifier}`,
     name: options.name || (qualifier ? `${name}${qualifier}` : name),
     owner,
-    url: options.url || repository.html_url,
+    url: canonicalGithubHtmlUrl(repository.full_name, options.url || repository.html_url),
     ...(verifiedCommit ? { verifiedCommit } : {}),
     description: {
       zh: repository.description || '',
@@ -294,7 +318,7 @@ export function mergePlugins(curated, discovered) {
   for (const plugin of discovered) registry.set(String(plugin.id).toLowerCase(), plugin)
   for (const plugin of curated) registry.set(String(plugin.id).toLowerCase(), plugin)
   return [...registry.values()]
-    .filter(plugin => !plugin.archived && plugin.listingEligible)
+    .filter(plugin => !plugin.archived && plugin.listingEligible && hasPublishableGithubIdentity(plugin))
     .sort((a, b) => b.stars - a.stars || a.id.localeCompare(b.id))
 }
 
