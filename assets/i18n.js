@@ -12,7 +12,7 @@
     '发布你的插件': 'Publish your plugin', '收录规范': 'Listing policy', 'API 文档': 'API docs',
     'DeepSeek Harness': 'DeepSeek Harness', '注册表 JSON': 'Registry JSON', '返回插件库': 'Back to registry',
     '给 Harness 装上能力。': 'Give Harness new capabilities.',
-    '社区目录与 GitHub 自动发现的插件都在这里。可安装条目会校验 dsh.bundle；有 verifiedCommit 时，安装命令会钉到该 commit。': 'Community catalog and GitHub-discovered plugins in one place. Installable entries are checked for dsh.bundle; when a verifiedCommit exists, the install command pins that commit.',
+    '社区目录与 GitHub 自动发现的插件都在这里。可安装条目会校验 dsh.bundle；GitHub 安装命令在有 verifiedCommit 时会钉到该 commit。': 'Community catalog and GitHub-discovered plugins in one place. Installable entries are checked for dsh.bundle; a GitHub install command pins that commit when a verifiedCommit exists.',
     '描述你想让 Harness 做什么…': 'Describe what you want Harness to do…',
     '试试': 'Try', '终端界面': 'Terminal UI', '消息通知': 'Notifications', '网页搜索': 'Web search', '工作流': 'Workflows',
     '收录插件': 'Plugins', '可浏览仓库': 'Browsable repositories', '可安装插件': 'Installable plugins', '全部': 'All', '工具': 'Tools', '检索': 'Retrieval', '路由': 'Routing', '评测': 'Evaluation',
