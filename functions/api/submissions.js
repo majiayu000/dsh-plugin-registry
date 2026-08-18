@@ -131,7 +131,7 @@ async function inspectRepository(fetcher, token, repository) {
       method: 'GET',
       headers: githubHeaders(token, 'application/vnd.github.raw+json'),
     })
-    if (patchResponse.ok) patchCheck = validateBundlePatch(await patchResponse.text(), { packageName: bundleCheck.packageName })
+    if (patchResponse.ok) patchCheck = validateBundlePatch(await patchResponse.text())
     else if (patchResponse.status !== 404) {
       const error = new Error(`GitHub patch request failed with ${patchResponse.status}`)
       error.status = patchResponse.status
@@ -156,7 +156,7 @@ export function buildIssueBody(submission, checks) {
     ['公开仓库可访问', checks.repositoryPublic],
     ['包含 dsh-plugin Topic', checks.discoveryTopic],
     ['声明有效的 dsh.bundle', checks.bundleManifest],
-    ['Patch 文件存在且含插件行', checks.bundlePatch],
+    ['Patch 文件是顶层 YAML 数组', checks.bundlePatch],
     ['仓库未归档且不是 Fork', checks.repositoryStatus],
   ].map(([label, passed]) => `- [${passed ? 'x' : ' '}] ${label}`).join('\n')
 

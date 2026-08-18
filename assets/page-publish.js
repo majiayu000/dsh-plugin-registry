@@ -138,7 +138,7 @@ const { evaluateRepository, findRegistryEntry, githubFailureMessage, manifestFai
       var patchCheck = { valid: false, reason_code: 'patch_file_missing', reason: copy.patch_file_missing };
       if (bundleCheck.valid) {
         var patchResponse = await fetch('https://api.github.com/repos/' + repo + '/contents/' + bundleCheck.patch.replace(/^\.\//, ''), { headers: { accept: 'application/vnd.github.raw+json' } });
-        if (patchResponse.ok) patchCheck = validateBundlePatch(await patchResponse.text(), { packageName: bundleCheck.packageName });
+        if (patchResponse.ok) patchCheck = validateBundlePatch(await patchResponse.text());
         else if (patchResponse.status !== 404) { var patchError = new Error('patch fetch failed'); patchError.status = patchResponse.status; throw patchError; }
       }
       var registryEntry = null;

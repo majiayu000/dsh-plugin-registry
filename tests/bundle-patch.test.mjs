@@ -18,21 +18,21 @@ test('empty or non-array patches are rejected', () => {
   assert.equal(validateBundlePatch('').reason_code, 'patch_empty')
   assert.equal(validateBundlePatch('   \n# comment only\n').reason_code, 'patch_empty')
   assert.equal(validateBundlePatch('id: hello\nname: demo\n').reason_code, 'patch_not_array')
+  assert.equal(validateBundlePatch('patch: []\n').reason_code, 'patch_not_array')
 })
 
-test('a YAML array without plugin id and name is rejected', () => {
-  assert.equal(validateBundlePatch('- foo: bar\n').reason_code, 'patch_no_plugin_row')
-  assert.equal(validateBundlePatch('- id: hello\n').reason_code, 'patch_no_plugin_row')
+test('a top-level YAML array is valid even without plugin id and name', () => {
+  assert.equal(validateBundlePatch('[]').valid, true)
+  assert.deepEqual(validateBundlePatch('# overlay\n[]\n').names, [])
+  assert.equal(validateBundlePatch('- foo: bar\n').valid, true)
+  assert.equal(validateBundlePatch('- id: hello\n').valid, true)
 })
 
-test('patch names can be required to match the package name', () => {
-  const text = `- insert:\n    - id: hello\n      name: dsh-hello-plugin\n`
-  assert.equal(validateBundlePatch(text, { packageName: 'dsh-hello-plugin' }).valid, true)
-  assert.equal(validateBundlePatch(text, { packageName: 'other-plugin' }).reason_code, 'patch_name_mismatch')
-  assert.equal(validateBundlePatch(
-    `- id: hello-startup\n  name: dsh-hello-plugin/startup\n`,
-    { packageName: 'dsh-hello-plugin' },
-  ).valid, true)
+test('insert names are collected when present and never required to match package.json', () => {
+  const text = `- insert:\n    - id: hello\n      name: other-plugin\n`
+  const result = validateBundlePatch(text)
+  assert.equal(result.valid, true)
+  assert.deepEqual(result.names, ['other-plugin'])
 })
 
 test('patchPluginNames reads quoted and unquoted names', () => {

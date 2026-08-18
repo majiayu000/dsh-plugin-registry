@@ -18,7 +18,7 @@ export async function checkLocalPlugin(directory) {
   const manifest = validateBundleManifest(manifestText)
   if (!manifest.valid) return { ok: false, manifest, patch: null }
   const patchText = await readFile(resolve(root, manifest.patch), 'utf8')
-  const patch = validateBundlePatch(patchText, { packageName: manifest.packageName })
+  const patch = validateBundlePatch(patchText)
   return { ok: patch.valid, manifest, patch }
 }
 
@@ -37,7 +37,7 @@ async function checkGitHubPlugin(repository) {
   if (!patchResponse.ok) {
     return { ok: false, manifest, patch: { valid: false, reason_code: 'patch_file_missing', reason: `GitHub returned ${patchResponse.status}` } }
   }
-  const patch = validateBundlePatch(await patchResponse.text(), { packageName: manifest.packageName })
+  const patch = validateBundlePatch(await patchResponse.text())
   return { ok: patch.valid, manifest, patch }
 }
 
