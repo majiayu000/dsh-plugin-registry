@@ -1,6 +1,8 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
+import { computeRankingScore } from '../assets/registry-ranking.js'
+import { pluginDataFilename } from '../assets/plugin-data-route.js'
 
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, character => ({
@@ -104,6 +106,21 @@ export async function generateSeoFiles({
   if (!homepage) throw new Error('package.json homepage is required to generate canonical plugin URLs.')
   const urls = STATIC_PAGES.map(({ path }) => new URL(path, homepage).href)
 
+  const peersByCategory = new Map()
+  for (const plugin of registry.plugins) {
+    const peers = peersByCategory.get(plugin.category) || []
+    peers.push(plugin)
+    peersByCategory.set(plugin.category, peers)
+  }
+  function relatedPlugins(plugin, limit = 3) {
+    return (peersByCategory.get(plugin.category) || [])
+      .filter(peer => peer.id !== plugin.id)
+      .sort((a, b) => computeRankingScore(b).score - computeRankingScore(a).score)
+      .slice(0, limit)
+      .map(peer => ({ id: peer.id, name: peer.name, owner: peer.owner, url: peer.url, stars: peer.stars, trustLevel: peer.trustLevel }))
+  }
+  const dataDir = join(distDir, 'data', 'plugins')
+
   let staticPageCount = 0
   for (const { file, path } of STATIC_PAGES) {
     const target = join(distDir, file)
@@ -116,12 +133,27 @@ export async function generateSeoFiles({
     staticPageCount += 1
   }
 
+  await mkdir(dataDir, { recursive: true })
+  let dataFileCount = 0
   for (const plugin of registry.plugins) {
     const route = pluginRoute(plugin)
     const output = join(distDir, route, 'index.html')
     await mkdir(dirname(output), { recursive: true })
     await writeFile(output, renderPluginPage(template, plugin, homepage))
     urls.push(new URL(route, homepage).href)
+
+    // 单插件小数据：详情页用它代替整份多 MB 快照（category 元数据 + 同类推荐一并内置）。
+    const filename = pluginDataFilename(plugin.id)
+    if (filename) {
+      await writeFile(join(dataDir, `${filename}.json`), JSON.stringify({
+        schemaVersion: 1,
+        generatedAt: registry.generatedAt ?? null,
+        categories: registry.categories || {},
+        plugin,
+        related: relatedPlugins(plugin),
+      }))
+      dataFileCount += 1
+    }
   }
 
   const sitemap = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map(url => `  <url><loc>${xmlEscape(url)}</loc></url>`).join('\n')}\n</urlset>\n`
@@ -129,7 +161,7 @@ export async function generateSeoFiles({
     writeFile(join(distDir, 'sitemap.xml'), sitemap),
     writeFile(join(distDir, 'robots.txt'), `User-agent: *\nAllow: /\nSitemap: ${new URL('sitemap.xml', homepage).href}\n`),
   ])
-  console.log(`SEO pages generated: ${registry.plugins.length} plugin pages, ${staticPageCount} static pages, and sitemap.xml.`)
+  console.log(`SEO pages generated: ${registry.plugins.length} plugin pages, ${staticPageCount} static pages, ${dataFileCount} per-plugin data files, and sitemap.xml.`)
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

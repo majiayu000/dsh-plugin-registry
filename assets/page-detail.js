@@ -1,12 +1,35 @@
+window.HR_DEFER_REGISTRY = true;
 await import('/assets/i18n.js');
 await import('/assets/plugins.js');
 const { findPluginById } = await import('/assets/plugin-detail.js');
+const { pluginDataFilename } = await import('/assets/plugin-data-route.js');
 (async function () {
   'use strict';
-  try { await HR.ready; } catch (error) { document.getElementById('plugin-name').textContent = '插件数据加载失败'; return; }
-  var requested = document.body.dataset.pluginId || new URLSearchParams(location.search).get('plugin');
   var english = window.HRI18N.locale === 'en-US';
-  var plugin = findPluginById(HR.PLUGINS, requested);
+  var requested = document.body.dataset.pluginId || new URLSearchParams(location.search).get('plugin');
+  var plugin = null;
+  var related = [];
+  var detailDocument = null;
+  try {
+    var response = await fetch('data/plugins/' + pluginDataFilename(requested) + '.json');
+    if (response.ok) detailDocument = await response.json();
+  } catch (_) { /* 单插件数据不可用时回退完整快照 */ }
+  if (detailDocument && detailDocument.plugin) {
+    plugin = detailDocument.plugin;
+    related = Array.isArray(detailDocument.related) ? detailDocument.related : [];
+    HR.registry = { categories: detailDocument.categories || {}, stats: {} };
+    HR.PUBLISHED = [plugin];
+    HR.PENDING = [];
+    HR.PLUGINS = [plugin].concat(related);
+    HR.updateFreshness({ generatedAt: detailDocument.generatedAt });
+  } else {
+    try { await HR.startRegistryLoad(); }
+    catch (error) {
+      document.getElementById('plugin-name').textContent = english ? 'Unable to load plugin data' : '插件数据加载失败';
+      return;
+    }
+    plugin = findPluginById(HR.PLUGINS, requested);
+  }
   if (!plugin) {
     document.title = english ? 'Plugin not found — DeepSeek Harness Plugin Registry' : '插件不存在 — DeepSeek Harness Plugin Registry';
     document.getElementById('detail-root').innerHTML =
@@ -16,6 +39,7 @@ const { findPluginById } = await import('/assets/plugin-detail.js');
       '</p></div>';
     return;
   }
+  var isPending = HR.pendingReview(plugin);
   document.title = plugin.name + ' — DeepSeek Harness Plugin Registry';
   HR.track(plugin.id, 'view');
   document.getElementById('plugin-name').textContent = plugin.name;
@@ -25,13 +49,13 @@ const { findPluginById } = await import('/assets/plugin-detail.js');
   document.getElementById('readme-desc').textContent = pluginDescription;
   document.getElementById('source-pill').innerHTML = HR.sourcePill(plugin);
   document.getElementById('avatar-slot').appendChild(HR.avatar(plugin, 'lg'));
-  document.getElementById('install-command').textContent = plugin.install;
+  document.getElementById('install-command').textContent = plugin.install || '';
   var installCopyStatus = document.getElementById('install-copy-status');
   installCopyStatus.textContent = english
     ? 'Copying this command does not install the plugin. Run it in a terminal to start installation.'
     : '复制命令不会安装插件；只有在终端执行后，安装才会开始。';
   document.getElementById('plugin-stars').textContent = plugin.stars.toLocaleString();
-  document.getElementById('plugin-forks').textContent = plugin.forks.toLocaleString();
+  document.getElementById('plugin-forks').textContent = plugin.forks == null ? '—' : plugin.forks.toLocaleString();
   document.getElementById('maintainer').textContent = '@' + plugin.owner;
   document.getElementById('category').textContent = HR.categoryName(plugin.category);
   var missingMetadata = english ? 'Not provided' : '未提供';
@@ -104,26 +128,43 @@ const { findPluginById } = await import('/assets/plugin-detail.js');
     ? (english ? 'At sync time, the root package.json matched the dsh.bundle format and the patch-file check is shown separately. The registry did not run the plugin, test installation, or audit security.' : '同步时，仓库根目录 package.json 符合 dsh.bundle 格式，Patch 文件检查结果单独展示；本站没有运行插件、测试安装或审计安全性。')
     : (english ? 'The entry was synchronized from a public community catalog. The registry did not check its manifest, run the plugin, test installation, or audit security.' : '该条目同步自公开社区目录；本站没有检查 Manifest、运行插件、测试安装或审计安全性。');
   document.getElementById('topic-list').innerHTML = (plugin.topics || []).map(function (topic) { return '<span class="topic-chip">' + HR.escapeHtml(topic) + '</span>'; }).join('') || '<span class="topic-chip">dsh-plugin</span>';
-  document.getElementById('install-btn').addEventListener('click', function () { HR.openInstallDialog(plugin); });
-  var related = HR.PLUGINS.filter(function (candidate) { return candidate.id !== plugin.id && candidate.category === plugin.category; })
-    .sort(function (a, b) { return HR.compareByRanking(a, b); })
-    .slice(0, 3);
+  /* pending 候选没有经过验证的安装命令：隐藏安装框与安装/复制按钮，与浏览页的候选行保持同一契约 */
+  if (isPending) {
+    document.getElementById('install-box').hidden = true;
+    document.getElementById('install-copy-status').hidden = true;
+    document.getElementById('install-btn').hidden = true;
+  } else {
+    document.getElementById('install-btn').addEventListener('click', function () { HR.openInstallDialog(plugin); });
+  }
+  if (!detailDocument) {
+    related = HR.PLUGINS.filter(function (candidate) { return candidate.id !== plugin.id && candidate.category === plugin.category; })
+      .sort(function (a, b) { return HR.compareByRanking(a, b); })
+      .slice(0, 3);
+  }
   if (related.length) {
     document.getElementById('related-section').hidden = false;
     related.forEach(function (candidate) {
       var link = document.createElement('a');
       link.className = 'related-item';
-      link.href = HR.detailHref(candidate);
+      if (HR.pendingReview(candidate)) {
+        link.href = candidate.url;
+        link.target = '_blank';
+        link.rel = 'noopener';
+      } else {
+        link.href = HR.detailHref(candidate);
+      }
       link.innerHTML = '<span><b>' + HR.escapeHtml(candidate.name) + '</b><small>@' + HR.escapeHtml(candidate.owner) + '</small></span><strong>' + HR.fmtNumber(candidate.stars) + ' ★</strong>';
       document.getElementById('related-list').appendChild(link);
     });
   }
-  document.getElementById('copy-btn').addEventListener('click', function () {
-    HR.copyText(this, plugin.install).then(function (copied) {
-      if (copied) HR.track(plugin.id, 'copy');
-      installCopyStatus.textContent = copied
-        ? (english ? 'Command copied. The plugin is not installed yet. Paste and run it in your terminal.' : '命令已复制，插件尚未安装。请粘贴到终端并执行。')
-        : (english ? 'Copy failed. Select the command above and copy it manually.' : '复制失败，请选中上方命令手动复制。');
+  if (!isPending) {
+    document.getElementById('copy-btn').addEventListener('click', function () {
+      HR.copyText(this, plugin.install).then(function (copied) {
+        if (copied) HR.track(plugin.id, 'copy');
+        installCopyStatus.textContent = copied
+          ? (english ? 'Command copied. The plugin is not installed yet. Paste and run it in your terminal.' : '命令已复制，插件尚未安装。请粘贴到终端并执行。')
+          : (english ? 'Copy failed. Select the command above and copy it manually.' : '复制失败，请选中上方命令手动复制。');
+      });
     });
-  });
+  }
 })();

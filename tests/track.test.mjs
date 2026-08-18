@@ -28,12 +28,13 @@ test('track payload accepts known events and shaped plugin ids', () => {
 })
 
 test('handleTrack records a data point with plugin id as index', async () => {
-  const context = trackContext({ payload: { pluginId: 'acme/plugin', event: 'copy' } })
+  const context = trackContext({ payload: { pluginId: 'acme/plugin', event: 'copy' }, env: { TRACK_SALT: 'registry-secret' } })
   const response = await handleTrack(context)
   assert.equal(response.status, 204)
   assert.equal(response.headers.get('x-track'), 'recorded')
   assert.deepEqual(context.env.TRACKING.lastPoint.indexes, ['acme/plugin'])
   assert.deepEqual(context.env.TRACKING.lastPoint.blobs.slice(0, 2), ['copy', 'acme/plugin'])
+  assert.match(context.env.TRACKING.lastPoint.blobs[2], /^[0-9a-f]{16}$/)
 })
 
 test('cross-origin beacons are rejected without recording', async () => {
@@ -53,11 +54,19 @@ test('invalid payloads and oversized bodies never reach the dataset', async () =
 })
 
 test('missing Analytics Engine binding degrades to a skip, not an error', async () => {
-  const context = trackContext({ payload: { pluginId: 'acme/plugin', event: 'view' }, env: {} })
+  const context = trackContext({ payload: { pluginId: 'acme/plugin', event: 'view' }, env: { TRACK_SALT: 'registry-secret' } })
   delete context.env.TRACKING
   const response = await handleTrack(context)
   assert.equal(response.status, 204)
   assert.equal(response.headers.get('x-track'), 'skipped')
+})
+
+test('a missing TRACK_SALT skips tracking instead of hashing with a public salt', async () => {
+  const context = trackContext({ payload: { pluginId: 'acme/plugin', event: 'view' }, env: {} })
+  const response = await handleTrack(context)
+  assert.equal(response.status, 204)
+  assert.equal(response.headers.get('x-track'), 'skipped')
+  assert.equal(context.env.TRACKING.lastPoint, undefined)
 })
 
 test('visitor digest is stable per ip+salt and differs across salt or ip', async () => {

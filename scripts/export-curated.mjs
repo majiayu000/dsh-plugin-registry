@@ -27,5 +27,21 @@ const plugins = registry.plugins
     forks: plugin.forks ?? 0,
   }))
 
-await writeFile(OUTPUT, `${JSON.stringify({ updated: registry.generatedAt, plugins }, null, 2)}\n`)
-console.log(`Vendored ${plugins.length} curated plugins into ${OUTPUT}.`)
+// 合并而非整文件替换：快照中暂时不存在（如已归档/被隔离）的既有条目必须保留，
+// 否则一次导出就会把 vendored 目录里手工维护的条目永久删掉。
+// 仅把缺失文件当成空目录；损坏的 catalog 必须拒绝写入，避免覆盖掉要保住的条目。
+let existing
+try {
+  existing = JSON.parse(await readFile(OUTPUT, 'utf8'))
+} catch (error) {
+  if (error?.code !== 'ENOENT') throw error
+  existing = { plugins: [] }
+}
+const exportedIds = new Set(plugins.map(plugin => String(plugin.id).toLowerCase()))
+const kept = (existing.plugins || []).filter(entry => !exportedIds.has(String(entry?.id || '').toLowerCase()))
+if (kept.length) {
+  console.warn(`Kept ${kept.length} vendored entries absent from the snapshot (likely unpublished, archived, or quarantined): ${kept.map(entry => entry.id).join(', ')}`)
+}
+
+await writeFile(OUTPUT, `${JSON.stringify({ updated: registry.generatedAt, plugins: [...plugins, ...kept] }, null, 2)}\n`)
+console.log(`Vendored ${plugins.length} curated plugins into ${OUTPUT}${kept.length ? ` (${kept.length} existing entries preserved)` : ''}.`)

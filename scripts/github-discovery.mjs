@@ -62,6 +62,26 @@ function splitWindow(from, to) {
   ]
 }
 
+/* REST /search/repositories 条目归一化为与 mapGraphqlRepository 相同的形状，
+   保证无 token 降级路径产出的 license（REST 是对象）等字段与 GraphQL 路径一致。 */
+export function mapRestRepository(item) {
+  return {
+    full_name: item.full_name,
+    html_url: item.html_url,
+    description: item.description || '',
+    stargazers_count: item.stargazers_count || 0,
+    forks_count: item.forks_count || 0,
+    language: item.language || '',
+    license: item.license?.spdx_id || '',
+    latest_release: null,
+    pushed_at: item.pushed_at || null,
+    archived: Boolean(item.archived),
+    fork: Boolean(item.fork),
+    topics: item.topics || [],
+    owner: { avatar_url: item.owner?.avatar_url || '' },
+  }
+}
+
 function canSplitWindow(from, to) {
   const fromTime = from.getTime()
   const toTime = to.getTime()

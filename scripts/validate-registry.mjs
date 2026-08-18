@@ -4,7 +4,7 @@ import { resolve } from 'node:path'
 import { INSTALL_PROFILES, githubSpecIsPinned, parseInstallCommand } from '../assets/install-command.js'
 import { parseGithubRepositoryUrl, repoKey } from './registry-core.mjs'
 
-const INSTALL_PATTERN = /^dsh plugin --profile (web|tui|headless) add ([^\s]+)$/
+export const INSTALL_PATTERN = /^dsh plugin --profile (web|tui|headless) add ([^\s]+)$/
 const ICON_PATTERN = /^https:\/\/(?:github\.com|avatars\.githubusercontent\.com)\//
 const VERIFIED_COMMIT_PATTERN = /^[0-9a-f]{40}$/
 

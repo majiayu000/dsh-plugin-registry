@@ -28,9 +28,9 @@
   <section class="detail-head rise rise-1">
     <div id="avatar-slot"></div>
     <div style="flex:1;min-width:0">
-      <div class="detail-title"><h1 id="plugin-name">正在加载…</h1><span id="source-pill"></span></div>
+      <div class="detail-title"><h1 id="plugin-name" data-dyn>正在加载…</h1><span id="source-pill"></span></div>
       <p class="detail-owner" id="plugin-owner"></p>
-      <p class="detail-desc" id="plugin-desc"></p>
+      <p class="detail-desc" id="plugin-desc" data-dyn></p>
     </div>
     <div class="detail-cta"><a class="btn" id="repo-button" target="_blank" rel="noopener">查看 GitHub</a><button class="btn btn-primary" id="install-btn">安装步骤</button></div>
   </section>
@@ -43,7 +43,7 @@
     <div><span>安装测试</span><strong id="evidence-installation">未执行</strong></div>
   </section>
 
-  <div class="installbox rise rise-2"><span class="dollar">$</span><code id="install-command"></code><button class="copy" id="copy-btn">复制命令</button></div>
+  <div class="installbox rise rise-2" id="install-box"><span class="dollar">$</span><code id="install-command"></code><button class="copy" id="copy-btn">复制命令</button></div>
   <p class="install-note" id="install-copy-status" role="status"></p>
 
   <div class="detail-grid">
@@ -51,7 +51,7 @@
       <div class="tabs"><span class="tab on">插件信息</span></div>
       <div class="tabpane on readme registry-readme">
         <h3>它能做什么</h3>
-        <p id="readme-desc"></p>
+        <p id="readme-desc" data-dyn></p>
         <h3>安装前请确认</h3>
         <ul class="decision-list">
           <li id="manifest-decision"></li>
@@ -64,10 +64,10 @@
           <div><b id="evidence-title"></b><p id="evidence-copy"></p></div>
         </div>
         <h3>GitHub Topics</h3>
-        <div class="topic-list" id="topic-list"></div>
+        <div class="topic-list" id="topic-list" data-dyn></div>
         <section class="related-section" id="related-section" hidden>
           <h3>同类插件</h3>
-          <div class="related-list" id="related-list"></div>
+          <div class="related-list" id="related-list" data-dyn></div>
         </section>
       </div>
     </div>

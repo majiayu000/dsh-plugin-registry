@@ -121,7 +121,11 @@
     var nodes = [];
     while (walker.nextNode()) nodes.push(walker.currentNode);
     nodes.forEach(function (node) {
-      if (node.parentElement && !/^(SCRIPT|STYLE|CODE)$/.test(node.parentElement.tagName)) node.nodeValue = translateText(node.nodeValue);
+      var parent = node.parentElement;
+      if (!parent || /^(SCRIPT|STYLE|CODE)$/.test(parent.tagName)) return;
+      // [data-dyn] 标记的子树承载第三方注册表内容（插件名/简介），模糊词典不得改写。
+      if (parent.closest('[data-dyn]')) return;
+      node.nodeValue = translateText(node.nodeValue);
     });
     if (root.querySelectorAll) {
       root.querySelectorAll('[placeholder],[title],[aria-label]').forEach(function (el) {
@@ -170,7 +174,9 @@
   var observer = new MutationObserver(function (records) {
     records.forEach(function (record) {
       record.addedNodes.forEach(function (node) {
-        if (node.nodeType === Node.TEXT_NODE) node.nodeValue = translateText(node.nodeValue);
+        if (node.nodeType === Node.TEXT_NODE) {
+          if (node.parentElement && !node.parentElement.closest('[data-dyn]')) node.nodeValue = translateText(node.nodeValue);
+        }
         else if (node.nodeType === Node.ELEMENT_NODE) translateElement(node);
       });
     });

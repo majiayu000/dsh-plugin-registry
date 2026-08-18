@@ -63,6 +63,81 @@ test('mobile layout keeps navigation and filters usable without page overflow', 
   expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.width + 1)
 })
 
+test('a failed audit fetch does not keep stale pending candidates after reload', async ({ page }) => {
+  const nextVersion = '2026-08-17T12:00:00.000Z'
+  const published = {
+    id: 'acme/live-plugin',
+    name: 'live-plugin',
+    owner: 'acme',
+    url: 'https://github.com/acme/live-plugin',
+    description: { zh: '在列插件', en: 'Listed plugin' },
+    category: 'tools',
+    topics: [],
+    stars: 1,
+    forks: 0,
+    source: 'curated',
+    trustLevel: 'curated',
+    verification: { manifest: 'not_checked', patch: 'not_checked', installation: 'not_tested' },
+  }
+  const stalePending = {
+    id: 'acme/dsh-stale-candidate',
+    name: 'dsh-stale-candidate',
+    url: 'https://github.com/acme/dsh-stale-candidate',
+    topics: ['dsh'],
+  }
+
+  await page.route('**/data/version.json', route => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({ schemaVersion: 1, generatedAt: nextVersion }),
+  }))
+  await page.route('**/data/plugins.json', route => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({ generatedAt: nextVersion, plugins: [published], categories: {}, stats: {} }),
+  }))
+  await page.route('**/data/registry-audit.json', route => route.fulfill({
+    status: 404,
+    contentType: 'text/plain',
+    body: 'missing',
+  }))
+
+  await page.addInitScript(async ({ published, stalePending }) => {
+    if (sessionStorage.getItem('hr-seeded-stale-audit')) return
+    sessionStorage.setItem('hr-seeded-stale-audit', '1')
+    const origin = location.origin
+    const cache = await caches.open('harness-registry-snapshot-v1')
+    const put = (path, body) => cache.put(
+      `${origin}/${path}`,
+      new Response(JSON.stringify(body), { headers: { 'content-type': 'application/json' } }),
+    )
+    await put('data/version.json', { schemaVersion: 1, generatedAt: '2026-08-16T00:00:00.000Z' })
+    await put('data/plugins.json', { generatedAt: '2026-08-16T00:00:00.000Z', plugins: [published] })
+    await put('data/registry-audit.json', { pendingReview: [stalePending] })
+  }, { published, stalePending })
+
+  await page.goto('/')
+  await expect(page.locator('#list .prow').first()).toBeVisible()
+  await expect.poll(() => page.evaluate(() => (window.HR.PENDING || []).map(plugin => plugin.id))).toEqual([])
+  await expect(page.locator('#list')).not.toContainText('dsh-stale-candidate')
+
+  await page.reload()
+  await expect(page.locator('#list .prow').first()).toBeVisible()
+  await expect.poll(() => page.evaluate(() => (window.HR.PENDING || []).map(plugin => plugin.id))).toEqual([])
+  await expect(page.locator('#list')).not.toContainText('dsh-stale-candidate')
+  const cachedAudit = await page.evaluate(async () => {
+    const cache = await caches.open('harness-registry-snapshot-v1')
+    const response = await cache.match(`${location.origin}/data/registry-audit.json`)
+    return response ? response.json() : null
+  })
+  expect(cachedAudit).toEqual({ pendingReview: [] })
+
+  await page.goto('/dashboard.html')
+  await expect(page.locator('#k-count')).not.toHaveText('—')
+  await expect.poll(() => page.evaluate(() => (window.HR.PENDING || []).map(plugin => plugin.id))).toEqual([])
+  await expect(page.locator('main')).not.toContainText('dsh-stale-candidate')
+})
+
 test('repository pre-check returns structured signals and enables GitHub submission', async ({ page }) => {
   await page.route('https://api.github.com/repos/acme/dsh-plugin', route => route.fulfill({
     status: 200,
@@ -83,5 +158,7 @@ test('repository pre-check returns structured signals and enables GitHub submiss
   await page.locator('#repo-input').fill('acme/dsh-plugin')
   await page.locator('#repo-checker-form').evaluate(form => form.requestSubmit())
   await expect(page.locator('[data-check="bundle"]')).toHaveClass(/ok/)
-  await expect(page.locator('#github-submit')).toHaveAttribute('aria-disabled', 'false')
+  await expect(page.locator('#submission-actions')).toBeVisible()
+  await expect(page.locator('#github-submit')).toHaveAttribute('href', /github\.com\/majiayu000\/dsh-plugin-registry\/issues\/new/)
+  await expect(page.locator('#review-submit')).toBeDisabled()
 })
