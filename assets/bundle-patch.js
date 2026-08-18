@@ -1,5 +1,4 @@
 const NAME_PATTERN = /(?:^|\n)[ \t]*-?[ \t]*name:[ \t]*['"]?([^'"\n#]+?)['"]?[ \t]*(?:#.*)?$/gm
-const ID_PATTERN = /(?:^|\n)[ \t]*-?[ \t]*id:[ \t]*\S+/
 
 function stripCommentsAndBlanks(text) {
   return String(text || '')
@@ -18,30 +17,20 @@ export function patchPluginNames(text) {
   return names
 }
 
-export function validateBundlePatch(text, { packageName } = {}) {
+function isTopLevelYamlArray(lines) {
+  const body = lines.join('\n').trim()
+  if (body.startsWith('[')) return true
+  return lines.some(line => line.trimStart().startsWith('-'))
+}
+
+export function validateBundlePatch(text) {
   const lines = stripCommentsAndBlanks(text)
   if (!lines.length) {
     return { valid: false, reason_code: 'patch_empty', reason: 'The patch file is empty.' }
   }
-  if (!lines.some(line => line.trimStart().startsWith('-'))) {
-    return { valid: false, reason_code: 'patch_not_array', reason: 'The patch file must be a YAML array of plugin rows.' }
+  if (!isTopLevelYamlArray(lines)) {
+    return { valid: false, reason_code: 'patch_not_array', reason: 'The patch file must be a top-level YAML array.' }
   }
 
-  const names = patchPluginNames(text)
-  if (!names.length || !ID_PATTERN.test(text)) {
-    return { valid: false, reason_code: 'patch_no_plugin_row', reason: 'The patch file must declare at least one plugin row with id and name.' }
-  }
-
-  if (packageName) {
-    const matchesPackage = names.some(name => name === packageName || name.startsWith(`${packageName}/`))
-    if (!matchesPackage) {
-      return {
-        valid: false,
-        reason_code: 'patch_name_mismatch',
-        reason: `The patch name must match package.json name "${packageName}".`,
-      }
-    }
-  }
-
-  return { valid: true, names }
+  return { valid: true, names: patchPluginNames(text) }
 }

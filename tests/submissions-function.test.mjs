@@ -79,5 +79,5 @@ test('submission endpoint validates Turnstile, checks GitHub, and creates an ass
   assert.deepEqual(issue.labels, ['plugin-submission'])
   assert.deepEqual(issue.assignees, ['majiayu000'])
   assert.match(issue.body, /- \[x\] 声明有效的 dsh\.bundle/)
-  assert.match(issue.body, /- \[x\] Patch 文件存在且含插件行/)
+  assert.match(issue.body, /- \[x\] Patch 文件是顶层 YAML 数组/)
 })

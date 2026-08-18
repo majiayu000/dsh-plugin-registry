@@ -77,7 +77,7 @@ For automatic discovery:
 
 1. Publish a real, public, non-fork GitHub repository.
 2. Declare an installable `dsh.bundle` object in the plugin `package.json` (root or a path listed in `dsh.bundles`).
-3. Make sure the referenced patch file exists and declares at least one plugin row with `id` and `name`.
+3. Make sure the referenced patch file exists and is a top-level YAML array (empty `[]` is valid).
 4. Add the `dsh-plugin` GitHub topic.
 5. Wait for the next registry sync.
 
@@ -91,7 +91,7 @@ Use the repository checker at <http://localhost:5173/publish.html>. When the Clo
 
 ## Known limitations
 
-- Manifest and patch-file verification confirm the install entry exists and looks like a plugin layer; they are not an installation test, security audit, or endorsement of plugin code.
+- Manifest and patch-file verification confirm the bundle overlay exists and is a top-level YAML array; they are not an installation test, security audit, or endorsement of plugin code.
 - GitHub install commands are pinned to `verifiedCommit` when that SHA was recorded. npm-style specs are not commit-pinned.
 - Stars, Forks, descriptions, Topics, and primary languages are point-in-time GitHub metadata and can lag until the next sync.
 - A complete discovery refresh requires a GitHub token; unauthenticated runs inspect only recent candidates and cannot overwrite a complete snapshot.

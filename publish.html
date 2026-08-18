@@ -53,7 +53,7 @@
           <li class="check-row" data-check="repo"><span class="check-ic" aria-hidden="true">—</span><span class="check-label">公开仓库存在</span><span class="check-state">待检查</span></li>
           <li class="check-row" data-check="topic"><span class="check-ic" aria-hidden="true">—</span><span class="check-label">包含 dsh-plugin Topic</span><span class="check-state">待检查</span></li>
           <li class="check-row" data-check="bundle"><span class="check-ic" aria-hidden="true">—</span><span class="check-label">声明有效的 dsh.bundle</span><span class="check-state">待检查</span></li>
-          <li class="check-row" data-check="patch"><span class="check-ic" aria-hidden="true">—</span><span class="check-label">Patch 文件存在且含插件行</span><span class="check-state">待检查</span></li>
+          <li class="check-row" data-check="patch"><span class="check-ic" aria-hidden="true">—</span><span class="check-label">Patch 文件是顶层 YAML 数组</span><span class="check-state">待检查</span></li>
           <li class="check-row" data-check="status"><span class="check-ic" aria-hidden="true">—</span><span class="check-label">仓库未归档且不是 Fork</span><span class="check-state">待检查</span></li>
         </ul>
         <p class="form-hint" id="check-message" role="status" aria-live="polite" tabindex="-1"></p>
@@ -88,7 +88,7 @@
 
     <aside class="panel publish-guide" aria-labelledby="publish-guide-title">
       <h2 class="panel-title" id="publish-guide-title">发布前准备</h2>
-      <p class="psub">自动发现要求根目录或子包 package.json 声明 dsh.bundle，且 patch 里至少有一行带 id 和 name 的插件。</p>
+      <p class="psub">自动发现要求根目录或子包 package.json 声明 dsh.bundle，且 patch 是顶层 YAML 数组（允许空数组）。</p>
       <pre class="codeblock"><code>{
   <span class="k">"name"</span>: <span class="k">"dsh-hello-plugin"</span>,
   <span class="k">"dsh"</span>: {

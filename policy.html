@@ -37,7 +37,7 @@
             <li><strong>公开且可访问</strong><span>同步任务必须能读取仓库元数据和根目录 package.json。</span></li>
             <li><strong>带有发现标记</strong><span>仓库需声明 <code>dsh-plugin</code> Topic，供定时任务发现。</span></li>
             <li><strong>候选相关性明确</strong><span>缺少有效 bundle 时，仓库名称、简介或额外 Topic 必须还能表明它与 DSH 有关；仅有发现 Topic 的仓库不会展示。</span></li>
-            <li><strong>声明可安装 bundle</strong><span>package.json 的 <code>dsh.bundle.patch</code> 必须是安全的相对路径；引用文件必须存在，并且至少声明一行带 <code>id</code> 和 <code>name</code> 的插件。精选条目在能够检查时使用同一套契约。</span></li>
+            <li><strong>声明可安装 bundle</strong><span>package.json 的 <code>dsh.bundle.patch</code> 必须是安全的相对路径；引用文件必须存在，且必须是顶层 YAML 数组（允许空数组）。精选条目在能够检查时使用同一套契约。</span></li>
             <li><strong>状态符合要求</strong><span>已归档仓库和 Fork 不会被本站收录。</span></li>
           </ol>
         </div>

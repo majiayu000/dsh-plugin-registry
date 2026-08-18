@@ -264,7 +264,7 @@ async function loadBundlePatches(candidates) {
           results.set(candidate.key, false)
           return
         }
-        const check = validateBundlePatch(text, { packageName: candidate.packageName })
+        const check = validateBundlePatch(text)
         results.set(candidate.key, check.valid ? true : 'invalid')
       })
     }
@@ -468,7 +468,7 @@ async function main() {
   const discovered = eligibleCandidates.filter(plugin => plugin.listingEligible)
   function pendingReason(plugin) {
     if (plugin.verification.patch === 'missing') return 'dsh.bundle.patch does not resolve to a file at repository HEAD'
-    if (plugin.verification.patch === 'invalid') return 'dsh.bundle.patch is not a valid plugin row file'
+    if (plugin.verification.patch === 'invalid') return 'dsh.bundle.patch is not a top-level YAML array'
     return 'package.json does not declare a valid dsh.bundle object'
   }
   const pendingReview = [
