@@ -1,8 +1,11 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
+import { pluginRoute } from '../assets/plugin-route.js'
 import { computeRankingScore } from '../assets/registry-ranking.js'
 import { pluginDataFilename } from '../assets/plugin-data-route.js'
+
+export { pluginRoute } from '../assets/plugin-route.js'
 
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, character => ({
@@ -12,12 +15,6 @@ function escapeHtml(value) {
 
 function xmlEscape(value) {
   return escapeHtml(value).replace(/&#39;/g, '&apos;')
-}
-
-export function pluginRoute(plugin) {
-  const [repository, qualifier] = String(plugin.id).split('#', 2)
-  const segments = repository.split('/').concat(qualifier ? [qualifier] : [])
-  return `plugins/${segments.map(segment => encodeURIComponent(segment)).join('/')}/`
 }
 
 const STATIC_PAGES = [
