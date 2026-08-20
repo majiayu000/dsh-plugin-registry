@@ -16486,6 +16486,29 @@
       "added": "2026-08-18",
       "stars": 0,
       "forks": 0
+    },
+    {
+      "id": "kolawong/dsh-plugin-j-space",
+      "name": "dsh-plugin-j-space",
+      "url": "https://github.com/kolawong/dsh-plugin-j-space",
+      "description": {
+        "zh": "J-Space 认知工作区：为复杂长程任务、深度代码重构与严密逻辑推理提供工作空间管控、抗表征漂移和稠密自验机制。",
+        "en": "J-Space cognitive workspace for complex long-horizon tasks, deep code refactoring, and rigorous reasoning, with workspace control, representation-drift resistance, and dense self-verification."
+      },
+      "category": "skill",
+      "topics": [
+        "cognition",
+        "deepseek",
+        "deepseek-harness",
+        "dsh",
+        "dsh-plugin",
+        "j-space"
+      ],
+      "install": "dsh plugin --profile web add github:kolawong/dsh-plugin-j-space",
+      "icon": "https://avatars.githubusercontent.com/u/33373300?v=4",
+      "added": "2026-08-20",
+      "stars": 4,
+      "forks": 1
     }
   ]
 }
