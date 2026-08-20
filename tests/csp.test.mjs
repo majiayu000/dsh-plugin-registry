@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 
-const pages = ['index.html', 'dashboard.html', 'plugin-detail.html', 'publish.html', 'policy.html']
+const pages = ['404.html', 'index.html', 'dashboard.html', 'plugin-detail.html', 'publish.html', 'policy.html']
 
 test('every page ships a strict meta CSP without inline module scripts', async () => {
   for (const page of pages) {
@@ -20,7 +20,7 @@ test('every page ships a strict meta CSP without inline module scripts', async (
 })
 
 test('only the publish page may talk to Turnstile and the GitHub API', async () => {
-  for (const page of ['index.html', 'dashboard.html', 'plugin-detail.html', 'policy.html']) {
+  for (const page of ['404.html', 'index.html', 'dashboard.html', 'plugin-detail.html', 'policy.html']) {
     const html = await readFile(page, 'utf8')
     assert.doesNotMatch(html, /challenges\.cloudflare\.com/, `${page} must not reference Turnstile`)
     assert.doesNotMatch(html, /api\.github\.com/, `${page} must not call the GitHub API`)
