@@ -12,3 +12,19 @@ test('the custom not-found page is non-indexable and returns visitors to the reg
   assert.doesNotMatch(page, /rel="canonical"/)
   assert.match(viteConfig, /notFound: resolve\(import\.meta\.dirname, '404\.html'\)/)
 })
+
+test('the custom not-found page resolves assets from nested plugin URLs', async () => {
+  const page = await readFile('404.html', 'utf8')
+  const nestedPluginUrl = new URL('https://plugin.dshdesk.com/plugins/acme/missing-plugin/')
+  const assetReferences = [...page.matchAll(/(?:href|src)="([^"]*assets\/[^"]+)"/g)]
+    .map(match => match[1])
+
+  assert.deepEqual(assetReferences, [
+    '/assets/dsh-desk-logo.png',
+    '/assets/registry.css',
+    '/assets/dsh-desk-logo.png',
+  ])
+  for (const reference of assetReferences) {
+    assert.equal(new URL(reference, nestedPluginUrl).pathname.startsWith('/assets/'), true)
+  }
+})
