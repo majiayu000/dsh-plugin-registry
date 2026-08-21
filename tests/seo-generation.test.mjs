@@ -72,6 +72,12 @@ test('renderStaticPage rejects pages without a title', () => {
   assert.throws(() => renderStaticPage('<html><head></head><body></body></html>', 'x.html', 'https://example.com/'), /missing a <title>/)
 })
 
+test('plugin routes encode registry-valid qualifier characters and reject traversal segments', () => {
+  assert.equal(pluginRoute({ id: 'acme/repo#~weird~name' }), 'plugins/acme/repo/~weird~name/')
+  assert.equal(pluginRoute({ id: 'acme/repo#中文' }), 'plugins/acme/repo/%E4%B8%AD%E6%96%87/')
+  assert.throws(() => pluginRoute({ id: 'acme/repo#packages/../secret' }), /Invalid plugin id/)
+})
+
 test('SEO pages preserve the deployment base independently from the canonical domain', () => {
   const template = '<html><head><title>Plugin</title><meta name="description" content="Generic" /><script src="/legacy-path/assets/app.js"></script></head><body></body></html>'
   const page = renderPluginPage(template, {
