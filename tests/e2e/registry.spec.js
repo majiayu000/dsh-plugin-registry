@@ -1,4 +1,25 @@
 import { expect, test } from '@playwright/test'
+import { readFile } from 'node:fs/promises'
+
+test('a nested not-found page localizes for English visitors', async ({ page }) => {
+  const notFoundPage = await readFile(new URL('../../404.html', import.meta.url), 'utf8')
+  await page.goto('/')
+  await page.evaluate(() => localStorage.setItem('harness-registry-locale', 'en-US'))
+  await page.route('**/plugins/acme/missing-plugin/', route => route.fulfill({
+    status: 404,
+    contentType: 'text/html',
+    body: notFoundPage,
+  }))
+
+  const response = await page.goto('/plugins/acme/missing-plugin/')
+  expect(response.status()).toBe(404)
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en-US')
+  await expect(page).toHaveTitle('Page Not Found — DeepSeek Harness Plugin Registry')
+  await expect(page.locator('h1')).toHaveText('Plugin not found.')
+  await expect(page.locator('.page-sub')).toHaveText('It may have been removed from the directory, or the URL may be incorrect.')
+  await expect(page.locator('.btn-primary')).toHaveText('Back to plugin directory')
+  await expect(page.locator('.locale-switch')).toHaveText('中')
+})
 
 test('search ranks exact plugin names and persists the query in the URL', async ({ page }) => {
   await page.goto('/')
