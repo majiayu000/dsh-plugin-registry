@@ -73,7 +73,9 @@ test('renderStaticPage rejects pages without a title', () => {
 })
 
 test('plugin routes encode registry-valid qualifier characters and reject traversal segments', () => {
-  assert.equal(pluginRoute({ id: 'acme/repo#~weird~name' }), 'plugins/acme/repo/~weird~name/')
+  const relativeRoute = pluginRoute({ id: 'acme/repo#~weird~name' })
+  assert.equal(relativeRoute, 'plugins/acme/repo/~weird~name/')
+  assert.equal(new URL(relativeRoute, 'https://example.com/registry/').pathname, '/registry/plugins/acme/repo/~weird~name/')
   assert.equal(pluginRoute({ id: 'acme/repo#中文' }), 'plugins/acme/repo/%E4%B8%AD%E6%96%87/')
   assert.throws(() => pluginRoute({ id: 'acme/repo#packages/../secret' }), /Invalid plugin id/)
 })
