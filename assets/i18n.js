@@ -41,6 +41,7 @@
     '本站不审计插件安全性，也没有执行安装测试。': 'This registry does not audit plugin security or perform installation tests.',
     '本站收录': 'Listed here', '同类插件': 'Similar plugins', '报告条目信息问题 ↗': 'Report listing data ↗',
     '插件数据加载失败': 'Unable to load plugin data', '没有找到这个插件': 'Plugin not found',
+    '没有找到这个插件。': 'Plugin not found.', '它可能已经从目录中移除，或者你访问的网址有误。': 'It may have been removed from the directory, or the URL may be incorrect.', '返回插件目录': 'Back to plugin directory',
     '数据来自社区目录与 GitHub dsh-plugin Topic。这里不制造下载量或评分，只展示可以被验证的公开指标。': 'Data comes from the community catalog and the GitHub dsh-plugin topic. No fabricated installs or ratings — only verifiable public metrics.',
     '已收录仓库合计': 'Across listed repositories', '可安装插件': 'Installable plugins', '公开列表条目': 'Public listing entries', '仅已收录条目 · 按 owner 去重': 'Listed entries only · unique owners',
     '格式检查通过': 'Format checked', 'dsh.bundle 声明格式有效': 'Valid dsh.bundle declarations', '公开列表中的数据来源': 'Data sources in the public list', '按公开列表条目数量': 'By public listing entries',
@@ -155,6 +156,10 @@
 
   function translateTitle() {
     if (locale !== 'en-US') return;
+    if (document.body && document.body.dataset.page === 'not-found') {
+      document.title = 'Page Not Found — DeepSeek Harness Plugin Registry';
+      return;
+    }
     var titles = {
       '/': 'DeepSeek Harness Plugin Registry',
       '/index.html': 'DeepSeek Harness Plugin Registry',

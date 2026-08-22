@@ -5,6 +5,7 @@ export default defineConfig({
   build: {
     rollupOptions: {
       input: {
+        notFound: resolve(import.meta.dirname, '404.html'),
         registry: resolve(import.meta.dirname, 'index.html'),
         detail: resolve(import.meta.dirname, 'plugin-detail.html'),
         publish: resolve(import.meta.dirname, 'publish.html'),

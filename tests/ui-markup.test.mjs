@@ -124,6 +124,8 @@ test('pending GitHub candidates remain visible without exposing an install actio
   assert.match(script, /pending_review/)
   assert.match(script, /缺少有效 dsh\.bundle/)
   assert.match(script, /查看仓库/)
+  assert.match(script, /var nameHref = isPending \? plugin\.url : detailHref\(plugin\)/)
+  assert.match(script, /target="_blank" rel="noopener"/)
   assert.match(html, /value="not_validated">缺少有效 dsh\.bundle/)
   assert.match(css, /\.prow-pending/)
 })
