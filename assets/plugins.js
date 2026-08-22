@@ -1,6 +1,7 @@
 /* Harness Registry — real registry loader and shared render helpers */
 import { writeClipboardText } from './clipboard.js'
 import { hasDshCandidateContext } from './candidate-relevance.js'
+import { pluginRoute } from './plugin-route.js'
 import { computeRankingScore } from './registry-ranking.js'
 import { trackPluginEvent } from './track.js'
 
@@ -242,7 +243,7 @@ import { trackPluginEvent } from './track.js'
   }
 
   function detailHref(plugin) {
-    return 'plugin-detail.html?plugin=' + encodeURIComponent(plugin.id);
+    return pluginRoute(plugin);
   }
 
   function updatedLabel(value) {
@@ -388,8 +389,8 @@ import { trackPluginEvent } from './track.js'
       ].map(async function (entry) {
         await cache.put(snapshotUrl(entry[0]), new Response(entry[1], { headers: { 'content-type': 'application/json' } }));
       }));
-    } catch (_) {
-      /* 缓存写入失败不影响本次渲染，下次加载会重新拉取 */
+    } catch (error) {
+      document.documentElement.dataset.registryCache = error?.name || 'unavailable';
     }
   }
 

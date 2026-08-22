@@ -35,15 +35,20 @@ test('default directory shows published plugins and does not promote candidates'
   await expect(first).toBeVisible()
   const order = await page.evaluate(() => {
     const href = document.querySelector('#list .prow .prow-name a')?.getAttribute('href') || ''
-    const actual = new URL(href, location.href).searchParams.get('plugin')
+    const target = new URL(href, document.baseURI)
     return {
-      actual,
-      published: HR.PUBLISHED.some(plugin => plugin.id === actual),
-      pending: (HR.PENDING || []).some(plugin => plugin.id === actual),
+      href,
+      pathname: target.pathname,
+      search: target.search,
+      published: HR.PUBLISHED.some(plugin => HR.detailHref(plugin) === href),
+      pending: (HR.PENDING || []).some(plugin => plugin.url === href),
     }
   })
   expect(order.published).toBe(true)
   expect(order.pending).toBe(false)
+  expect(order.href).toMatch(/^plugins\//)
+  expect(order.pathname).toMatch(/^\/plugins\//)
+  expect(order.search).toBe('')
   await expect(first.locator('.pill-pending')).toHaveCount(0)
 })
 
