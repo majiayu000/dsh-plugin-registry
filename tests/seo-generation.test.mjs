@@ -31,6 +31,11 @@ test('SEO generation creates crawlable plugin pages and a sitemap', async () => 
         id: 'acme/mono#pkgs/core', name: 'Mono Core', owner: 'acme', url: 'https://github.com/acme/mono',
         icon: 'https://github.com/acme.png', description: { zh: '子包', en: 'Subpackage' }, category: 'ui',
       },
+      {
+        // URL 必须编码 Unicode，但静态文件目录必须保留解码后的名称，供 Pages 正确命中。
+        id: 'acme/unicode#中文', name: 'Unicode', owner: 'acme', url: 'https://github.com/acme/unicode',
+        icon: 'https://github.com/acme.png', description: { zh: 'Unicode', en: 'Unicode' }, category: 'unicode',
+      },
     ],
   }))
 
@@ -57,6 +62,9 @@ test('SEO generation creates crawlable plugin pages and a sitemap', async () => 
   const monoFile = JSON.parse(await readFile(join(distDir, 'data', 'plugins', 'acme__mono~~pkgs~2fcore.json'), 'utf8'))
   assert.equal(monoFile.plugin.id, 'acme/mono#pkgs/core')
   assert.deepEqual(monoFile.related, [])
+  const unicodePage = await readFile(join(distDir, 'plugins', 'acme', 'unicode', '中文', 'index.html'), 'utf8')
+  assert.match(unicodePage, /rel="canonical" href="https:\/\/example\.com\/registry\/plugins\/acme\/unicode\/%E4%B8%AD%E6%96%87\/"/)
+  assert.match(sitemap, /https:\/\/example\.com\/registry\/plugins\/acme\/unicode\/%E4%B8%AD%E6%96%87\//)
 
   const home = await readFile(join(distDir, 'index.html'), 'utf8')
   assert.match(home, /rel="canonical" href="https:\/\/example.com\/registry\/"/)

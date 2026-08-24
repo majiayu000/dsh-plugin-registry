@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { pluginRoute } from '../assets/plugin-route.js'
+import { pluginPathSegments, pluginRoute } from '../assets/plugin-route.js'
 import { computeRankingScore } from '../assets/registry-ranking.js'
 import { pluginDataFilename } from '../assets/plugin-data-route.js'
 
@@ -134,7 +134,7 @@ export async function generateSeoFiles({
   let dataFileCount = 0
   for (const plugin of registry.plugins) {
     const route = pluginRoute(plugin)
-    const output = join(distDir, route, 'index.html')
+    const output = join(distDir, 'plugins', ...pluginPathSegments(plugin), 'index.html')
     await mkdir(dirname(output), { recursive: true })
     await writeFile(output, renderPluginPage(template, plugin, homepage))
     urls.push(new URL(route, homepage).href)
