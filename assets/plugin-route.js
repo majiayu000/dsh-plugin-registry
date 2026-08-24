@@ -1,6 +1,6 @@
 const REPOSITORY_PATTERN = /^[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/
 
-export function pluginRouteFromId(pluginId) {
+export function pluginPathSegmentsFromId(pluginId) {
   const normalizedId = String(pluginId ?? '').trim()
   const qualifierSeparator = normalizedId.indexOf('#')
   const repository = qualifierSeparator === -1 ? normalizedId : normalizedId.slice(0, qualifierSeparator)
@@ -10,7 +10,18 @@ export function pluginRouteFromId(pluginId) {
 
   const segments = repository.split('/').concat(qualifier ? qualifier.split('/') : [])
   if (segments.some(segment => !segment || segment === '.' || segment === '..')) return null
-  return `plugins/${segments.map(segment => encodeURIComponent(segment)).join('/')}/`
+  return segments
+}
+
+export function pluginRouteFromId(pluginId) {
+  const segments = pluginPathSegmentsFromId(pluginId)
+  return segments ? `plugins/${segments.map(segment => encodeURIComponent(segment)).join('/')}/` : null
+}
+
+export function pluginPathSegments(plugin) {
+  const segments = pluginPathSegmentsFromId(plugin?.id)
+  if (!segments) throw new Error(`Invalid plugin id: ${plugin?.id ?? ''}`)
+  return segments
 }
 
 export function pluginRoute(plugin) {
