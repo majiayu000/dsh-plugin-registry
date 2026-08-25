@@ -1,4 +1,5 @@
 const MAX_SEARCH_RESULTS = 1_000
+const MAX_SEARCH_ERROR_SPLITS = 16
 const ONE_SECOND = 1_000
 export const REPOSITORY_METADATA_BATCH_SIZE = 40
 
@@ -89,6 +90,10 @@ function canSplitWindow(from, to) {
   return midpoint > fromTime && midpoint < toTime
 }
 
+function canRecoverBySplitting(error) {
+  return /\b(?:502|503|504)\b/.test(String(error?.message || error))
+}
+
 export function mapGraphqlRepository(repository) {
   return {
     full_name: repository.nameWithOwner,
@@ -144,10 +149,24 @@ export async function discoverGitHubRepositories({
   to = new Date(),
   onProgress = () => {},
 }) {
+  let remainingErrorSplits = MAX_SEARCH_ERROR_SPLITS
+
   async function discoverWindow(windowFrom, windowTo, depth = 0) {
     const range = `${toSearchTimestamp(windowFrom)}..${toSearchTimestamp(windowTo)}`
     const searchQuery = `topic:dsh-plugin created:${range}`
-    const first = await searchPage({ searchQuery, cursor: null })
+    let first
+    try {
+      first = await searchPage({ searchQuery, cursor: null })
+    } catch (error) {
+      if (!canRecoverBySplitting(error) || remainingErrorSplits <= 0 || !canSplitWindow(windowFrom, windowTo)) throw error
+      remainingErrorSplits -= 1
+      onProgress({ type: 'error-split', range, depth, error: error.message, remainingErrorSplits })
+      const windows = splitWindow(windowFrom, windowTo)
+      return [
+        ...(await discoverWindow(windows[0][0], windows[0][1], depth + 1)),
+        ...(await discoverWindow(windows[1][0], windows[1][1], depth + 1)),
+      ]
+    }
     const totalCount = first.repositoryCount
     onProgress({ type: 'window', range, totalCount, depth, rateLimit: first.rateLimit })
 

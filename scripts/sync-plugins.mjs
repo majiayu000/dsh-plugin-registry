@@ -187,6 +187,8 @@ async function discoverRepositories() {
         console.log(`Discovery page ${progress.page}: ${progress.fetched}/${progress.totalCount} for ${progress.range} (rate limit ${remaining} remaining).`)
       } else if (progress.type === 'resplit') {
         console.warn(`Discovery window ${progress.range} returned ${progress.fetched}/${progress.totalCount} unique repositories; splitting further.`)
+      } else if (progress.type === 'error-split') {
+        console.warn(`Discovery window ${progress.range} failed with ${progress.error}; splitting further (${progress.remainingErrorSplits} recovery splits left).`)
       } else {
         console.warn(`Discovery index drift for ${progress.range}: fetched ${progress.fetched}, initially reported ${progress.totalCount}; accepting within tolerance ${progress.allowedDrift}.`)
       }

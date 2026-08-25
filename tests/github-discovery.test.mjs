@@ -39,6 +39,41 @@ test('repository discovery splits timestamp windows beyond the GitHub 1000-resul
   assert.ok(progress.some(entry => entry.type === 'page' && entry.fetched === 2))
 })
 
+test('repository discovery splits a search window after a recoverable GitHub gateway error', async () => {
+  const queries = []
+  const progress = []
+  const repositories = await discoverGitHubRepositories({
+    from: new Date('2026-08-14T00:00:00Z'),
+    to: new Date('2026-08-14T00:00:03Z'),
+    async searchPage({ searchQuery }) {
+      queries.push(searchQuery)
+      if (searchQuery.includes('00:00:00Z..2026-08-14T00:00:03Z')) {
+        throw new Error('502 Bad Gateway: https://api.github.com/graphql')
+      }
+      if (searchQuery.includes('00:00:00Z..2026-08-14T00:00:01Z')) return page(1, ['acme/one'])
+      return page(1, ['acme/two'])
+    },
+    onProgress(entry) { progress.push(entry) },
+  })
+
+  assert.deepEqual(repositories.map(repository => repository.full_name), ['acme/one', 'acme/two'])
+  assert.equal(queries.length, 3)
+  assert.ok(progress.some(entry => entry.type === 'error-split' && entry.remainingErrorSplits === 15))
+})
+
+test('repository discovery does not split permanent GitHub errors', async () => {
+  let calls = 0
+  await assert.rejects(discoverGitHubRepositories({
+    from: new Date('2026-08-14T00:00:00Z'),
+    to: new Date('2026-08-14T00:00:03Z'),
+    async searchPage() {
+      calls += 1
+      throw new Error('401 Unauthorized: https://api.github.com/graphql')
+    },
+  }), /401 Unauthorized/)
+  assert.equal(calls, 1)
+})
+
 test('repository discovery splits a wide window when unique results fall outside live-index drift', async () => {
   const queries = []
   const repositories = await discoverGitHubRepositories({
