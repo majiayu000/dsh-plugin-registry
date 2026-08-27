@@ -51,7 +51,7 @@ function sleep(ms) {
   return new Promise(resolvePromise => setTimeout(resolvePromise, ms))
 }
 
-async function fetchJson(url, options = {}) {
+export async function fetchJson(url, options = {}) {
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
       const response = await fetch(url, {
@@ -59,7 +59,7 @@ async function fetchJson(url, options = {}) {
         headers: { ...headers, ...options.headers },
         signal: options.signal || AbortSignal.timeout(30_000),
       })
-      if (response.ok) return response.json()
+      if (response.ok) return await response.json()
       if ((response.status === 403 || response.status === 429) && attempt < 2) {
         const reset = Number(response.headers.get('x-ratelimit-reset')) * 1000
         const wait = Number.isFinite(reset) ? Math.max(1_000, Math.min(reset - Date.now() + 1_000, 60_000)) : 5_000
