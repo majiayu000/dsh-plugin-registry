@@ -1,8 +1,10 @@
+window.HR_DEFER_REGISTRY = true;
 await import('/assets/i18n.js');
-await import('/assets/plugins.js');
 (async function () {
   'use strict';
-  try { await HR.ready; } catch (error) { document.querySelector('main').innerHTML = '<div class="prow-empty">插件数据暂时无法加载。</div>'; return; }
+  if (document.documentElement.dataset.registryPrerendered === 'true') return;
+  await import('/assets/plugins.js');
+  try { await HR.startRegistryLoad(); } catch (error) { document.querySelector('main').innerHTML = '<div class="prow-empty">插件数据暂时无法加载。</div>'; return; }
   var plugins = HR.PUBLISHED;
   var authors = {};
   plugins.forEach(function (plugin) { authors[plugin.owner] = true; });

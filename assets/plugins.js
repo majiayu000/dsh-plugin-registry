@@ -2,8 +2,10 @@
 import { writeClipboardText } from './clipboard.js'
 import { hasDshCandidateContext } from './candidate-relevance.js'
 import { pluginRoute } from './plugin-route.js'
+import { pluginDataFilename } from './plugin-data-route.js'
 import { computeRankingScore } from './registry-ranking.js'
 import { trackPluginEvent } from './track.js'
+import { fromBrowseDocument } from './browse-snapshot.js'
 
 (function () {
   'use strict';
@@ -206,12 +208,37 @@ import { trackPluginEvent } from './track.js'
     button.title = manifestShapeValidated(plugin)
       ? (locale() === 'en' ? 'Open install guide' : '打开安装说明')
       : (locale() === 'en' ? 'Review an unchecked install method' : '查看未经 Manifest 检查的安装方式');
-    button.addEventListener('click', function (event) {
+    button.addEventListener('click', async function (event) {
       event.preventDefault();
       event.stopPropagation();
-      openInstallDialog(plugin);
+      var installPlugin = plugin;
+      if (!installPlugin.install || !installPlugin.url) {
+        var original = button.textContent;
+        button.disabled = true;
+        button.textContent = locale() === 'en' ? 'Loading…' : '加载中…';
+        try {
+          installPlugin = await loadPluginDetail(plugin.id);
+        } catch (error) {
+          console.error(error);
+          button.textContent = locale() === 'en' ? 'Unable to load' : '加载失败';
+          button.title = locale() === 'en' ? 'Open the plugin detail page to continue' : '请打开插件详情页继续';
+          return;
+        } finally {
+          button.disabled = false;
+        }
+        button.textContent = original;
+      }
+      openInstallDialog(installPlugin);
     });
     return button;
+  }
+
+  async function loadPluginDetail(pluginId) {
+    var response = await fetch('data/plugins/' + pluginDataFilename(pluginId) + '.json');
+    if (!response.ok) throw new Error('Plugin detail HTTP ' + response.status);
+    var detailDocument = await response.json();
+    if (!detailDocument || !detailDocument.plugin) throw new Error('Invalid plugin detail document');
+    return detailDocument.plugin;
   }
 
   function rankPills(plugin) {
@@ -365,27 +392,23 @@ import { trackPluginEvent } from './track.js'
       var versionResponse = await cache.match(snapshotUrl('data/version.json'));
       var pluginsResponse = await cache.match(snapshotUrl('data/plugins.json'));
       if (!versionResponse || !pluginsResponse) return null;
-      var auditResponse = await cache.match(snapshotUrl('data/registry-audit.json'));
       return {
         version: ((await versionResponse.json()) || {}).generatedAt || '',
         registry: await pluginsResponse.json(),
-        audit: auditResponse ? await auditResponse.json() : { pendingReview: [] },
+        audit: { pendingReview: [] },
       };
     } catch (_) {
       return null;
     }
   }
 
-  async function cacheSnapshot(versionText, registryText, auditText) {
+  async function cacheSnapshot(versionText, registryText) {
     if (!('caches' in window)) return;
     try {
       var cache = await caches.open(SNAPSHOT_CACHE);
-      // audit 拉取失败时写入空 pending 列表，避免上一版 registry-audit.json 挂在新 version 下
-      var auditBody = auditText == null ? JSON.stringify({ pendingReview: [] }) : auditText;
       await Promise.all([
         ['data/version.json', versionText],
         ['data/plugins.json', registryText],
-        ['data/registry-audit.json', auditBody],
       ].map(async function (entry) {
         await cache.put(snapshotUrl(entry[0]), new Response(entry[1], { headers: { 'content-type': 'application/json' } }));
       }));
@@ -410,7 +433,30 @@ import { trackPluginEvent } from './track.js'
     return registry;
   }
 
-  async function loadRegistry() {
+  function applyPendingAudit(audit) {
+    var publishedIds = new Set(HR.PUBLISHED.map(function (plugin) { return plugin.id.toLowerCase(); }));
+    HR.PENDING = Array.isArray(audit && audit.pendingReview)
+      ? audit.pendingReview.filter(function (entry) {
+          return entry && entry.id && entry.url && !publishedIds.has(entry.id.toLowerCase()) && hasDshCandidateContext(entry);
+        }).map(normalizePendingPlugin)
+      : [];
+    return HR.PENDING;
+  }
+
+  async function loadPendingCandidates() {
+    var response = await fetch('data/registry-audit.json', { cache: 'no-cache' });
+    if (!response.ok) throw new Error('Registry audit HTTP ' + response.status);
+    return applyPendingAudit(await response.json());
+  }
+
+  async function loadRegistry(options) {
+    options = options || {};
+    var browseUrl = options.url || (document.documentElement.dataset && document.documentElement.dataset.registrySrc) || '';
+    if (browseUrl) {
+      var browseResponse = await fetch(browseUrl, { cache: 'force-cache' });
+      if (!browseResponse.ok) throw new Error('Browse snapshot HTTP ' + browseResponse.status);
+      return applyRegistry(fromBrowseDocument(await browseResponse.json()), { pendingReview: [] });
+    }
     var version = await currentSnapshotVersion();
     if (version) {
       var cached = await readCachedSnapshot();
@@ -418,18 +464,13 @@ import { trackPluginEvent } from './track.js'
         return applyRegistry(cached.registry, cached.audit || { pendingReview: [] });
       }
     }
-    var responses = await Promise.all([
-      fetch('data/plugins.json', { cache: 'no-cache' }),
-      fetch('data/registry-audit.json', { cache: 'no-cache' }).catch(function () { return null; })
-    ]);
-    var response = responses[0];
+    var response = await fetch('data/plugins.json', { cache: 'no-cache' });
     if (!response.ok) throw new Error('Registry HTTP ' + response.status);
     var registryText = await response.text();
-    var auditText = responses[1] && responses[1].ok ? await responses[1].text() : null;
     if (version) {
-      await cacheSnapshot(JSON.stringify({ schemaVersion: 1, generatedAt: version }), registryText, auditText);
+      cacheSnapshot(JSON.stringify({ schemaVersion: 1, generatedAt: version }), registryText);
     }
-    return applyRegistry(JSON.parse(registryText), auditText ? JSON.parse(auditText) : { pendingReview: [] });
+    return applyRegistry(JSON.parse(registryText), { pendingReview: [] });
   }
 
   var HR = window.HR = {
@@ -458,11 +499,15 @@ import { trackPluginEvent } from './track.js'
     row: row,
     escapeHtml: escapeHtml,
     loadRegistry: loadRegistry,
+    loadPending: loadPendingCandidates,
+    loadPluginDetail: loadPluginDetail,
     updateFreshness: updateFreshness,
     ready: null
   };
-  function startRegistryLoad() {
-    HR.ready = loadRegistry().catch(function (error) {
+  function startRegistryLoad(options) {
+    if (HR.ready) return HR.ready;
+    HR.ready = loadRegistry(options).catch(function (error) {
+      HR.ready = null;
       console.error(error);
       document.documentElement.classList.add('registry-error');
       throw error;

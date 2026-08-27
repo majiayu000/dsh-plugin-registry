@@ -156,7 +156,7 @@ test('a failed audit fetch does not keep stale pending candidates after reload',
     const response = await cache.match(`${location.origin}/data/registry-audit.json`)
     return response ? response.json() : null
   })
-  expect(cachedAudit).toEqual({ pendingReview: [] })
+  expect(cachedAudit).toBeNull()
 
   await page.goto('/dashboard.html')
   await expect(page.locator('#k-count')).not.toHaveText('—')
