@@ -118,9 +118,25 @@ function registrySummary(registry) {
   }
 }
 
+function snapshotAgeHours(generatedAt, now = Date.now()) {
+  const generated = Date.parse(generatedAt)
+  if (Number.isNaN(generated)) return null
+  return Math.max(0, (now - generated) / 36e5)
+}
+
+export function freshnessLabel(generatedAt, now = Date.now(), english = false) {
+  const hours = snapshotAgeHours(generatedAt, now)
+  if (hours == null) return ''
+  if (hours < 1) return english ? 'Data updated just now' : '数据刚刚更新'
+  if (hours < 24) return english ? `Data updated ${Math.floor(hours)}h ago` : `数据更新于 ${Math.floor(hours)} 小时前`
+  return english ? `Data updated ${Math.floor(hours / 24)}d ago` : `数据更新于 ${Math.floor(hours / 24)} 天前`
+}
+
 function freshnessMarkup(generatedAt) {
   if (!generatedAt) return '<span class="freshness" data-freshness hidden></span>'
-  return `<span class="freshness" data-freshness title="快照生成时间：${escapeHtml(generatedAt)}">数据刚刚更新</span>`
+  const hours = snapshotAgeHours(generatedAt)
+  const stale = hours != null && hours >= 24 ? ' stale' : ''
+  return `<span class="freshness${stale}" data-freshness title="快照生成时间：${escapeHtml(generatedAt)}">${escapeHtml(freshnessLabel(generatedAt))}</span>`
 }
 
 export function createBrowseSnapshot(registry) {

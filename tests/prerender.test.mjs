@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
   createBrowseSnapshot,
+  freshnessLabel,
   prerenderDashboard,
   prerenderPluginDetail,
   prerenderRegistryHome,
@@ -40,6 +41,12 @@ const registry = {
   stats: { published: plugins.length },
   plugins,
 }
+
+test('freshness label reflects the snapshot age instead of always claiming just now', () => {
+  const generatedAt = '2026-08-25T00:00:00.000Z'
+  assert.equal(freshnessLabel(generatedAt, Date.parse('2026-08-25T03:30:00.000Z')), '数据更新于 3 小时前')
+  assert.equal(freshnessLabel(generatedAt, Date.parse('2026-08-27T12:00:00.000Z')), '数据更新于 2 天前')
+})
 
 test('browse snapshot is compact, content-addressed, and expands without installation payloads', () => {
   const snapshot = createBrowseSnapshot(registry)
