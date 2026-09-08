@@ -39,6 +39,8 @@ test('a failed sync opens a tracking issue and a healthy run closes it', async (
   assert.match(workflow, /needs: \[sync\]/)
   assert.match(workflow, /always\(\) && needs\.sync\.result == 'failure'/)
   assert.match(workflow, /gh issue create --title "\[registry-sync\] Scheduled sync failed"/)
+  assert.match(workflow, /id: deploy/)
+  assert.match(workflow, /if: success\(\) && steps\.deploy\.outcome == 'success'/)
   assert.match(workflow, /gh issue close "\$number"/)
   assert.match(workflow, /GH_REPO: \$\{\{ github\.repository \}\}/)
   assert.match(workflow, /issues: write/)

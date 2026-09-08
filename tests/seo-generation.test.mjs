@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, mkdir, readFile, writeFile } from 'node:fs/promises'
+import { mkdtemp, mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import test from 'node:test'
@@ -27,7 +27,7 @@ test('SEO generation creates crawlable plugin pages and a sitemap', async () => 
         stars: 10, trustLevel: 'curated',
       },
       {
-        // 限定符是仓库内路径，可含 `/`：数据文件必须仍是单段文件名（曾导致 ENOENT 崩溃）
+        // 仓库内路径限定符仍应正确生成详情页与内嵌数据。
         id: 'acme/mono#pkgs/core', name: 'Mono Core', owner: 'acme', url: 'https://github.com/acme/mono',
         icon: 'https://github.com/acme.png', description: { zh: '子包', en: 'Subpackage' }, category: 'ui',
       },
@@ -48,8 +48,10 @@ test('SEO generation creates crawlable plugin pages and a sitemap', async () => 
   assert.match(page, /application\/ld\+json/)
   assert.match(sitemap, /https:\/\/example.com\/registry\/plugins\/acme\/tools\/terminal\//)
 
-  // 详情页改读单插件小数据：限定符编码为 `~~`，同类推荐随文件一起生成
-  const dataFile = JSON.parse(await readFile(join(distDir, 'data', 'plugins', 'acme__tools~~terminal.json'), 'utf8'))
+  // Hydration data lives in HTML, so each plugin costs only one deployment file.
+  const embedded = html => JSON.parse(html.match(/<script id="plugin-data" type="application\/json">([\s\S]*?)<\/script>/)[1])
+  const dataFile = embedded(page)
+  assert.equal((await readdir(join(distDir, 'data'))).includes('plugins'), false)
   assert.equal(dataFile.schemaVersion, 1)
   assert.equal(dataFile.generatedAt, '2026-08-16T00:00:00.000Z')
   assert.equal(dataFile.plugin.id, 'acme/tools#terminal')
@@ -59,7 +61,7 @@ test('SEO generation creates crawlable plugin pages and a sitemap', async () => 
     id: 'acme/toolbox', name: 'Toolbox', owner: 'acme', url: 'https://github.com/acme/toolbox',
     stars: 10, trustLevel: 'curated',
   })
-  const monoFile = JSON.parse(await readFile(join(distDir, 'data', 'plugins', 'acme__mono~~pkgs~2fcore.json'), 'utf8'))
+  const monoFile = embedded(await readFile(join(distDir, 'plugins/acme/mono/pkgs/core/index.html'), 'utf8'))
   assert.equal(monoFile.plugin.id, 'acme/mono#pkgs/core')
   assert.deepEqual(monoFile.related, [])
   const unicodePage = await readFile(join(distDir, 'plugins', 'acme', 'unicode', '中文', 'index.html'), 'utf8')
@@ -95,4 +97,15 @@ test('SEO pages preserve the deployment base independently from the canonical do
   }, 'https://plugin.example.com/')
   assert.match(page, /<base href="\/legacy-path\/">/)
   assert.match(page, /rel="canonical" href="https:\/\/plugin\.example\.com\/plugins\/acme\/plugin\/"/)
+})
+
+test('embedded plugin data cannot terminate its script element', () => {
+  const description = '</script><script>alert(1)</script><!-- & 中文'
+  const page = renderPluginPage('<html><head><title>Plugin</title></head><body></body></html>', {
+    id: 'acme/plugin', name: 'Plugin', owner: 'acme', description: { en: description },
+  }, 'https://example.com/')
+  const payload = page.match(/<script id="plugin-data" type="application\/json">([\s\S]*?)<\/script>/)?.[1]
+  assert.ok(payload)
+  assert.equal(payload.includes('<'), false)
+  assert.equal(JSON.parse(payload).plugin.description.en, description)
 })

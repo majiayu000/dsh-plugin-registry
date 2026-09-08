@@ -64,13 +64,14 @@ jobs:
           git push
           echo "changed=true" >> "$GITHUB_OUTPUT"
       - name: Deploy verified build to Cloudflare Pages
+        id: deploy
         if: steps.registry_changes.outputs.changed == 'true'
         run: npx wrangler pages deploy dist --project-name dsh-plugin-registry --branch main
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       - name: Close the sync alert issue after a healthy run
-        if: success()
+        if: success() && steps.deploy.outcome == 'success'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |

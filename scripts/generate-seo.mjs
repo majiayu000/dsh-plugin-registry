@@ -4,7 +4,6 @@ import { dirname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { pluginPathSegments, pluginRoute } from '../assets/plugin-route.js'
 import { computeRankingScore } from '../assets/registry-ranking.js'
-import { pluginDataFilename } from '../assets/plugin-data-route.js'
 import {
   createBrowseSnapshot,
   escapeHtml,
@@ -57,7 +56,7 @@ async function deferPageModule(page, distDir) {
     .replace(/\s*<link rel="modulepreload"[^>]+>\n?/g, '')
 }
 
-export function renderPluginPage(template, plugin, homepage, { related = [], categories = {} } = {}) {
+export function renderPluginPage(template, plugin, homepage, { related = [], categories = {}, generatedAt = null } = {}) {
   const route = pluginRoute(plugin)
   const canonical = new URL(route, homepage).href
   const title = `${plugin.name} — DeepSeek Harness Plugin Registry`
@@ -136,7 +135,9 @@ export function renderPluginPage(template, plugin, homepage, { related = [], cat
       '</head>',
     ].join('\n'))
     .replace('<body>', `<body data-plugin-id="${escapeHtml(plugin.id)}">`)
+  const data = JSON.stringify({ schemaVersion: 1, generatedAt, categories, plugin, related }).replace(/</g, '\\u003c')
   return prerenderPluginDetail(page, plugin, related, categories)
+    .replace('</body>', () => `<script id="plugin-data" type="application/json">${data}</script>\n</body>`)
 }
 
 export function renderStaticPage(page, path, homepage) {
@@ -203,7 +204,6 @@ export async function generateSeoFiles({
       .slice(0, limit)
       .map(peer => ({ id: peer.id, name: peer.name, owner: peer.owner, url: peer.url, stars: peer.stars, trustLevel: peer.trustLevel }))
   }
-  const dataDir = join(distDir, 'data', 'plugins')
 
   let staticPageCount = 0
   for (const { file, path } of STATIC_PAGES) {
@@ -225,28 +225,13 @@ export async function generateSeoFiles({
     staticPageCount += 1
   }
 
-  await mkdir(dataDir, { recursive: true })
-  let dataFileCount = 0
   for (const plugin of registry.plugins) {
     const route = pluginRoute(plugin)
     const output = join(distDir, 'plugins', ...pluginPathSegments(plugin), 'index.html')
     await mkdir(dirname(output), { recursive: true })
     const related = relatedPlugins(plugin)
-    await writeFile(output, renderPluginPage(template, plugin, homepage, { related, categories: registry.categories }))
+    await writeFile(output, renderPluginPage(template, plugin, homepage, { related, categories: registry.categories, generatedAt: registry.generatedAt }))
     urls.push({ loc: new URL(route, homepage).href, lastmod: plugin.pushedAt || plugin.addedAt || registry.generatedAt })
-
-    // 单插件小数据：详情页用它代替整份多 MB 快照（category 元数据 + 同类推荐一并内置）。
-    const filename = pluginDataFilename(plugin.id)
-    if (filename) {
-      await writeFile(join(dataDir, `${filename}.json`), JSON.stringify({
-        schemaVersion: 1,
-        generatedAt: registry.generatedAt ?? null,
-        categories: registry.categories || {},
-        plugin,
-        related,
-      }))
-      dataFileCount += 1
-    }
   }
 
   const sitemap = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map(({ loc, lastmod }) => `  <url><loc>${xmlEscape(loc)}</loc>${lastmod ? `<lastmod>${xmlEscape(String(lastmod).slice(0, 10))}</lastmod>` : ''}</url>`).join('\n')}\n</urlset>\n`
@@ -254,7 +239,7 @@ export async function generateSeoFiles({
     writeFile(join(distDir, 'sitemap.xml'), sitemap),
     writeFile(join(distDir, 'robots.txt'), `User-agent: *\nAllow: /\nSitemap: ${new URL('sitemap.xml', homepage).href}\n`),
   ])
-  console.log(`SEO pages generated: ${registry.plugins.length} plugin pages, ${staticPageCount} static pages, ${dataFileCount} per-plugin data files, ${browseSnapshot.filename}, and sitemap.xml.`)
+  console.log(`SEO pages generated: ${registry.plugins.length} plugin pages, ${staticPageCount} static pages, ${browseSnapshot.filename}, and sitemap.xml.`)
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
