@@ -69,7 +69,17 @@ GitHub topic ──────────────────────�
 
 Curated repositories receive the `curated` trust level. Automatically discovered repositories are installable only when their root `package.json` contains a valid `dsh.bundle`; these receive `manifest_verified`. Pending repositories remain visible as GitHub candidates without an install command, while blocked and quarantined repositories stay hidden. The full policy is documented in [registry governance](docs/registry-governance.md).
 
-The scheduled GitHub Actions workflow refreshes the snapshot every two hours. When the registry changes, the same workflow commits the snapshot and deploys its verified build artifact to Cloudflare Pages, so sync commits created with `GITHUB_TOKEN` do not depend on a second `push` event. A health gate prevents an unauthenticated partial discovery run, an unexpectedly smaller complete snapshot, or a partially answered GitHub GraphQL batch from replacing healthy data. If a scheduled sync fails, the workflow opens a titled tracking issue and closes it once the next run is healthy again.
+The scheduled GitHub Actions workflow refreshes the snapshot every two hours. When the registry changes, the same workflow commits the snapshot and deploys its verified build artifact to Cloudflare Pages, so sync commits created with `GITHUB_TOKEN` do not depend on a second `push` event. A health gate prevents an unauthenticated partial discovery run, an unexpectedly smaller complete snapshot, or a partially answered GitHub GraphQL batch from replacing healthy data. If a scheduled sync fails, the workflow opens a titled tracking issue and closes it after a subsequent sync successfully deploys.
+
+## Detail delivery on Cloudflare Pages
+
+The homepage and dashboard are prerendered. Plugin detail URLs are served by a Pages Function that returns complete HTML (including canonical URLs, structured data, and inline hydration data). `GET /api/plugins/{owner}/{repo}/{qualifier...}/` returns the same detail record as JSON for install buttons; both routes support HEAD. Missing plugins return 404, malformed paths return 400, and broken snapshot assets fail with 500. Errors are not cached.
+
+The build derives 256 detail shards from the existing registry snapshot. Each request reads the small `data/detail-build.json` version artifact. On a cache miss, HTML loads one shard and the compiled HTML template; JSON loads only the shard. Successful responses use the Workers Cache API and `Cache-Control: public, max-age=0, s-maxage=300`. Browser requests revalidate; the edge cache key includes a fresh version generated into that artifact on each build, so a new deployment cannot reuse the previous build’s HTML or data. No build-environment variables are required at runtime. This avoids a full snapshot parse per request and removes one-file-per-plugin deployment growth. Static assets continue to use Pages delivery. Dynamic requests still consume Pages Functions quota, and shard size grows with the dataset.
+
+This adapts the snapshot-backed dynamic routing used by the [Astro integrations directory](https://github.com/withastro/astro.build/blob/main/src/pages/integrations/%5B...page%5D.astro). Per-plugin static HTML would retain the file-count ceiling; a full database-backed registry adds infrastructure this read-only catalog does not need. No new database, storage binding, or frontend framework is required.
+
+Use `npm run dev:cloudflare` to build and run the actual detail routes locally. `npm run dev` remains useful for frontend work, but Vite alone does not run Pages Functions. Verification: `npm test`, `npm run build`, `npm run check:performance`, then exercise HTML/JSON, cache hits, 404s, and installs with Wrangler Pages dev.
 
 ## Add a plugin
 

@@ -1,8 +1,7 @@
 window.HR_DEFER_REGISTRY = true;
 await import('/assets/i18n.js');
 await import('/assets/plugins.js');
-const { findPluginById } = await import('/assets/plugin-detail.js');
-const { pluginDataFilename } = await import('/assets/plugin-data-route.js');
+const { findPluginById, readPluginDocument } = await import('/assets/plugin-detail.js');
 (async function () {
   'use strict';
   var english = window.HRI18N.locale === 'en-US';
@@ -10,11 +9,14 @@ const { pluginDataFilename } = await import('/assets/plugin-data-route.js');
   var plugin = null;
   var related = [];
   var detailDocument = null;
-  try {
-    var response = await fetch('data/plugins/' + pluginDataFilename(requested) + '.json');
-    if (response.ok) detailDocument = await response.json();
-  } catch (_) { /* 单插件数据不可用时回退完整快照 */ }
-  if (detailDocument && detailDocument.plugin) {
+  if (document.body.dataset.pluginId) {
+    try {
+      detailDocument = readPluginDocument(document, requested);
+    } catch (error) {
+      console.error(error);
+      document.getElementById('plugin-name').textContent = english ? 'Unable to load plugin data' : '插件数据加载失败';
+      return;
+    }
     plugin = detailDocument.plugin;
     related = Array.isArray(detailDocument.related) ? detailDocument.related : [];
     HR.registry = { categories: detailDocument.categories || {}, stats: {} };

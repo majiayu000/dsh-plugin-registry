@@ -188,3 +188,42 @@ test('repository pre-check returns structured signals and enables GitHub submiss
   await expect(page.locator('#github-submit')).toHaveAttribute('href', /github\.com\/majiayu000\/dsh-plugin-registry\/issues\/new/)
   await expect(page.locator('#review-submit')).toBeDisabled()
 })
+
+test('rendered details hydrate inline while listing installs use the JSON API', async ({ page }) => {
+  const { renderPluginPage } = await import('../../scripts/render-plugin-page.mjs')
+  const template = await readFile(new URL('../../plugin-detail.html', import.meta.url), 'utf8')
+  const plugin = {
+    id: 'acme/mono#pkgs/core', name: 'Embedded Plugin', owner: 'acme',
+    url: 'https://github.com/acme/mono', stars: 12, forks: 2, category: 'tools',
+    description: { en: '</script><script>window.injected = true</script>', zh: '内嵌数据' },
+    install: 'dsh plugin add embedded-plugin', topics: [], source: 'curated', trustLevel: 'curated',
+  }
+  const html = renderPluginPage(template, plugin, 'http://127.0.0.1:5173/')
+  await page.route('**/plugins/acme/mono/pkgs/core/', route => route.fulfill({
+    status: 200, contentType: 'text/html', body: html,
+  }))
+  await page.route('**/api/plugins/acme/mono/pkgs/core/', route => route.fulfill({
+    status: 200, contentType: 'application/json', body: JSON.stringify({ plugin }),
+  }))
+  const dataRequests = []
+  page.on('request', request => {
+    if (/\/data\/(plugins|registry-audit)/.test(request.url())) dataRequests.push(request.url())
+  })
+  await page.goto('/plugins/acme/mono/pkgs/core/')
+  await expect.poll(() => page.evaluate(() => window.HR?.PUBLISHED?.length)).toBe(1)
+  await expect(page.locator('#plugin-name')).toHaveText(plugin.name)
+  await expect(page.locator('#install-command')).toHaveText(plugin.install)
+  expect(dataRequests).toEqual([])
+  expect(await page.evaluate(() => window.injected)).toBeUndefined()
+  // This is the same lazy loader used by install buttons in the compact homepage snapshot.
+  expect(await page.evaluate(id => HR.loadPluginDetail(id), plugin.id)).toEqual(plugin)
+  await page.locator('#install-btn').click()
+  await expect(page.locator('dialog[open] [data-install-command]')).toHaveText(plugin.install)
+
+  await page.route('**/plugins/acme/mono/pkgs/core/', route => route.fulfill({
+    status: 200, contentType: 'text/html', body: html.replace('id="plugin-data"', 'id="missing-data"'),
+  }))
+  await page.reload()
+  await expect(page.locator('#plugin-name')).toHaveText(/插件数据加载失败|Unable to load plugin data/)
+  expect(dataRequests).toEqual([])
+})

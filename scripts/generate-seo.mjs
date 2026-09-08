@@ -1,15 +1,13 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
-import { createHash } from 'node:crypto'
-import { dirname, join, resolve } from 'node:path'
+import { createHash, randomUUID } from 'node:crypto'
+import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { pluginPathSegments, pluginRoute } from '../assets/plugin-route.js'
+import { pluginRoute, pluginShardFilename } from '../assets/plugin-route.js'
 import { computeRankingScore } from '../assets/registry-ranking.js'
-import { pluginDataFilename } from '../assets/plugin-data-route.js'
 import {
   createBrowseSnapshot,
   escapeHtml,
   prerenderDashboard,
-  prerenderPluginDetail,
   prerenderRegistryHome,
 } from './prerender-pages.mjs'
 
@@ -25,16 +23,6 @@ const STATIC_PAGES = [
   { file: 'policy.html', path: 'policy.html' },
   { file: 'dashboard.html', path: 'dashboard.html' },
 ]
-
-function localizedDescription(plugin) {
-  return plugin.description?.zh || plugin.description?.en || `${plugin.name} — DeepSeek Harness community plugin.`
-}
-
-function deploymentBasePath(template, homepage) {
-  const asset = template.match(/(?:src|href)="([^"?]*\/assets\/)/)?.[1]
-  if (asset?.startsWith('/')) return asset.slice(0, asset.indexOf('/assets/') + 1)
-  return new URL(homepage).pathname
-}
 
 async function inlinePageStyles(page, distDir) {
   const match = page.match(/<link rel="stylesheet"[^>]*href="([^"]+\.css)"[^>]*>/)
@@ -55,88 +43,6 @@ async function deferPageModule(page, distDir) {
   return page
     .replace(match[0], `<script defer src="/assets/${filename}"></script>`)
     .replace(/\s*<link rel="modulepreload"[^>]+>\n?/g, '')
-}
-
-export function renderPluginPage(template, plugin, homepage, { related = [], categories = {} } = {}) {
-  const route = pluginRoute(plugin)
-  const canonical = new URL(route, homepage).href
-  const title = `${plugin.name} — DeepSeek Harness Plugin Registry`
-  const description = localizedDescription(plugin).replace(/\s+/g, ' ').trim().slice(0, 180)
-  const image = plugin.icon || new URL('assets/dsh-registry-logo.svg', homepage).href
-  const basePath = deploymentBasePath(template, homepage)
-  const structuredData = JSON.stringify({
-    '@context': 'https://schema.org',
-    '@graph': [
-      {
-        '@type': 'WebPage',
-        '@id': canonical,
-        url: canonical,
-        name: title,
-        description,
-        inLanguage: ['zh-CN', 'en-US'],
-        mainEntity: { '@id': `${canonical}#plugin` },
-        breadcrumb: { '@id': `${canonical}#breadcrumb` },
-      },
-      {
-        '@type': 'SoftwareApplication',
-        '@id': `${canonical}#plugin`,
-        name: plugin.name,
-        description,
-        applicationCategory: 'DeveloperApplication',
-        operatingSystem: 'Any',
-        url: canonical,
-        sameAs: plugin.url,
-        isBasedOn: { '@id': `${canonical}#source` },
-        softwareRequirements: 'DeepSeek Harness',
-        author: { '@type': 'Organization', name: plugin.owner, url: `https://github.com/${encodeURIComponent(plugin.owner)}` },
-        ...(plugin.license ? { license: plugin.license } : {}),
-        ...(plugin.pushedAt ? { dateModified: plugin.pushedAt } : {}),
-        ...(plugin.addedAt ? { datePublished: plugin.addedAt } : {}),
-        ...(plugin.topics?.length ? { keywords: plugin.topics.join(', ') } : {}),
-      },
-      {
-        '@type': 'SoftwareSourceCode',
-        '@id': `${canonical}#source`,
-        name: `${plugin.name} source code`,
-        codeRepository: plugin.url,
-        targetProduct: { '@id': `${canonical}#plugin` },
-        ...(plugin.language ? { programmingLanguage: plugin.language } : {}),
-        ...(plugin.license ? { license: plugin.license } : {}),
-      },
-      {
-        '@type': 'BreadcrumbList',
-        '@id': `${canonical}#breadcrumb`,
-        itemListElement: [
-          { '@type': 'ListItem', position: 1, name: '插件目录', item: homepage },
-          { '@type': 'ListItem', position: 2, name: plugin.name, item: canonical },
-        ],
-      },
-    ],
-  }).replace(/</g, '\\u003c')
-
-  const page = template
-    .replace(/<title>[^<]*<\/title>/, `<title>${escapeHtml(title)}</title>`)
-    .replace(/<meta name="description" content="[^"]*" \/>/, `<meta name="description" content="${escapeHtml(description)}" />`)
-    .replace('</head>', [
-      `<base href="${escapeHtml(basePath)}">`,
-      `<link rel="canonical" href="${escapeHtml(canonical)}" />`,
-      '<meta property="og:type" content="website" />',
-      `<meta property="og:title" content="${escapeHtml(title)}" />`,
-      `<meta property="og:description" content="${escapeHtml(description)}" />`,
-      `<meta property="og:url" content="${escapeHtml(canonical)}" />`,
-      `<meta property="og:image" content="${escapeHtml(image)}" />`,
-      '<meta property="og:site_name" content="DeepSeek Harness Plugin Registry" />',
-      '<meta property="og:locale" content="zh_CN" />',
-      '<meta property="og:locale:alternate" content="en_US" />',
-      '<meta name="twitter:card" content="summary" />',
-      `<meta name="twitter:title" content="${escapeHtml(title)}" />`,
-      `<meta name="twitter:description" content="${escapeHtml(description)}" />`,
-      `<meta name="twitter:image" content="${escapeHtml(image)}" />`,
-      `<script type="application/ld+json">${structuredData}</script>`,
-      '</head>',
-    ].join('\n'))
-    .replace('<body>', `<body data-plugin-id="${escapeHtml(plugin.id)}">`)
-  return prerenderPluginDetail(page, plugin, related, categories)
 }
 
 export function renderStaticPage(page, path, homepage) {
@@ -178,8 +84,7 @@ export async function generateSeoFiles({
   registryPath = resolve('public/data/plugins.json'),
   homepage,
 } = {}) {
-  const [template, registry, packageDocument] = await Promise.all([
-    readFile(join(distDir, 'plugin-detail.html'), 'utf8'),
+  const [registry, packageDocument] = await Promise.all([
     readFile(registryPath, 'utf8').then(JSON.parse),
     homepage ? null : readFile(resolve('package.json'), 'utf8').then(JSON.parse),
   ])
@@ -196,14 +101,16 @@ export async function generateSeoFiles({
     peers.push(plugin)
     peersByCategory.set(plugin.category, peers)
   }
+  for (const peers of peersByCategory.values()) {
+    peers.sort((a, b) => computeRankingScore(b).score - computeRankingScore(a).score)
+  }
   function relatedPlugins(plugin, limit = 3) {
     return (peersByCategory.get(plugin.category) || [])
+      .slice(0, limit + 1)
       .filter(peer => peer.id !== plugin.id)
-      .sort((a, b) => computeRankingScore(b).score - computeRankingScore(a).score)
       .slice(0, limit)
       .map(peer => ({ id: peer.id, name: peer.name, owner: peer.owner, url: peer.url, stars: peer.stars, trustLevel: peer.trustLevel }))
   }
-  const dataDir = join(distDir, 'data', 'plugins')
 
   let staticPageCount = 0
   for (const { file, path } of STATIC_PAGES) {
@@ -225,36 +132,32 @@ export async function generateSeoFiles({
     staticPageCount += 1
   }
 
-  await mkdir(dataDir, { recursive: true })
-  let dataFileCount = 0
+  // Fixed file count; each cold request reads only one small bucket.
+  const shards = new Map(Array.from({ length: 256 }, (_, i) => [i.toString(16).padStart(2, '0'), {}]))
   for (const plugin of registry.plugins) {
     const route = pluginRoute(plugin)
-    const output = join(distDir, 'plugins', ...pluginPathSegments(plugin), 'index.html')
-    await mkdir(dirname(output), { recursive: true })
-    const related = relatedPlugins(plugin)
-    await writeFile(output, renderPluginPage(template, plugin, homepage, { related, categories: registry.categories }))
-    urls.push({ loc: new URL(route, homepage).href, lastmod: plugin.pushedAt || plugin.addedAt || registry.generatedAt })
-
-    // 单插件小数据：详情页用它代替整份多 MB 快照（category 元数据 + 同类推荐一并内置）。
-    const filename = pluginDataFilename(plugin.id)
-    if (filename) {
-      await writeFile(join(dataDir, `${filename}.json`), JSON.stringify({
-        schemaVersion: 1,
-        generatedAt: registry.generatedAt ?? null,
-        categories: registry.categories || {},
-        plugin,
-        related,
-      }))
-      dataFileCount += 1
+    shards.get(pluginShardFilename(plugin.id))[plugin.id.toLowerCase()] = {
+      schemaVersion: 1,
+      generatedAt: registry.generatedAt ?? null,
+      categories: registry.categories || {},
+      plugin,
+      related: relatedPlugins(plugin),
     }
+    urls.push({ loc: new URL(route, homepage).href, lastmod: plugin.pushedAt || plugin.addedAt || registry.generatedAt })
   }
+  const shardDir = join(distDir, 'data', 'plugin-shards')
+  await mkdir(shardDir, { recursive: true })
+  await Promise.all([...shards].map(([id, documents]) =>
+    writeFile(join(shardDir, `${id}.json`), JSON.stringify({ homepage, documents }))))
 
   const sitemap = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map(({ loc, lastmod }) => `  <url><loc>${xmlEscape(loc)}</loc>${lastmod ? `<lastmod>${xmlEscape(String(lastmod).slice(0, 10))}</lastmod>` : ''}</url>`).join('\n')}\n</urlset>\n`
   await Promise.all([
     writeFile(join(distDir, 'sitemap.xml'), sitemap),
     writeFile(join(distDir, 'robots.txt'), `User-agent: *\nAllow: /\nSitemap: ${new URL('sitemap.xml', homepage).href}\n`),
   ])
-  console.log(`SEO pages generated: ${registry.plugins.length} plugin pages, ${staticPageCount} static pages, ${dataFileCount} per-plugin data files, ${browseSnapshot.filename}, and sitemap.xml.`)
+  // Publish the cache version only after all files for this build are ready.
+  await writeFile(join(distDir, 'data', 'detail-build.json'), JSON.stringify({ version: randomUUID() }))
+  console.log(`SEO pages generated: ${registry.plugins.length} plugin URLs, 256 detail shards, ${staticPageCount} static pages, ${browseSnapshot.filename}, and sitemap.xml.`)
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

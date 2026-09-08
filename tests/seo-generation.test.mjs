@@ -1,11 +1,13 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, mkdir, readFile, writeFile } from 'node:fs/promises'
+import { mkdtemp, mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import test from 'node:test'
-import { generateSeoFiles, pluginRoute, renderPluginPage, renderStaticPage } from '../scripts/generate-seo.mjs'
+import { renderPluginPage } from '../scripts/render-plugin-page.mjs'
+import { pluginShardFilename } from '../assets/plugin-route.js'
+import { generateSeoFiles, pluginRoute, renderStaticPage } from '../scripts/generate-seo.mjs'
 
-test('SEO generation creates crawlable plugin pages and a sitemap', async () => {
+test('SEO generation creates bounded detail shards and a complete sitemap', async () => {
   const root = await mkdtemp(join(tmpdir(), 'harness-registry-seo-'))
   const distDir = join(root, 'dist')
   const registryPath = join(root, 'plugins.json')
@@ -27,12 +29,12 @@ test('SEO generation creates crawlable plugin pages and a sitemap', async () => 
         stars: 10, trustLevel: 'curated',
       },
       {
-        // 限定符是仓库内路径，可含 `/`：数据文件必须仍是单段文件名（曾导致 ENOENT 崩溃）
+        // 仓库内路径限定符仍应正确生成详情页与内嵌数据。
         id: 'acme/mono#pkgs/core', name: 'Mono Core', owner: 'acme', url: 'https://github.com/acme/mono',
         icon: 'https://github.com/acme.png', description: { zh: '子包', en: 'Subpackage' }, category: 'ui',
       },
       {
-        // URL 必须编码 Unicode，但静态文件目录必须保留解码后的名称，供 Pages 正确命中。
+        // URL 编码 Unicode，读取详情数据后仍须保留原始 ID。
         id: 'acme/unicode#中文', name: 'Unicode', owner: 'acme', url: 'https://github.com/acme/unicode',
         icon: 'https://github.com/acme.png', description: { zh: 'Unicode', en: 'Unicode' }, category: 'unicode',
       },
@@ -40,16 +42,27 @@ test('SEO generation creates crawlable plugin pages and a sitemap', async () => 
   }))
 
   await generateSeoFiles({ distDir, registryPath, homepage: 'https://example.com/registry/' })
-  const route = pluginRoute({ id: 'acme/tools#terminal' })
-  const page = await readFile(join(distDir, route, 'index.html'), 'utf8')
+  const detail = async id => {
+    const shard = JSON.parse(await readFile(join(distDir, 'data/plugin-shards', pluginShardFilename(id) + '.json'), 'utf8'))
+    return shard.documents[id.toLowerCase()]
+  }
+  const render = async id => {
+    const data = await detail(id)
+    return renderPluginPage(await readFile(join(distDir, 'plugin-detail.html'), 'utf8'), data.plugin, 'https://example.com/registry/', data)
+  }
+  assert.equal((await readdir(distDir)).includes('plugins'), false)
+  assert.equal((await readdir(join(distDir, 'data/plugin-shards'))).length, 256)
+  const page = await render('acme/tools#terminal')
   const sitemap = await readFile(join(distDir, 'sitemap.xml'), 'utf8')
   assert.match(page, /data-plugin-id="acme\/tools#terminal"/)
   assert.match(page, /rel="canonical" href="https:\/\/example.com\/registry\/plugins\/acme\/tools\/terminal\/"/)
   assert.match(page, /application\/ld\+json/)
   assert.match(sitemap, /https:\/\/example.com\/registry\/plugins\/acme\/tools\/terminal\//)
 
-  // 详情页改读单插件小数据：限定符编码为 `~~`，同类推荐随文件一起生成
-  const dataFile = JSON.parse(await readFile(join(distDir, 'data', 'plugins', 'acme__tools~~terminal.json'), 'utf8'))
+  // Dynamic HTML carries the same record supplied by the JSON endpoint.
+  const embedded = html => JSON.parse(html.match(/<script id="plugin-data" type="application\/json">([\s\S]*?)<\/script>/)[1])
+  const dataFile = embedded(page)
+  assert.equal((await readdir(join(distDir, 'data'))).includes('plugins'), false)
   assert.equal(dataFile.schemaVersion, 1)
   assert.equal(dataFile.generatedAt, '2026-08-16T00:00:00.000Z')
   assert.equal(dataFile.plugin.id, 'acme/tools#terminal')
@@ -59,12 +72,15 @@ test('SEO generation creates crawlable plugin pages and a sitemap', async () => 
     id: 'acme/toolbox', name: 'Toolbox', owner: 'acme', url: 'https://github.com/acme/toolbox',
     stars: 10, trustLevel: 'curated',
   })
-  const monoFile = JSON.parse(await readFile(join(distDir, 'data', 'plugins', 'acme__mono~~pkgs~2fcore.json'), 'utf8'))
+  const monoFile = embedded(await render('acme/mono#pkgs/core'))
   assert.equal(monoFile.plugin.id, 'acme/mono#pkgs/core')
   assert.deepEqual(monoFile.related, [])
-  const unicodePage = await readFile(join(distDir, 'plugins', 'acme', 'unicode', '中文', 'index.html'), 'utf8')
+  const unicodePage = await render('acme/unicode#中文')
   assert.match(unicodePage, /rel="canonical" href="https:\/\/example\.com\/registry\/plugins\/acme\/unicode\/%E4%B8%AD%E6%96%87\/"/)
   assert.match(sitemap, /https:\/\/example\.com\/registry\/plugins\/acme\/unicode\/%E4%B8%AD%E6%96%87\//)
+
+  const build = JSON.parse(await readFile(join(distDir, 'data/detail-build.json'), 'utf8'))
+  assert.ok(build.version)
 
   const home = await readFile(join(distDir, 'index.html'), 'utf8')
   assert.match(home, /rel="canonical" href="https:\/\/example.com\/registry\/"/)
@@ -74,6 +90,9 @@ test('SEO generation creates crawlable plugin pages and a sitemap', async () => 
   assert.match(publish, /rel="canonical" href="https:\/\/example.com\/registry\/publish\.html"/)
   assert.match(publish, /property="og:title" content="Publish"/)
   assert.doesNotMatch(publish, /property="og:description"/)
+  await generateSeoFiles({ distDir, registryPath, homepage: 'https://example.com/registry/' })
+  const nextBuild = JSON.parse(await readFile(join(distDir, 'data/detail-build.json'), 'utf8'))
+  assert.notEqual(nextBuild.version, build.version)
 })
 
 test('renderStaticPage rejects pages without a title', () => {
@@ -95,4 +114,15 @@ test('SEO pages preserve the deployment base independently from the canonical do
   }, 'https://plugin.example.com/')
   assert.match(page, /<base href="\/legacy-path\/">/)
   assert.match(page, /rel="canonical" href="https:\/\/plugin\.example\.com\/plugins\/acme\/plugin\/"/)
+})
+
+test('embedded plugin data cannot terminate its script element', () => {
+  const description = '</script><script>alert(1)</script><!-- & 中文'
+  const page = renderPluginPage('<html><head><title>Plugin</title></head><body></body></html>', {
+    id: 'acme/plugin', name: 'Plugin', owner: 'acme', description: { en: description },
+  }, 'https://example.com/')
+  const payload = page.match(/<script id="plugin-data" type="application\/json">([\s\S]*?)<\/script>/)?.[1]
+  assert.ok(payload)
+  assert.equal(payload.includes('<'), false)
+  assert.equal(JSON.parse(payload).plugin.description.en, description)
 })

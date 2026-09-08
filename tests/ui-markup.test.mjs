@@ -68,10 +68,10 @@ test('plugin detail describes only verifiable registry signals', async () => {
   assert.match(detail, /安装前请确认/)
 })
 
-test('plugin detail loads a per-plugin data file and hides install actions for pending candidates', async () => {
+test('plugin detail reads embedded plugin data and hides install actions for pending candidates', async () => {
   const script = await readFile('assets/page-detail.js', 'utf8')
   assert.match(script, /window\.HR_DEFER_REGISTRY = true/)
-  assert.match(script, /fetch\('data\/plugins\/' \+ pluginDataFilename\(requested\) \+ '\.json'\)/)
+  assert.match(script, /readPluginDocument\(document, requested\)/)
   assert.match(script, /HR\.startRegistryLoad\(\)/)
   assert.match(script, /var isPending = HR\.pendingReview\(plugin\)/)
   assert.match(script, /document\.getElementById\('install-box'\)\.hidden = true/)
