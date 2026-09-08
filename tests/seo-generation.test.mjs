@@ -3,9 +3,11 @@ import { mkdtemp, mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import test from 'node:test'
-import { generateSeoFiles, pluginRoute, renderPluginPage, renderStaticPage } from '../scripts/generate-seo.mjs'
+import { renderPluginPage } from '../scripts/render-plugin-page.mjs'
+import { pluginShardFilename } from '../assets/plugin-route.js'
+import { generateSeoFiles, pluginRoute, renderStaticPage } from '../scripts/generate-seo.mjs'
 
-test('SEO generation creates crawlable plugin pages and a sitemap', async () => {
+test('SEO generation creates bounded detail shards and a complete sitemap', async () => {
   const root = await mkdtemp(join(tmpdir(), 'harness-registry-seo-'))
   const distDir = join(root, 'dist')
   const registryPath = join(root, 'plugins.json')
@@ -32,7 +34,7 @@ test('SEO generation creates crawlable plugin pages and a sitemap', async () => 
         icon: 'https://github.com/acme.png', description: { zh: '子包', en: 'Subpackage' }, category: 'ui',
       },
       {
-        // URL 必须编码 Unicode，但静态文件目录必须保留解码后的名称，供 Pages 正确命中。
+        // URL 编码 Unicode，读取详情数据后仍须保留原始 ID。
         id: 'acme/unicode#中文', name: 'Unicode', owner: 'acme', url: 'https://github.com/acme/unicode',
         icon: 'https://github.com/acme.png', description: { zh: 'Unicode', en: 'Unicode' }, category: 'unicode',
       },
@@ -40,15 +42,24 @@ test('SEO generation creates crawlable plugin pages and a sitemap', async () => 
   }))
 
   await generateSeoFiles({ distDir, registryPath, homepage: 'https://example.com/registry/' })
-  const route = pluginRoute({ id: 'acme/tools#terminal' })
-  const page = await readFile(join(distDir, route, 'index.html'), 'utf8')
+  const detail = async id => {
+    const shard = JSON.parse(await readFile(join(distDir, 'data/plugin-shards', pluginShardFilename(id) + '.json'), 'utf8'))
+    return shard.documents[id.toLowerCase()]
+  }
+  const render = async id => {
+    const data = await detail(id)
+    return renderPluginPage(await readFile(join(distDir, 'plugin-detail.html'), 'utf8'), data.plugin, 'https://example.com/registry/', data)
+  }
+  assert.equal((await readdir(distDir)).includes('plugins'), false)
+  assert.equal((await readdir(join(distDir, 'data/plugin-shards'))).length, 256)
+  const page = await render('acme/tools#terminal')
   const sitemap = await readFile(join(distDir, 'sitemap.xml'), 'utf8')
   assert.match(page, /data-plugin-id="acme\/tools#terminal"/)
   assert.match(page, /rel="canonical" href="https:\/\/example.com\/registry\/plugins\/acme\/tools\/terminal\/"/)
   assert.match(page, /application\/ld\+json/)
   assert.match(sitemap, /https:\/\/example.com\/registry\/plugins\/acme\/tools\/terminal\//)
 
-  // Hydration data lives in HTML, so each plugin costs only one deployment file.
+  // Dynamic HTML carries the same record supplied by the JSON endpoint.
   const embedded = html => JSON.parse(html.match(/<script id="plugin-data" type="application\/json">([\s\S]*?)<\/script>/)[1])
   const dataFile = embedded(page)
   assert.equal((await readdir(join(distDir, 'data'))).includes('plugins'), false)
@@ -61,10 +72,10 @@ test('SEO generation creates crawlable plugin pages and a sitemap', async () => 
     id: 'acme/toolbox', name: 'Toolbox', owner: 'acme', url: 'https://github.com/acme/toolbox',
     stars: 10, trustLevel: 'curated',
   })
-  const monoFile = embedded(await readFile(join(distDir, 'plugins/acme/mono/pkgs/core/index.html'), 'utf8'))
+  const monoFile = embedded(await render('acme/mono#pkgs/core'))
   assert.equal(monoFile.plugin.id, 'acme/mono#pkgs/core')
   assert.deepEqual(monoFile.related, [])
-  const unicodePage = await readFile(join(distDir, 'plugins', 'acme', 'unicode', '中文', 'index.html'), 'utf8')
+  const unicodePage = await render('acme/unicode#中文')
   assert.match(unicodePage, /rel="canonical" href="https:\/\/example\.com\/registry\/plugins\/acme\/unicode\/%E4%B8%AD%E6%96%87\/"/)
   assert.match(sitemap, /https:\/\/example\.com\/registry\/plugins\/acme\/unicode\/%E4%B8%AD%E6%96%87\//)
 

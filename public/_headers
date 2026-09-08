@@ -10,8 +10,8 @@
 /data/browse-*.json
   Cache-Control: public, max-age=31536000, immutable
 
-/data/plugins/*
-  Cache-Control: public, max-age=300, stale-while-revalidate=86400
+/data/plugin-shards/*
+  Cache-Control: no-cache
 
 /sitemap.xml
   Cache-Control: public, max-age=3600, stale-while-revalidate=86400

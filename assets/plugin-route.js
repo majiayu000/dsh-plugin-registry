@@ -29,3 +29,12 @@ export function pluginRoute(plugin) {
   if (!route) throw new Error(`Invalid plugin id: ${plugin?.id ?? ''}`)
   return route
 }
+
+// FNV-1a selects one of 256 build-time detail buckets; casing follows ID lookup.
+export function pluginShardFilename(pluginId) {
+  let hash = 2166136261
+  for (const character of String(pluginId).trim().toLowerCase()) {
+    hash = Math.imul(hash ^ character.codePointAt(0), 16777619)
+  }
+  return (hash & 255).toString(16).padStart(2, '0')
+}

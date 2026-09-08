@@ -189,8 +189,8 @@ test('repository pre-check returns structured signals and enables GitHub submiss
   await expect(page.locator('#review-submit')).toBeDisabled()
 })
 
-test('static details and listing installs share embedded data without per-plugin JSON requests', async ({ page }) => {
-  const { renderPluginPage } = await import('../../scripts/generate-seo.mjs')
+test('rendered details hydrate inline while listing installs use the JSON API', async ({ page }) => {
+  const { renderPluginPage } = await import('../../scripts/render-plugin-page.mjs')
   const template = await readFile(new URL('../../plugin-detail.html', import.meta.url), 'utf8')
   const plugin = {
     id: 'acme/mono#pkgs/core', name: 'Embedded Plugin', owner: 'acme',
@@ -201,6 +201,9 @@ test('static details and listing installs share embedded data without per-plugin
   const html = renderPluginPage(template, plugin, 'http://127.0.0.1:5173/')
   await page.route('**/plugins/acme/mono/pkgs/core/', route => route.fulfill({
     status: 200, contentType: 'text/html', body: html,
+  }))
+  await page.route('**/api/plugins/acme/mono/pkgs/core/', route => route.fulfill({
+    status: 200, contentType: 'application/json', body: JSON.stringify({ plugin }),
   }))
   const dataRequests = []
   page.on('request', request => {

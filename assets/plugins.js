@@ -2,7 +2,6 @@
 import { writeClipboardText } from './clipboard.js'
 import { hasDshCandidateContext } from './candidate-relevance.js'
 import { pluginRoute } from './plugin-route.js'
-import { readPluginDocument } from './plugin-detail.js'
 import { computeRankingScore } from './registry-ranking.js'
 import { trackPluginEvent } from './track.js'
 import { fromBrowseDocument } from './browse-snapshot.js'
@@ -234,10 +233,10 @@ import { fromBrowseDocument } from './browse-snapshot.js'
   }
 
   async function loadPluginDetail(pluginId) {
-    var response = await fetch(pluginRoute({ id: pluginId }));
+    var response = await fetch('api/' + pluginRoute({ id: pluginId }));
     if (!response.ok) throw new Error('Plugin detail HTTP ' + response.status);
-    var detailPage = new DOMParser().parseFromString(await response.text(), 'text/html');
-    var detailDocument = readPluginDocument(detailPage, pluginId);
+    var detailDocument = await response.json();
+    if (detailDocument?.plugin?.id?.toLowerCase() !== pluginId.toLowerCase()) throw new Error('Invalid plugin detail document');
     return detailDocument.plugin;
   }
 
