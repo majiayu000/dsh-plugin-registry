@@ -6,6 +6,8 @@ const plugin = { id: 'Acme/repo#包/core', name: 'Test Plugin', owner: 'Acme', u
 const document = { schemaVersion: 1, generatedAt: '2026-09-08T00:00:00Z', categories: {}, plugin, related: [] }
 const template = '<html><head><title>Plugin</title></head><body><h1 id="plugin-name"></h1></body></html>'
 function fixture(path = '/plugins/Acme/repo/%E5%8C%85/core/', { method = 'GET', missing = false, assetStatus = 200 } = {}) {
+  const build = { version: 'deployment-a' }
+  const record = structuredClone(document)
   const fetched = []
   const writes = []
   const cached = new Map()
@@ -15,19 +17,20 @@ function fixture(path = '/plugins/Acme/repo/%E5%8C%85/core/', { method = 'GET', 
   }
   const context = {
     request: new Request('https://example.com' + path, { method }),
-    env: { CF_PAGES_COMMIT_SHA: 'deployment-a', ASSETS: { fetch: async input => {
+    env: { ASSETS: { fetch: async input => {
       const path = new URL(input).pathname
       fetched.push(path)
+      if (path === '/data/detail-build.json') return Response.json(build)
       if (path === '/plugin-detail.html') return new Response(template)
       if (path === '/404.html') return new Response('<h1>Not found</h1>')
-      return new Response(JSON.stringify({ homepage: 'https://example.com/', documents: missing ? {} : { [plugin.id.toLowerCase()]: document } }), { status: assetStatus })
+      return new Response(JSON.stringify({ homepage: 'https://example.com/', documents: missing ? {} : { [plugin.id.toLowerCase()]: record } }), { status: assetStatus })
     } } },
     waitUntil: promise => writes.push(promise),
   }
-  return { context, cache, fetched, writes, cached }
+  return { context, cache, fetched, writes, cached, build, record }
 }
 
-test('dynamic HTML contains crawlable content and only fetches a shard and template', async () => {
+test('dynamic HTML reads build metadata and skips shard and template reads on cache hits', async () => {
   const f = fixture()
   const response = await handlePluginDetail(f.context, 'html', f.cache)
   assert.equal(response.status, 200)
@@ -37,23 +40,23 @@ test('dynamic HTML contains crawlable content and only fetches a shard and templ
   assert.match(html, /application\/ld\+json/)
   assert.match(html, /\\u003c\/script>/)
   assert.match(response.headers.get('cache-control'), /s-maxage=300/)
-  assert.equal(f.fetched.length, 2)
+  assert.equal(f.fetched.length, 3)
   assert.ok(f.fetched.some(path => /^\/data\/plugin-shards\/[a-f0-9]{2}\.json$/.test(path)))
   const warm = await handlePluginDetail(f.context, 'html', f.cache)
   assert.equal(await warm.text(), html)
-  assert.equal(f.fetched.length, 2)
+  assert.equal(f.fetched.length, 4)
 })
 
 test('JSON uses the same record, supports HEAD, and does not fetch the page template', async () => {
   const f = fixture('/api/plugins/Acme/repo/%E5%8C%85/core/')
   const response = await handlePluginDetail(f.context, 'json', f.cache)
   assert.deepEqual(await response.json(), document)
-  assert.equal(f.fetched.length, 1)
+  assert.equal(f.fetched.length, 2)
   f.context.request = new Request(f.context.request.url, { method: 'HEAD' })
   const head = await handlePluginDetail(f.context, 'json', f.cache)
   assert.equal(head.status, 200)
   assert.equal(await head.text(), '')
-  assert.equal(f.fetched.length, 1)
+  assert.equal(f.fetched.length, 3)
 })
 
 test('a missing plugin is 404 and is never cached', async () => {
@@ -92,10 +95,12 @@ test('canonical casing and trailing slash redirect; malformed paths never load a
 test('a new deployment cannot reuse old cached HTML or data', async () => {
   const f = fixture()
   await handlePluginDetail(f.context, 'html', f.cache)
-  assert.equal(f.fetched.length, 2)
-  f.context.env.CF_PAGES_COMMIT_SHA = 'deployment-b'
-  await handlePluginDetail(f.context, 'html', f.cache)
-  assert.equal(f.fetched.length, 4)
+  assert.equal(f.fetched.length, 3)
+  f.build.version = 'deployment-b'
+  f.record.plugin.name = 'Updated Plugin'
+  const response = await handlePluginDetail(f.context, 'html', f.cache)
+  assert.match(await response.text(), /Updated Plugin/)
+  assert.equal(f.fetched.length, 6)
   assert.equal(f.cached.size, 2)
 })
 
@@ -104,15 +109,38 @@ test('a cold HEAD stores a complete representation for the following GET', async
   assert.equal(await (await handlePluginDetail(f.context, 'html', f.cache)).text(), '')
   f.context.request = new Request(f.context.request.url)
   assert.match(await (await handlePluginDetail(f.context, 'html', f.cache)).text(), /Test Plugin/)
-  assert.equal(f.fetched.length, 2)
+  assert.equal(f.fetched.length, 4)
 })
 
 test('malformed shard JSON and records fail clearly and are not cached', async () => {
   for (const body of ['{', '{}', JSON.stringify({homepage:'https://example.com/',documents:[]}),
     JSON.stringify({ homepage:'https://example.com/', documents: { [plugin.id.toLowerCase()]: { plugin: { id:'wrong/plugin' } } } })]) {
     const f = fixture('/api/plugins/Acme/repo/%E5%8C%85/core/')
-    f.context.env.ASSETS.fetch = async () => new Response(body)
+    const originalFetch = f.context.env.ASSETS.fetch
+    f.context.env.ASSETS.fetch = async input => new URL(input).pathname === '/data/detail-build.json' ? originalFetch(input) : new Response(body)
     await assert.rejects(handlePluginDetail(f.context, 'json', f.cache))
     assert.equal(f.cached.size, 0)
+  }
+})
+
+test('production details work without build-environment variables in context.env', async () => {
+  for (const format of ['html', 'json']) {
+    const f = fixture(format === 'html' ? undefined : '/api/plugins/Acme/repo/%E5%8C%85/core/')
+    delete f.context.env.CF_PAGES_COMMIT_SHA
+    const response = await handlePluginDetail(f.context, format, f.cache)
+    assert.equal(response.status, 200)
+  }
+})
+
+
+test('missing or malformed build metadata fails clearly instead of reusing old cache', async () => {
+  for (const [body, status] of [['missing', 404], ['{', 200], ['{}', 200], ['{"version":""}', 200]]) {
+    const f = fixture()
+    await handlePluginDetail(f.context, 'html', f.cache)
+    const originalFetch = f.context.env.ASSETS.fetch
+    f.context.env.ASSETS.fetch = async input => new URL(input).pathname === '/data/detail-build.json'
+      ? new Response(body, { status }) : originalFetch(input)
+    await assert.rejects(handlePluginDetail(f.context, 'html', f.cache))
+    assert.equal(f.cached.size, 1)
   }
 })

@@ -37,8 +37,9 @@ export async function handlePluginDetail(context, format, cache = caches.default
   }
   // Ignore query parameters: these representations depend only on the plugin path.
   url.search = ''
-  if (!context.env.CF_PAGES_COMMIT_SHA) throw new Error('Missing Pages deployment commit')
-  url.searchParams.set('__deployment', context.env.CF_PAGES_COMMIT_SHA)
+  const build = await (await asset(context, '/data/detail-build.json')).json()
+  if (typeof build?.version !== 'string' || !build.version) throw new Error('Invalid plugin detail build version')
+  url.searchParams.set('__deployment', build.version)
   const key = new Request(url, { method: 'GET' })
   const hit = await cache.match(key)
   if (hit) return head ? new Response(null, hit) : hit

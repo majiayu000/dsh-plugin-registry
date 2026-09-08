@@ -1,5 +1,5 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
-import { createHash } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { pluginRoute, pluginShardFilename } from '../assets/plugin-route.js'
@@ -155,6 +155,8 @@ export async function generateSeoFiles({
     writeFile(join(distDir, 'sitemap.xml'), sitemap),
     writeFile(join(distDir, 'robots.txt'), `User-agent: *\nAllow: /\nSitemap: ${new URL('sitemap.xml', homepage).href}\n`),
   ])
+  // Publish the cache version only after all files for this build are ready.
+  await writeFile(join(distDir, 'data', 'detail-build.json'), JSON.stringify({ version: randomUUID() }))
   console.log(`SEO pages generated: ${registry.plugins.length} plugin URLs, 256 detail shards, ${staticPageCount} static pages, ${browseSnapshot.filename}, and sitemap.xml.`)
 }
 

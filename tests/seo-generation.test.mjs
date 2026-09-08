@@ -79,6 +79,9 @@ test('SEO generation creates bounded detail shards and a complete sitemap', asyn
   assert.match(unicodePage, /rel="canonical" href="https:\/\/example\.com\/registry\/plugins\/acme\/unicode\/%E4%B8%AD%E6%96%87\/"/)
   assert.match(sitemap, /https:\/\/example\.com\/registry\/plugins\/acme\/unicode\/%E4%B8%AD%E6%96%87\//)
 
+  const build = JSON.parse(await readFile(join(distDir, 'data/detail-build.json'), 'utf8'))
+  assert.ok(build.version)
+
   const home = await readFile(join(distDir, 'index.html'), 'utf8')
   assert.match(home, /rel="canonical" href="https:\/\/example.com\/registry\/"/)
   assert.match(home, /property="og:title" content="Registry"/)
@@ -87,6 +90,9 @@ test('SEO generation creates bounded detail shards and a complete sitemap', asyn
   assert.match(publish, /rel="canonical" href="https:\/\/example.com\/registry\/publish\.html"/)
   assert.match(publish, /property="og:title" content="Publish"/)
   assert.doesNotMatch(publish, /property="og:description"/)
+  await generateSeoFiles({ distDir, registryPath, homepage: 'https://example.com/registry/' })
+  const nextBuild = JSON.parse(await readFile(join(distDir, 'data/detail-build.json'), 'utf8'))
+  assert.notEqual(nextBuild.version, build.version)
 })
 
 test('renderStaticPage rejects pages without a title', () => {
