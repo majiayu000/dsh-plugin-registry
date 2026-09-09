@@ -39,6 +39,9 @@ const OVERRIDES = resolve('sources/overrides.json')
 const TOKEN = process.env.GITHUB_TOKEN || process.env.GH_TOKEN || ''
 const USER_AGENT = 'harness-registry-sync'
 const MAX_UNAUTHENTICATED_CANDIDATES = 100
+// Bump when bundle path safety / manifest shape rules change so cached shapeValid
+// evidence from prior snapshots is force-revalidated even if pushedAt is unchanged.
+const MANIFEST_VALIDATION_VERSION = 2
 
 const headers = {
   accept: 'application/vnd.github+json',
@@ -353,7 +356,13 @@ async function main() {
     id: plugin.id,
   }))
   const initialTargets = [...new Map([...rootTargets, ...curatedTargets].map(target => [targetKey(target.full_name, target.directory), target])).values()]
+  const previousValidationVersion = previous?.stats?.manifestValidationVersion ?? 0
+  const manifestCacheCompatible = previousValidationVersion === MANIFEST_VALIDATION_VERSION
+  if (!manifestCacheCompatible) {
+    console.log(`Manifest cache: invalidating cached shape evidence (validation version ${previousValidationVersion} → ${MANIFEST_VALIDATION_VERSION}).`)
+  }
   const targetsToValidate = initialTargets.filter(target => {
+    if (!manifestCacheCompatible) return true
     const cached = manifestCache.get(target.id?.toLowerCase()) || manifestCache.get(targetKey(target.full_name, target.directory))
     const pushedAt = pushedAtFor(target.full_name)
     return cached?.pushedAt !== pushedAt || (cached.shapeValid && !cached.patchStatus)
@@ -399,7 +408,7 @@ async function main() {
     const cached = manifestCache.get(String(id).toLowerCase()) || manifestCache.get(key)
     const pushedAt = pushedAtFor(fullName)
     const fetched = fetchedKeys.has(key)
-    const unchanged = !fetched && cached && cached.pushedAt === pushedAt && (!cached.shapeValid || cached.patchStatus)
+    const unchanged = manifestCacheCompatible && !fetched && cached && cached.pushedAt === pushedAt && (!cached.shapeValid || cached.patchStatus)
     if (unchanged) {
       return {
         checked: true,
@@ -528,6 +537,7 @@ async function main() {
       pendingReview: pendingReview.length,
       quarantined: quarantined.length,
       discoveryMode: TOKEN ? 'complete' : 'recent',
+      manifestValidationVersion: MANIFEST_VALIDATION_VERSION,
       ...(process.env.DSH_SYNC_ALLOW_UNSAFE === '1' ? { healthGateOverridden: true } : {}),
     },
     sources: {

@@ -20,7 +20,9 @@ function isSafeDecodedPathSegment(segment) {
 
 function isSafeRelativePath(value) {
   if (typeof value !== 'string' || !value.startsWith('./')) return false
-  const remainder = value.slice(2)
+  // Trailing slashes are common for monorepo bundle directories (./packages/foo/);
+  // strip them before segment checks so split('/') does not yield an empty segment.
+  const remainder = value.slice(2).replace(/\/+$/, '')
   if (!remainder) return false
   return remainder.split('/').every(isSafeDecodedPathSegment)
 }

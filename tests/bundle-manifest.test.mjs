@@ -51,6 +51,24 @@ test('percent-encoded traversal is rejected for bundle directories', () => {
   )
 })
 
+test('trailing slashes on bundle directories remain accepted', () => {
+  assert.deepEqual(
+    listBundleDirectories({
+      dsh: {
+        bundles: [
+          './packages/foo/',
+          './packages/bar//',
+          './',
+          './%2e%2e/',
+        ],
+      },
+    }),
+    ['packages/foo', 'packages/bar'],
+  )
+  assert.equal(validateBundleManifest({ dsh: { bundle: { patch: './cordis.patch.yml/' } } }).valid, true)
+  assert.equal(validateBundleManifest({ dsh: { bundle: { patch: './' } } }).reason_code, 'patch_unsafe')
+})
+
 test('bundle manifest explains malformed package data', () => {
   assert.equal(validateBundleManifest('not json').reason_code, 'invalid_json')
   assert.equal(validateBundleManifest({ dsh: { bundle: [] } }).reason_code, 'bundle_not_object')
