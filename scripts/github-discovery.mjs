@@ -91,7 +91,12 @@ function canSplitWindow(from, to) {
 }
 
 function canRecoverBySplitting(error) {
-  return /\b(?:502|503|504)\b/.test(String(error?.message || error))
+  const message = String(error?.message || error)
+  // Literal gateway statuses, plus truncated/empty JSON bodies that surface as SyntaxError
+  // after fetchJson retries (no status code in the raw parse error).
+  return /\b(?:502|503|504)\b/.test(message)
+    || error instanceof SyntaxError
+    || /Unexpected end of JSON input|empty or invalid JSON|invalid JSON response/i.test(message)
 }
 
 export function mapGraphqlRepository(repository) {
