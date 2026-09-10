@@ -61,6 +61,44 @@ test('repository discovery splits a search window after a recoverable GitHub gat
   assert.ok(progress.some(entry => entry.type === 'error-split' && entry.remainingErrorSplits === 15))
 })
 
+test('repository discovery splits a search window after truncated JSON body errors', async () => {
+  const queries = []
+  const progress = []
+  const repositories = await discoverGitHubRepositories({
+    from: new Date('2026-08-14T00:00:00Z'),
+    to: new Date('2026-08-14T00:00:03Z'),
+    async searchPage({ searchQuery }) {
+      queries.push(searchQuery)
+      if (searchQuery.includes('00:00:00Z..2026-08-14T00:00:03Z')) {
+        throw new SyntaxError('Unexpected end of JSON input')
+      }
+      if (searchQuery.includes('00:00:00Z..2026-08-14T00:00:01Z')) return page(1, ['acme/one'])
+      return page(1, ['acme/two'])
+    },
+    onProgress(entry) { progress.push(entry) },
+  })
+
+  assert.deepEqual(repositories.map(repository => repository.full_name), ['acme/one', 'acme/two'])
+  assert.equal(queries.length, 3)
+  assert.ok(progress.some(entry => entry.type === 'error-split' && /Unexpected end of JSON input/.test(entry.error)))
+})
+
+test('repository discovery splits after fetchJson-style invalid JSON gateway errors', async () => {
+  const repositories = await discoverGitHubRepositories({
+    from: new Date('2026-08-14T00:00:00Z'),
+    to: new Date('2026-08-14T00:00:03Z'),
+    async searchPage({ searchQuery }) {
+      if (searchQuery.includes('00:00:00Z..2026-08-14T00:00:03Z')) {
+        throw new Error('502 Bad Gateway: empty or invalid JSON response from https://api.github.com/graphql')
+      }
+      if (searchQuery.includes('00:00:00Z..2026-08-14T00:00:01Z')) return page(1, ['acme/left'])
+      return page(1, ['acme/right'])
+    },
+  })
+
+  assert.deepEqual(repositories.map(repository => repository.full_name), ['acme/left', 'acme/right'])
+})
+
 test('repository discovery does not split permanent GitHub errors', async () => {
   let calls = 0
   await assert.rejects(discoverGitHubRepositories({

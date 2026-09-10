@@ -51,6 +51,14 @@ function sleep(ms) {
   return new Promise(resolvePromise => setTimeout(resolvePromise, ms))
 }
 
+function invalidJsonResponseError(url, cause) {
+  // Gateway hiccups often return HTTP 200 with an empty/truncated body. response.json()
+  // then throws SyntaxError without a 502/503/504 code, which blocks discovery window splits.
+  const error = new Error(`502 Bad Gateway: empty or invalid JSON response from ${url}`)
+  error.cause = cause
+  return error
+}
+
 export async function fetchJson(url, options = {}) {
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
@@ -59,7 +67,18 @@ export async function fetchJson(url, options = {}) {
         headers: { ...headers, ...options.headers },
         signal: options.signal || AbortSignal.timeout(30_000),
       })
-      if (response.ok) return await response.json()
+      if (response.ok) {
+        try {
+          return await response.json()
+        } catch (error) {
+          // Empty/truncated bodies parse as SyntaxError without a gateway status code.
+          // Preserve other body-read failures (e.g. TypeError 'terminated') for existing retry behavior.
+          if (error instanceof SyntaxError || /Unexpected end of JSON input/i.test(String(error?.message || ''))) {
+            throw invalidJsonResponseError(url, error)
+          }
+          throw error
+        }
+      }
       if ((response.status === 403 || response.status === 429) && attempt < 2) {
         const reset = Number(response.headers.get('x-ratelimit-reset')) * 1000
         const wait = Number.isFinite(reset) ? Math.max(1_000, Math.min(reset - Date.now() + 1_000, 60_000)) : 5_000
