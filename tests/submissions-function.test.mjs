@@ -81,3 +81,71 @@ test('submission endpoint validates Turnstile, checks GitHub, and creates an ass
   assert.match(issue.body, /- \[x\] 声明有效的 dsh\.bundle/)
   assert.match(issue.body, /- \[x\] Patch 文件是顶层 YAML 数组/)
 })
+
+function submissionRequest() {
+  return new Request('https://plugin.example/api/submissions', {
+    method: 'POST',
+    headers: { origin: 'https://plugin.example', 'content-type': 'application/json', 'CF-Connecting-IP': '203.0.113.7' },
+    body: JSON.stringify(validPayload),
+  })
+}
+
+const duplicateIssue = {
+  number: 87,
+  html_url: 'https://github.com/majiayu000/dsh-plugin-registry/issues/87',
+  body: 'queued\n<!-- submission-repository: owner/dsh-example -->\n',
+}
+
+test('duplicate receipt matches an existing open submission on the first issues page', async () => {
+  const calls = []
+  const fetcher = async (url, init = {}) => {
+    calls.push({ url: String(url), init })
+    if (String(url).includes('/siteverify')) return Response.json({ success: true, action: 'plugin_submission', hostname: 'plugin.example' })
+    if (String(url).includes('/issues?state=open')) return Response.json([duplicateIssue])
+    throw new Error(`Unexpected request: ${url}`)
+  }
+  const response = await handleSubmission({
+    request: submissionRequest(),
+    env: { GITHUB_SUBMISSIONS_TOKEN: 'secret-token', TURNSTILE_SECRET_KEY: 'secret-turnstile-key' },
+  }, fetcher)
+  const result = await response.json()
+  assert.equal(response.status, 200)
+  assert.equal(result.duplicate, true)
+  assert.equal(result.issueNumber, 87)
+  assert.equal(result.issueUrl, duplicateIssue.html_url)
+  assert.equal(calls.some(call => call.init.method === 'POST' && call.url.endsWith('/repos/majiayu000/dsh-plugin-registry/issues')), false)
+})
+
+test('duplicate receipt paginates open plugin-submission issues until the repository marker matches', async () => {
+  const calls = []
+  const firstPage = Array.from({ length: 100 }, (_, index) => ({
+    number: index + 1,
+    html_url: `https://github.com/majiayu000/dsh-plugin-registry/issues/${index + 1}`,
+    body: index === 0
+      ? 'pull request with the same marker\n<!-- submission-repository: owner/dsh-example -->\n'
+      : `other-${index}\n<!-- submission-repository: owner/other-${index} -->\n`,
+    ...(index === 0 ? { pull_request: { url: 'https://api.github.com/repos/majiayu000/dsh-plugin-registry/pulls/1' } } : {}),
+  }))
+  const fetcher = async (url, init = {}) => {
+    calls.push({ url: String(url), init })
+    if (String(url).includes('/siteverify')) return Response.json({ success: true, action: 'plugin_submission', hostname: 'plugin.example' })
+    const parsed = new URL(url)
+    const page = parsed.searchParams.get('page')
+    if (parsed.pathname.endsWith('/issues') && parsed.searchParams.get('state') === 'open' && page === '1') return Response.json(firstPage)
+    if (parsed.pathname.endsWith('/issues') && parsed.searchParams.get('state') === 'open' && page === '2') return Response.json([duplicateIssue])
+    throw new Error(`Unexpected request: ${url}`)
+  }
+  const response = await handleSubmission({
+    request: submissionRequest(),
+    env: { GITHUB_SUBMISSIONS_TOKEN: 'secret-token', TURNSTILE_SECRET_KEY: 'secret-turnstile-key' },
+  }, fetcher)
+  const result = await response.json()
+  assert.equal(response.status, 200)
+  assert.equal(result.duplicate, true)
+  assert.equal(result.issueNumber, 87)
+  assert.equal(result.issueUrl, duplicateIssue.html_url)
+  const issueListCalls = calls.filter(call => new URL(call.url).pathname.endsWith('/issues') && call.init.method !== 'POST')
+  assert.equal(issueListCalls.length, 2)
+  assert.equal(new URL(issueListCalls[1].url).searchParams.get('page'), '2')
+  assert.equal(calls.some(call => call.init.method === 'POST' && call.url.endsWith('/repos/majiayu000/dsh-plugin-registry/issues')), false)
+})

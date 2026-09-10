@@ -189,9 +189,21 @@ export function buildIssueBody(submission, checks) {
 
 async function findExistingSubmission(fetcher, token, registryRepository, repository) {
   const encodedRegistry = registryRepository.split('/').map(encodeURIComponent).join('/')
-  const response = await githubRequest(fetcher, token, `/repos/${encodedRegistry}/issues?state=open&labels=plugin-submission&per_page=100`, { method: 'GET' })
   const marker = `<!-- submission-repository: ${repository.toLowerCase()} -->`
-  return (await response.json()).find(issue => !issue.pull_request && String(issue.body || '').includes(marker)) || null
+  const perPage = 100
+
+  for (let page = 1; ; page += 1) {
+    const response = await githubRequest(
+      fetcher,
+      token,
+      `/repos/${encodedRegistry}/issues?state=open&labels=plugin-submission&per_page=${perPage}&page=${page}`,
+      { method: 'GET' },
+    )
+    const issues = await response.json()
+    const match = issues.find(issue => !issue.pull_request && String(issue.body || '').includes(marker))
+    if (match) return match
+    if (issues.length < perPage) return null
+  }
 }
 
 export async function handleSubmission(context, fetcher = fetch) {
