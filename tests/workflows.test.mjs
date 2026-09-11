@@ -52,6 +52,14 @@ test('sync aborts instead of silently accepting partial GraphQL results', async 
   assert.match(sync, /refusing to publish a partially validated snapshot/)
 })
 
+test('sync invalidates manifest cache when validation rules change', async () => {
+  const sync = await readFile('scripts/sync-plugins.mjs', 'utf8')
+  assert.match(sync, /MANIFEST_VALIDATION_VERSION = 2/)
+  assert.match(sync, /manifestValidationVersion/)
+  assert.match(sync, /manifestCacheCompatible/)
+  assert.match(sync, /invalidating cached shape evidence/)
+})
+
 test('sync CI commits the version file and rebases before pushing', async () => {
   const workflow = await readFile('.github/workflows/sync-plugins.yml', 'utf8')
   assert.match(workflow, /fetch-depth: 0/)

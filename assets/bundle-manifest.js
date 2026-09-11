@@ -1,10 +1,34 @@
 import { INSTALL_PROFILES } from './install-command.js'
 
+function isSafeDecodedPathSegment(segment) {
+  if (typeof segment !== 'string' || segment === '') return false
+
+  let decoded
+  try {
+    decoded = decodeURIComponent(segment)
+  } catch {
+    return false
+  }
+
+  return decoded !== ''
+    && decoded !== '.'
+    && decoded !== '..'
+    && !decoded.includes('%')
+    && !decoded.includes('\\')
+    && !decoded.includes('/')
+}
+
+function isSafeRelativePath(value) {
+  if (typeof value !== 'string' || !value.startsWith('./')) return false
+  // Trailing slashes are common for monorepo bundle directories (./packages/foo/);
+  // strip them before segment checks so split('/') does not yield an empty segment.
+  const remainder = value.slice(2).replace(/\/+$/, '')
+  if (!remainder) return false
+  return remainder.split('/').every(isSafeDecodedPathSegment)
+}
+
 function isSafeRelativeDirectory(value) {
-  return typeof value === 'string'
-    && value.startsWith('./')
-    && !value.includes('\\')
-    && !value.split('/').includes('..')
+  return isSafeRelativePath(value)
 }
 
 export function listBundleDirectories(value) {
@@ -40,7 +64,7 @@ export function validateBundleManifest(value) {
   if (typeof patch !== 'string' || !patch.trim()) {
     return { valid: false, reason_code: 'patch_missing', reason: 'dsh.bundle.patch must be a non-empty string.' }
   }
-  if (!patch.startsWith('./') || patch.includes('\\') || patch.split('/').includes('..')) {
+  if (!isSafeRelativePath(patch)) {
     return { valid: false, reason_code: 'patch_unsafe', reason: 'dsh.bundle.patch must be a safe relative path beginning with "./".' }
   }
 
