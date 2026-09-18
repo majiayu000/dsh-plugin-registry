@@ -54,6 +54,12 @@ function sleep(ms) {
   return new Promise(resolvePromise => setTimeout(resolvePromise, ms))
 }
 
+const TRANSIENT_ATTEMPTS = 3
+const RATE_LIMIT_RETRIES = 5
+const RATE_LIMIT_BASE_WAIT_MS = 5_000
+const RATE_LIMIT_MIN_WAIT_MS = 1_000
+const RATE_LIMIT_MAX_WAIT_MS = 120_000
+
 function invalidJsonResponseError(url, cause) {
   // Gateway hiccups often return HTTP 200 with an empty/truncated body. response.json()
   // then throws SyntaxError without a 502/503/504 code, which blocks discovery window splits.
@@ -62,8 +68,39 @@ function invalidJsonResponseError(url, cause) {
   return error
 }
 
+function exhaustedRateLimitError(status, statusText, url) {
+  // The rate-limit budget is already spent, so the transient retry path must not spend
+  // further requests on this error.
+  const error = new Error(`${status} ${statusText}: ${url}`)
+  error.retryable = false
+  return error
+}
+
+export function rateLimitWaitMs(response, retry) {
+  const clamp = ms => Math.min(Math.max(ms, RATE_LIMIT_MIN_WAIT_MS), RATE_LIMIT_MAX_WAIT_MS)
+  // Secondary rate limits answer with retry-after and leave x-ratelimit-reset pointing at
+  // the primary window, so retry-after has to win whenever GitHub sends it.
+  const retryAfter = response.headers?.get('retry-after')
+  if (retryAfter) {
+    const seconds = Number(retryAfter)
+    if (Number.isFinite(seconds) && seconds > 0) return clamp(seconds * 1_000)
+    const until = Date.parse(retryAfter)
+    if (Number.isFinite(until)) return clamp(until - Date.now() + 1_000)
+  }
+  // Compare the raw header against '0': Number(null) is 0, so a missing budget header would
+  // otherwise read as an exhausted budget and wait on a reset timestamp that does not exist.
+  const remaining = response.headers?.get('x-ratelimit-remaining')
+  const reset = Number(response.headers?.get('x-ratelimit-reset'))
+  if (remaining === '0' && Number.isFinite(reset) && reset > 0) {
+    return clamp(reset * 1_000 - Date.now() + 1_000)
+  }
+  return clamp(RATE_LIMIT_BASE_WAIT_MS * 2 ** retry)
+}
+
 export async function fetchJson(url, options = {}) {
-  for (let attempt = 0; attempt < 3; attempt += 1) {
+  let transientAttempt = 0
+  let rateLimitRetry = 0
+  for (;;) {
     try {
       const response = await fetch(url, {
         ...options,
@@ -82,20 +119,27 @@ export async function fetchJson(url, options = {}) {
           throw error
         }
       }
-      if ((response.status === 403 || response.status === 429) && attempt < 2) {
-        const reset = Number(response.headers.get('x-ratelimit-reset')) * 1000
-        const wait = Number.isFinite(reset) ? Math.max(1_000, Math.min(reset - Date.now() + 1_000, 60_000)) : 5_000
+      if (response.status === 403 || response.status === 429) {
+        if (rateLimitRetry >= RATE_LIMIT_RETRIES) {
+          throw exhaustedRateLimitError(response.status, response.statusText, url)
+        }
+        const wait = rateLimitWaitMs(response, rateLimitRetry)
+        rateLimitRetry += 1
+        console.warn(
+          `GitHub rate limit (${response.status}); waiting ${Math.round(wait / 1_000)}s before retry ${rateLimitRetry}/${RATE_LIMIT_RETRIES}: ${url}`,
+        )
         await sleep(wait)
         continue
       }
       throw new Error(`${response.status} ${response.statusText}: ${url}`)
     } catch (error) {
-      if (attempt === 2) throw error
-      console.warn(`GitHub request failed; retrying (${attempt + 1}/3): ${error.message}`)
-      await sleep(2_000 * (attempt + 1))
+      if (error?.retryable === false) throw error
+      transientAttempt += 1
+      if (transientAttempt >= TRANSIENT_ATTEMPTS) throw error
+      console.warn(`GitHub request failed; retrying (${transientAttempt}/${TRANSIENT_ATTEMPTS}): ${error.message}`)
+      await sleep(2_000 * transientAttempt)
     }
   }
-  throw new Error(`Unable to fetch ${url}`)
 }
 
 export async function loadPrevious() {
