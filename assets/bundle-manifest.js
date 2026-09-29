@@ -1,5 +1,9 @@
 import { INSTALL_PROFILES } from './install-command.js'
 
+const PINNED_COMMIT_SHA = /^[0-9a-f]{40}$/
+// Query and fragment delimiters retarget the contents API; whitespace and controls do not survive a path segment.
+const FORBIDDEN_DECODED_SEGMENT = /[?#&=[\]\s\u0000-\u001F\u007F]/u
+
 function isSafeDecodedPathSegment(segment) {
   if (typeof segment !== 'string' || segment === '') return false
 
@@ -16,6 +20,32 @@ function isSafeDecodedPathSegment(segment) {
     && !decoded.includes('%')
     && !decoded.includes('\\')
     && !decoded.includes('/')
+    && !FORBIDDEN_DECODED_SEGMENT.test(decoded)
+}
+
+export function isPinnedCommitSha(value) {
+  return typeof value === 'string' && PINNED_COMMIT_SHA.test(value)
+}
+
+export function unpinnedRefCheck() {
+  return {
+    valid: false,
+    reason_code: 'ref_unpinned',
+    reason: 'The default branch could not be pinned to a commit.',
+  }
+}
+
+export function githubContentsUrl(repository, relativePath, ref) {
+  const parts = String(repository).split('/')
+  if (parts.length !== 2 || !parts[0] || !parts[1]) {
+    throw new TypeError('repository must be owner/name')
+  }
+  const [owner, repo] = parts
+  const normalized = String(relativePath).replace(/^\.\//, '').replace(/\/+$/, '')
+  const encodedPath = normalized.split('/').map(segment => encodeURIComponent(decodeURIComponent(segment))).join('/')
+  const url = new URL(`https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/${encodedPath}`)
+  if (isPinnedCommitSha(ref)) url.searchParams.set('ref', ref)
+  return url.href
 }
 
 function isSafeRelativePath(value) {

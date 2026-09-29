@@ -65,6 +65,8 @@ test('checker messages are complete and actionable in both locales', () => {
   assert.equal(repositoryCheckerCopy('zh-CN').failed, '未通过')
   assert.equal(manifestFailureMessage({ reason_code: 'bundle_not_object' }, 'zh-CN'), 'Manifest 未通过：dsh.bundle 必须是对象。')
   assert.match(manifestFailureMessage({ reason_code: 'patch_unsafe' }, 'en-US'), /^Manifest failed:/)
+  assert.equal(manifestFailureMessage({ reason_code: 'ref_unpinned' }, 'zh-CN'), 'Manifest 未通过：无法把默认分支固定到一次提交。')
+  assert.equal(manifestFailureMessage({ reason_code: 'ref_unpinned' }, 'en-US'), 'Manifest failed: The default branch could not be pinned to a commit.')
   assert.match(githubFailureMessage(404, 'zh-CN'), /找不到/)
   assert.match(githubFailureMessage(403, 'en-US'), /rate-limited/)
 })

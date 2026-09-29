@@ -164,29 +164,85 @@ test('a failed audit fetch does not keep stale pending candidates after reload',
   await expect(page.locator('main')).not.toContainText('dsh-stale-candidate')
 })
 
-test('repository pre-check returns structured signals and enables GitHub submission', async ({ page }) => {
-  await page.route('https://api.github.com/repos/acme/dsh-plugin', route => route.fulfill({
+const PINNED_SHA = '0123456789abcdef0123456789abcdef01234567'
+
+async function mockCheckedRepository(page, { packageManifest, patchBody = '', branchStatus = 200, sha = PINNED_SHA } = {}) {
+  const requested = []
+  const match = pathname => url => url.hostname === 'api.github.com' && url.pathname === pathname
+  await page.route(match('/repos/acme/dsh-plugin'), route => route.fulfill({
     status: 200,
     contentType: 'application/json',
-    body: JSON.stringify({ full_name: 'acme/dsh-plugin', private: false, archived: false, fork: false, topics: ['dsh-plugin'] }),
+    body: JSON.stringify({ full_name: 'acme/dsh-plugin', private: false, archived: false, fork: false, topics: ['dsh-plugin'], default_branch: 'main' }),
   }))
-  await page.route('https://api.github.com/repos/acme/dsh-plugin/contents/package.json', route => route.fulfill({
-    status: 200,
+  await page.route(match('/repos/acme/dsh-plugin/branches/main'), route => route.fulfill({
+    status: branchStatus,
     contentType: 'application/json',
-    body: JSON.stringify({ name: 'dsh-plugin', dsh: { bundle: { patch: './cordis.patch.yml' } } }),
+    body: JSON.stringify(branchStatus === 200 ? { commit: { sha } } : {}),
   }))
-  await page.route('https://api.github.com/repos/acme/dsh-plugin/contents/cordis.patch.yml', route => route.fulfill({
-    status: 200,
-    contentType: 'text/yaml',
-    body: '- insert:\n    - id: hello\n      name: dsh-plugin\n',
-  }))
+  await page.route(url => url.hostname === 'api.github.com' && url.pathname.startsWith('/repos/acme/dsh-plugin/contents/'), route => {
+    requested.push(route.request().url())
+    const pathname = new URL(route.request().url()).pathname
+    if (pathname === '/repos/acme/dsh-plugin/contents/package.json') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(packageManifest) })
+    }
+    if (pathname === '/repos/acme/dsh-plugin/contents/cordis.patch.yml') {
+      return route.fulfill({ status: 200, contentType: 'text/yaml', body: patchBody })
+    }
+    return route.fulfill({ status: 404, contentType: 'text/plain', body: '' })
+  })
+  return requested
+}
+
+async function submitRepositoryCheck(page) {
+  const channelReady = page.waitForResponse(response => response.url().includes('/api/submissions') && response.request().method() === 'GET')
   await page.goto('/publish.html')
+  await channelReady
   await page.locator('#repo-input').fill('acme/dsh-plugin')
   await page.locator('#repo-checker-form').evaluate(form => form.requestSubmit())
+}
+
+test('repository pre-check returns structured signals and enables GitHub submission', async ({ page }) => {
+  const requested = await mockCheckedRepository(page, {
+    packageManifest: { name: 'dsh-plugin', dsh: { bundle: { patch: './cordis.patch.yml' } } },
+    patchBody: '- insert:\n    - id: hello\n      name: dsh-plugin\n',
+  })
+  await submitRepositoryCheck(page)
   await expect(page.locator('[data-check="bundle"]')).toHaveClass(/ok/)
+  await expect(page.locator('[data-check="patch"]')).toHaveClass(/ok/)
   await expect(page.locator('#submission-actions')).toBeVisible()
   await expect(page.locator('#github-submit')).toHaveAttribute('href', /github\.com\/majiayu000\/dsh-plugin-registry\/issues\/new/)
   await expect(page.locator('#review-submit')).toBeDisabled()
+  expect(requested.map(url => new URL(url).pathname)).toEqual([
+    '/repos/acme/dsh-plugin/contents/package.json',
+    '/repos/acme/dsh-plugin/contents/cordis.patch.yml',
+  ])
+  for (const url of requested) expect(new URL(url).searchParams.get('ref')).toBe(PINNED_SHA)
+})
+
+test('repository pre-check leaves the patch row failed when the patch path smuggles a ref', async ({ page }) => {
+  const requested = await mockCheckedRepository(page, {
+    packageManifest: { name: 'dsh-plugin', dsh: { bundle: { patch: './ok.yml?ref=deadbeef' } } },
+  })
+  await submitRepositoryCheck(page)
+  await expect(page.locator('[data-check="bundle"]')).toHaveClass(/fail/)
+  await expect(page.locator('[data-check="patch"]')).toHaveClass(/fail/)
+  await expect(page.locator('#check-message')).toContainText('dsh.bundle.patch')
+  expect(requested.map(url => new URL(url).pathname)).toEqual(['/repos/acme/dsh-plugin/contents/package.json'])
+  expect(requested.some(url => url.includes('deadbeef'))).toBe(false)
+  expect(new URL(requested[0]).searchParams.get('ref')).toBe(PINNED_SHA)
+})
+
+test('repository pre-check skips contents when the default branch cannot be pinned', async ({ page }) => {
+  const requested = await mockCheckedRepository(page, {
+    branchStatus: 404,
+    packageManifest: { name: 'dsh-plugin', dsh: { bundle: { patch: './cordis.patch.yml' } } },
+    patchBody: '- insert:\n    - id: hello\n      name: dsh-plugin\n',
+  })
+  await submitRepositoryCheck(page)
+  await expect(page.locator('[data-check="bundle"]')).toHaveClass(/fail/)
+  await expect(page.locator('[data-check="patch"]')).toHaveClass(/fail/)
+  await expect(page.locator('#check-message')).toContainText('could not be pinned to a commit')
+  expect(requested).toEqual([])
 })
 
 test('rendered details hydrate inline while listing installs use the JSON API', async ({ page }) => {

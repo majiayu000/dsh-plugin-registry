@@ -1,5 +1,5 @@
 await import('/assets/i18n.js');
-const { validateBundleManifest } = await import('/assets/bundle-manifest.js');
+const { githubContentsUrl, isPinnedCommitSha, unpinnedRefCheck, validateBundleManifest } = await import('/assets/bundle-manifest.js');
 const { validateBundlePatch } = await import('/assets/bundle-patch.js');
 const { buildGitHubSubmissionUrl } = await import('/assets/github-submission.js');
 const { evaluateRepository, findRegistryEntry, githubFailureMessage, manifestFailureMessage, parseGitHubRepository, repositoryCheckerCopy } = await import('/assets/repository-checker.js');
@@ -128,18 +128,37 @@ const { evaluateRepository, findRegistryEntry, githubFailureMessage, manifestFai
     this.setAttribute('aria-busy', 'true');
     resetChecks();
     try {
-      var repoResponse = await fetch('https://api.github.com/repos/' + repo, { headers: { accept: 'application/vnd.github+json' } });
+      var encodedRepo = repo.split('/').map(encodeURIComponent).join('/');
+      var repoResponse = await fetch('https://api.github.com/repos/' + encodedRepo, { headers: { accept: 'application/vnd.github+json' } });
       if (!repoResponse.ok) { var repoError = new Error('repository fetch failed'); repoError.status = repoResponse.status; throw repoError; }
       var data = await repoResponse.json();
-      var packageResponse = await fetch('https://api.github.com/repos/' + repo + '/contents/package.json', { headers: { accept: 'application/vnd.github.raw+json' } });
+      var sha = null;
+      var branch = data.default_branch;
+      if (typeof branch === 'string' && branch) {
+        var branchResponse = await fetch('https://api.github.com/repos/' + encodedRepo + '/branches/' + encodeURIComponent(branch), { headers: { accept: 'application/vnd.github+json' } });
+        if (branchResponse.ok) {
+          var branchData = await branchResponse.json();
+          sha = branchData && branchData.commit ? branchData.commit.sha : null;
+        } else if (branchResponse.status !== 404) {
+          var branchError = new Error('branch fetch failed');
+          branchError.status = branchResponse.status;
+          throw branchError;
+        }
+      }
       var bundleCheck = { valid: false, reason_code: 'package_missing', reason: copy.packageMissing };
-      if (packageResponse.ok) bundleCheck = validateBundleManifest(await packageResponse.text());
-      else if (packageResponse.status !== 404) { var packageError = new Error('package fetch failed'); packageError.status = packageResponse.status; throw packageError; }
       var patchCheck = { valid: false, reason_code: 'patch_file_missing', reason: copy.patch_file_missing };
-      if (bundleCheck.valid) {
-        var patchResponse = await fetch('https://api.github.com/repos/' + repo + '/contents/' + bundleCheck.patch.replace(/^\.\//, ''), { headers: { accept: 'application/vnd.github.raw+json' } });
-        if (patchResponse.ok) patchCheck = validateBundlePatch(await patchResponse.text());
-        else if (patchResponse.status !== 404) { var patchError = new Error('patch fetch failed'); patchError.status = patchResponse.status; throw patchError; }
+      if (!isPinnedCommitSha(sha)) {
+        bundleCheck = unpinnedRefCheck();
+        patchCheck = unpinnedRefCheck();
+      } else {
+        var packageResponse = await fetch(githubContentsUrl(repo, 'package.json', sha), { headers: { accept: 'application/vnd.github.raw+json' } });
+        if (packageResponse.ok) bundleCheck = validateBundleManifest(await packageResponse.text());
+        else if (packageResponse.status !== 404) { var packageError = new Error('package fetch failed'); packageError.status = packageResponse.status; throw packageError; }
+        if (bundleCheck.valid) {
+          var patchResponse = await fetch(githubContentsUrl(repo, bundleCheck.patch, sha), { headers: { accept: 'application/vnd.github.raw+json' } });
+          if (patchResponse.ok) patchCheck = validateBundlePatch(await patchResponse.text());
+          else if (patchResponse.status !== 404) { var patchError = new Error('patch fetch failed'); patchError.status = patchResponse.status; throw patchError; }
+        }
       }
       var registryEntry = null;
       try {
