@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { validateBundleManifest } from '../assets/bundle-manifest.js'
+import { githubContentsUrl, isPinnedCommitSha, unpinnedRefCheck, validateBundleManifest } from '../assets/bundle-manifest.js'
 import { validateBundlePatch } from '../assets/bundle-patch.js'
 
 function printResult(label, result) {
@@ -22,18 +22,42 @@ export async function checkLocalPlugin(directory) {
   return { ok: patch.valid, manifest, patch }
 }
 
-async function checkGitHubPlugin(repository) {
+function githubStatusResult(status) {
+  return { ok: false, manifest: { valid: false, reason_code: 'package_missing', reason: `GitHub returned ${status}` }, patch: null }
+}
+
+export async function checkGitHubPlugin(repository, fetcher = fetch) {
   const headers = {
+    accept: 'application/vnd.github+json',
+    'user-agent': 'harness-registry-check',
+  }
+  const rawHeaders = {
     accept: 'application/vnd.github.raw+json',
     'user-agent': 'harness-registry-check',
   }
-  const packageResponse = await fetch(`https://api.github.com/repos/${repository}/contents/package.json`, { headers })
-  if (!packageResponse.ok) {
-    return { ok: false, manifest: { valid: false, reason_code: 'package_missing', reason: `GitHub returned ${packageResponse.status}` }, patch: null }
+  const encodedRepository = String(repository).split('/').map(encodeURIComponent).join('/')
+  const repoResponse = await fetcher(`https://api.github.com/repos/${encodedRepository}`, { headers })
+  if (!repoResponse.ok) return githubStatusResult(repoResponse.status)
+  const metadata = await repoResponse.json()
+  const branch = metadata?.default_branch
+  let sha = null
+  if (typeof branch === 'string' && branch) {
+    const branchResponse = await fetcher(`https://api.github.com/repos/${encodedRepository}/branches/${encodeURIComponent(branch)}`, { headers })
+    if (branchResponse.ok) {
+      const branchData = await branchResponse.json()
+      sha = branchData?.commit?.sha
+    } else if (branchResponse.status !== 404) {
+      return githubStatusResult(branchResponse.status)
+    }
   }
+  if (!isPinnedCommitSha(sha)) {
+    return { ok: false, manifest: unpinnedRefCheck(), patch: unpinnedRefCheck() }
+  }
+  const packageResponse = await fetcher(githubContentsUrl(repository, 'package.json', sha), { headers: rawHeaders })
+  if (!packageResponse.ok) return githubStatusResult(packageResponse.status)
   const manifest = validateBundleManifest(await packageResponse.text())
   if (!manifest.valid) return { ok: false, manifest, patch: null }
-  const patchResponse = await fetch(`https://api.github.com/repos/${repository}/contents/${manifest.patch.replace(/^\.\//, '')}`, { headers })
+  const patchResponse = await fetcher(githubContentsUrl(repository, manifest.patch, sha), { headers: rawHeaders })
   if (!patchResponse.ok) {
     return { ok: false, manifest, patch: { valid: false, reason_code: 'patch_file_missing', reason: `GitHub returned ${patchResponse.status}` } }
   }

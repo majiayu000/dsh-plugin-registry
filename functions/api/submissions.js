@@ -1,4 +1,4 @@
-import { validateBundleManifest } from '../../assets/bundle-manifest.js'
+import { githubContentsUrl, isPinnedCommitSha, unpinnedRefCheck, validateBundleManifest } from '../../assets/bundle-manifest.js'
 import { validateBundlePatch } from '../../assets/bundle-patch.js'
 
 const DEFAULT_REGISTRY_REPOSITORY = 'majiayu000/dsh-plugin-registry'
@@ -108,34 +108,59 @@ function safeIssueText(value) {
     .replaceAll('-->', '--&gt;')
 }
 
+async function resolveDefaultBranchSha(fetcher, token, repository, branch) {
+  if (typeof branch !== 'string' || branch === '') return null
+  const encodedRepository = repository.split('/').map(encodeURIComponent).join('/')
+  try {
+    const response = await githubRequest(
+      fetcher,
+      token,
+      `/repos/${encodedRepository}/branches/${encodeURIComponent(branch)}`,
+      { method: 'GET' },
+    )
+    const payload = await response.json()
+    const sha = payload?.commit?.sha
+    return isPinnedCommitSha(sha) ? sha : null
+  } catch (error) {
+    if (error.status === 404) return null
+    throw error
+  }
+}
+
 async function inspectRepository(fetcher, token, repository) {
   const encodedRepository = repository.split('/').map(encodeURIComponent).join('/')
   const repositoryResponse = await githubRequest(fetcher, token, `/repos/${encodedRepository}`, { method: 'GET' })
   const metadata = await repositoryResponse.json()
+  const sha = await resolveDefaultBranchSha(fetcher, token, repository, metadata?.default_branch)
   let bundleCheck = { valid: false, reason_code: 'package_missing', reason: '根目录中没有 package.json。' }
-
-  const packageResponse = await fetcher(`https://api.github.com/repos/${encodedRepository}/contents/package.json`, {
-    method: 'GET',
-    headers: githubHeaders(token, 'application/vnd.github.raw+json'),
-  })
-  if (packageResponse.ok) bundleCheck = validateBundleManifest(await packageResponse.text())
-  else if (packageResponse.status !== 404) {
-    const error = new Error(`GitHub package request failed with ${packageResponse.status}`)
-    error.status = packageResponse.status
-    throw error
-  }
-
   let patchCheck = { valid: false, reason: '引用的 Patch 文件在仓库中不存在。' }
-  if (bundleCheck.valid) {
-    const patchResponse = await fetcher(`https://api.github.com/repos/${encodedRepository}/contents/${bundleCheck.patch.replace(/^\.\//, '')}`, {
+
+  if (!sha) {
+    bundleCheck = unpinnedRefCheck()
+    patchCheck = unpinnedRefCheck()
+  } else {
+    const packageResponse = await fetcher(githubContentsUrl(repository, 'package.json', sha), {
       method: 'GET',
       headers: githubHeaders(token, 'application/vnd.github.raw+json'),
     })
-    if (patchResponse.ok) patchCheck = validateBundlePatch(await patchResponse.text())
-    else if (patchResponse.status !== 404) {
-      const error = new Error(`GitHub patch request failed with ${patchResponse.status}`)
-      error.status = patchResponse.status
+    if (packageResponse.ok) bundleCheck = validateBundleManifest(await packageResponse.text())
+    else if (packageResponse.status !== 404) {
+      const error = new Error(`GitHub package request failed with ${packageResponse.status}`)
+      error.status = packageResponse.status
       throw error
+    }
+
+    if (bundleCheck.valid) {
+      const patchResponse = await fetcher(githubContentsUrl(repository, bundleCheck.patch, sha), {
+        method: 'GET',
+        headers: githubHeaders(token, 'application/vnd.github.raw+json'),
+      })
+      if (patchResponse.ok) patchCheck = validateBundlePatch(await patchResponse.text())
+      else if (patchResponse.status !== 404) {
+        const error = new Error(`GitHub patch request failed with ${patchResponse.status}`)
+        error.status = patchResponse.status
+        throw error
+      }
     }
   }
 

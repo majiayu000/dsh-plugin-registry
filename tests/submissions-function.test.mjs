@@ -47,20 +47,49 @@ test('config endpoint exposes only the public Turnstile site key', async () => {
   assert.deepEqual(await response.json(), { enabled: true, turnstileSiteKey: 'public-site-key' })
 })
 
-test('submission endpoint validates Turnstile, checks GitHub, and creates an assigned issue', async () => {
-  const calls = []
-  const fetcher = async (url, init = {}) => {
+const PINNED_SHA = '0123456789abcdef0123456789abcdef01234567'
+
+function precheckFetcher({
+  calls,
+  defaultBranch = 'main',
+  branchStatus = 200,
+  branchSha = PINNED_SHA,
+  packageStatus = 200,
+  packageBody = { name: 'dsh-example', dsh: { bundle: { patch: './cordis.patch.yml' } } },
+  patchStatus = 200,
+  patchBody = '- insert:\n    - id: hello\n      name: dsh-example\n',
+} = {}) {
+  return async (url, init = {}) => {
     calls.push({ url: String(url), init })
+    const parsed = new URL(url)
     if (String(url).includes('/siteverify')) return Response.json({ success: true, action: 'plugin_submission', hostname: 'plugin.example' })
-    if (String(url).includes('/issues?state=open')) return Response.json([])
-    if (String(url).endsWith('/repos/owner/dsh-example')) return Response.json({ visibility: 'public', private: false, topics: ['dsh-plugin'], archived: false, fork: false })
-    if (String(url).endsWith('/contents/package.json')) return new Response(JSON.stringify({ name: 'dsh-example', dsh: { bundle: { patch: './cordis.patch.yml' } } }))
-    if (String(url).endsWith('/contents/cordis.patch.yml')) return new Response('- insert:\n    - id: hello\n      name: dsh-example\n')
-    if (String(url).endsWith('/repos/majiayu000/dsh-plugin-registry/issues') && init.method === 'POST') {
+    if (parsed.pathname.endsWith('/issues') && parsed.searchParams.get('state') === 'open') return Response.json([])
+    if (parsed.pathname === '/repos/owner/dsh-example') {
+      return Response.json({ visibility: 'public', private: false, topics: ['dsh-plugin'], archived: false, fork: false, default_branch: defaultBranch })
+    }
+    if (parsed.pathname === `/repos/owner/dsh-example/branches/${encodeURIComponent(defaultBranch)}`) {
+      return new Response(JSON.stringify(branchStatus === 200 ? { commit: { sha: branchSha } } : {}), { status: branchStatus })
+    }
+    if (parsed.pathname === '/repos/owner/dsh-example/contents/package.json') {
+      return new Response(typeof packageBody === 'string' ? packageBody : JSON.stringify(packageBody), { status: packageStatus })
+    }
+    if (parsed.pathname.startsWith('/repos/owner/dsh-example/contents/')) {
+      return new Response(patchBody, { status: patchStatus })
+    }
+    if (parsed.pathname === '/repos/majiayu000/dsh-plugin-registry/issues' && init.method === 'POST') {
       return Response.json({ number: 42, html_url: 'https://github.com/majiayu000/dsh-plugin-registry/issues/42' }, { status: 201 })
     }
     throw new Error(`Unexpected request: ${url}`)
   }
+}
+
+function contentUrls(calls) {
+  return calls.filter(call => new URL(call.url).pathname.includes('/contents/')).map(call => new URL(call.url))
+}
+
+test('submission endpoint validates Turnstile, checks GitHub, and creates an assigned issue', async () => {
+  const calls = []
+  const fetcher = precheckFetcher({ calls })
   const request = new Request('https://plugin.example/api/submissions', {
     method: 'POST',
     headers: { origin: 'https://plugin.example', 'content-type': 'application/json', 'CF-Connecting-IP': '203.0.113.7' },
@@ -80,6 +109,84 @@ test('submission endpoint validates Turnstile, checks GitHub, and creates an ass
   assert.deepEqual(issue.assignees, ['majiayu000'])
   assert.match(issue.body, /- \[x\] 声明有效的 dsh\.bundle/)
   assert.match(issue.body, /- \[x\] Patch 文件是顶层 YAML 数组/)
+  const contents = contentUrls(calls)
+  assert.equal(contents.length, 2)
+  assert.deepEqual(contents.map(url => url.pathname), [
+    '/repos/owner/dsh-example/contents/package.json',
+    '/repos/owner/dsh-example/contents/cordis.patch.yml',
+  ])
+  for (const url of contents) assert.equal(url.searchParams.get('ref'), PINNED_SHA)
+})
+
+test('a patch path cannot retarget the submission precheck ref', async () => {
+  const calls = []
+  const fetcher = precheckFetcher({
+    calls,
+    packageBody: { name: 'dsh-example', dsh: { bundle: { patch: './ok.yml?ref=deadbeef' } } },
+  })
+  const response = await handleSubmission({
+    request: submissionRequest(),
+    env: { GITHUB_SUBMISSIONS_TOKEN: 'secret-token', TURNSTILE_SECRET_KEY: 'secret-turnstile-key' },
+  }, fetcher)
+  const result = await response.json()
+  assert.equal(response.status, 201)
+  assert.equal(result.issueNumber, 42)
+  const createCall = calls.find(call => call.url.endsWith('/repos/majiayu000/dsh-plugin-registry/issues') && call.init.method === 'POST')
+  const issue = JSON.parse(createCall.init.body)
+  assert.match(issue.body, /- \[ \] 声明有效的 dsh\.bundle/)
+  assert.match(issue.body, /- \[ \] Patch 文件是顶层 YAML 数组/)
+  const contents = contentUrls(calls)
+  assert.equal(contents.length, 1)
+  assert.equal(contents[0].pathname, '/repos/owner/dsh-example/contents/package.json')
+  assert.equal(contents[0].searchParams.get('ref'), PINNED_SHA)
+  assert.equal(calls.some(call => call.url.includes('deadbeef')), false)
+})
+
+test('submission precheck skips contents when the default branch sha cannot be pinned', async () => {
+  const calls = []
+  const fetcher = precheckFetcher({ calls, branchStatus: 404 })
+  const response = await handleSubmission({
+    request: submissionRequest(),
+    env: { GITHUB_SUBMISSIONS_TOKEN: 'secret-token', TURNSTILE_SECRET_KEY: 'secret-turnstile-key' },
+  }, fetcher)
+  const result = await response.json()
+  assert.equal(response.status, 201)
+  const createCall = calls.find(call => call.url.endsWith('/repos/majiayu000/dsh-plugin-registry/issues') && call.init.method === 'POST')
+  const issue = JSON.parse(createCall.init.body)
+  assert.match(issue.body, /- \[ \] 声明有效的 dsh\.bundle/)
+  assert.match(issue.body, /- \[ \] Patch 文件是顶层 YAML 数组/)
+  assert.match(issue.body, /The default branch could not be pinned to a commit/)
+  assert.equal(contentUrls(calls).length, 0)
+  assert.equal(result.issueNumber, 42)
+})
+
+test('submission precheck treats a non-sha branch commit as unpinned', async () => {
+  const calls = []
+  const fetcher = precheckFetcher({ calls, branchSha: 'main' })
+  const response = await handleSubmission({
+    request: submissionRequest(),
+    env: { GITHUB_SUBMISSIONS_TOKEN: 'secret-token', TURNSTILE_SECRET_KEY: 'secret-turnstile-key' },
+  }, fetcher)
+  assert.equal(response.status, 201)
+  const createCall = calls.find(call => new URL(call.url).pathname.endsWith('/issues') && call.init.method === 'POST')
+  const issue = JSON.parse(createCall.init.body)
+  assert.match(issue.body, /- \[ \] Patch 文件是顶层 YAML 数组/)
+  assert.equal(contentUrls(calls).length, 0)
+  assert.equal(calls.some(call => new URL(call.url).searchParams.get('ref') === 'main'), false)
+})
+
+test('non-404 branch lookup errors keep the existing GitHub error path', async () => {
+  const calls = []
+  const fetcher = precheckFetcher({ calls, branchStatus: 403 })
+  const response = await handleSubmission({
+    request: submissionRequest(),
+    env: { GITHUB_SUBMISSIONS_TOKEN: 'secret-token', TURNSTILE_SECRET_KEY: 'secret-turnstile-key' },
+  }, fetcher)
+  const result = await response.json()
+  assert.equal(response.status, 503)
+  assert.match(result.error, /GitHub/)
+  assert.equal(contentUrls(calls).length, 0)
+  assert.equal(calls.some(call => call.init.method === 'POST' && new URL(call.url).pathname.endsWith('/issues')), false)
 })
 
 function submissionRequest() {
