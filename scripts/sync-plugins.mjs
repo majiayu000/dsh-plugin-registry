@@ -200,7 +200,11 @@ async function githubGraphql(query, variables, options = {}) {
 }
 
 async function githubSearchPage({ searchQuery, cursor }) {
-  const data = await githubGraphql(REPOSITORY_DISCOVERY_QUERY, { searchQuery, cursor })
+  // Wide ranges need the count before splitting; hydrating 100 repositories here
+  // can time out before GitHub returns it. Retain the first result, then paginate.
+  const data = await githubGraphql(REPOSITORY_DISCOVERY_QUERY, {
+    searchQuery, cursor, pageSize: cursor === null ? 1 : 100,
+  })
   return {
     repositoryCount: data.search.repositoryCount,
     repositories: data.search.nodes.filter(Boolean).map(mapGraphqlRepository),

@@ -20,8 +20,8 @@ const REPOSITORY_METADATA_FIELDS = `
 `
 
 export const REPOSITORY_DISCOVERY_QUERY = `
-  query RegistryRepositoryDiscovery($searchQuery: String!, $cursor: String) {
-    search(query: $searchQuery, type: REPOSITORY, first: 100, after: $cursor) {
+  query RegistryRepositoryDiscovery($searchQuery: String!, $cursor: String, $pageSize: Int!) {
+    search(query: $searchQuery, type: REPOSITORY, first: $pageSize, after: $cursor) {
       repositoryCount
       pageInfo { hasNextPage endCursor }
       nodes {
