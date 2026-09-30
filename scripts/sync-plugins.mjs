@@ -302,8 +302,9 @@ async function loadPackageManifests(targets) {
       batch.forEach((target, index) => {
         const key = targetKey(target.full_name, target.directory)
         const text = data?.[`r${index}`]?.object?.text
-        // A null blob in a partial response is unknown, not proof of a missing manifest.
-        if (errors?.length && typeof text !== 'string') return
+        // An errored null blob is unknown; an unaffected alias can still prove absence.
+        const failed = errors?.some(error => !error.path?.length || error.path[0] === `r${index}`)
+        if (failed && typeof text !== 'string') return
         manifests.set(key, text || '')
         const oid = data?.[`r${index}`]?.defaultBranchRef?.target?.oid
         if (typeof oid === 'string' && /^[0-9a-f]{40}$/.test(oid)) headCommits.set(key, oid)
@@ -337,7 +338,8 @@ async function loadBundlePatches(candidates) {
       const { data, errors } = await githubGraphql(`query { ${fields} }`, {}, { allowPartial: true })
       batch.forEach((candidate, index) => {
         const text = data?.[`r${index}`]?.object?.text
-        if (errors?.length && typeof text !== 'string') return
+        const failed = errors?.some(error => !error.path?.length || error.path[0] === `r${index}`)
+        if (failed && typeof text !== 'string') return
         if (typeof text !== 'string') {
           results.set(candidate.key, false)
           return
@@ -422,7 +424,8 @@ async function main() {
     directory: bundleDirectoryFromUrl(plugin.url),
     id: plugin.id,
   }))
-  const initialTargets = [...new Map([...rootTargets, ...curatedTargets].map(target => [targetKey(target.full_name, target.directory), target])).values()]
+  const initialTargetMap = new Map([...rootTargets, ...curatedTargets].map(target => [targetKey(target.full_name, target.directory), target]))
+  const initialTargets = [...initialTargetMap.values()]
   const previousValidationVersion = previous?.stats?.manifestValidationVersion ?? 0
   const manifestCacheCompatible = previousValidationVersion === MANIFEST_VALIDATION_VERSION
   if (!manifestCacheCompatible) {
@@ -446,7 +449,7 @@ async function main() {
     if (!rootText) continue
     for (const directory of listBundleDirectories(rootText)) {
       const key = targetKey(repo.full_name, directory)
-      if (manifests.has(key) || extraTargets.some(target => targetKey(target.full_name, target.directory) === key)) continue
+      if (initialTargetMap.has(key) || extraTargets.some(target => targetKey(target.full_name, target.directory) === key)) continue
       extraTargets.push({ full_name: repo.full_name, directory })
     }
   }

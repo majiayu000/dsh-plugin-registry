@@ -85,6 +85,7 @@ async function syncFixture(t, { count = 400, bundle = false, curatedDirectory = 
         const invalid = scenario['invalid' + kind]?.includes(key)
         const manifest = { name, dsh: { bundle: { patch: './bundle.yaml', profile: 'web' },
           ...(scenario.bundle && name === 'dsh-plugin-2' && !directory ? { bundles: ['./bundles/sample'] } : {}),
+          ...(scenario.curatedDirectory && name === 'dsh-plugin-0' && !directory ? { bundles: ['./' + scenario.curatedDirectory] } : {}),
         } }
         const text = kind === 'manifest'
           ? (invalid ? '{}' : JSON.stringify(manifest))
@@ -93,7 +94,9 @@ async function syncFixture(t, { count = 400, bundle = false, curatedDirectory = 
           object: partial || missing ? null : { text },
           defaultBranchRef: { target: { oid: 'a'.repeat(40) } },
         }
-        if (partial) errors.push({ message: 'Temporary blob failure', path: ['r' + index, 'object'] })
+        if (partial) errors.push({ message: 'Temporary blob failure',
+          ...(scenario.unattributedError ? {} : { path: ['r' + index, 'object'] }),
+        })
       }
       return { ok: true, json: async () => ({ data, ...(errors.length ? { errors } : {}) }) }
     }
@@ -103,7 +106,7 @@ async function syncFixture(t, { count = 400, bundle = false, curatedDirectory = 
   return {
     output, audit,
     async sync(scenario = {}) {
-      await writeFile(join(root, 'scenario.json'), JSON.stringify({ count, bundle, ...scenario }))
+      await writeFile(join(root, 'scenario.json'), JSON.stringify({ count, bundle, curatedDirectory, ...scenario }))
       await writeFile(join(root, 'requests.jsonl'), '')
       const execution = await run(process.execPath, ['--import', mock, join(repoRoot, 'scripts/sync-plugins.mjs')], {
         cwd: root,
@@ -125,9 +128,10 @@ for (const kind of ['manifest', 'patch']) {
   test(`partial ${kind} blobs stay unchecked and recover without a repository push`, async t => {
     const fixture = await syncFixture(t)
     const affected = ['acme/dsh-plugin-0', 'acme/dsh-plugin-1']
-    const partial = await fixture.sync({ ['partial' + kind]: affected })
+    const partial = await fixture.sync({ ['partial' + kind]: affected, ['missing' + kind]: ['acme/dsh-plugin-3'] })
     assert.match(partial.stderr, /GraphQL returned partial data/)
-    assert.equal(partial.audit.pendingReview.length, 0)
+    assert.deepEqual(partial.audit.pendingReview.map(plugin => plugin.id), ['acme/dsh-plugin-3'])
+    assert.match(partial.audit.pendingReview[0].reason, kind === 'manifest' ? /package.json/ : /patch does not resolve/)
     assert.ok(partial.document.plugins.some(plugin => plugin.id === 'acme/dsh-plugin-2'))
     assert.equal(partial.document.plugins.find(plugin => plugin.id === affected[0]).verification.manifest, 'not_checked')
     assert.ok(!partial.document.plugins.some(plugin => plugin.id === affected[1]))
@@ -148,6 +152,17 @@ for (const kind of ['manifest', 'patch']) {
     const recovered = await fixture.sync()
     assert.ok(recovered.requests.some(request => request.kind === kind && request.key === key))
     assert.ok(recovered.document.plugins.some(plugin => plugin.id === 'acme/dsh-plugin-2#sample'))
+  })
+
+  test(`unattributed GraphQL errors leave all null ${kind} blobs unchecked`, async t => {
+    const fixture = await syncFixture(t)
+    const partial = await fixture.sync({
+      ['partial' + kind]: ['acme/dsh-plugin-1'], ['missing' + kind]: ['acme/dsh-plugin-3'],
+      unattributedError: true,
+    })
+    assert.equal(partial.audit.pendingReview.length, 0)
+    assert.ok(partial.document.plugins.some(plugin => plugin.id === 'acme/dsh-plugin-2'))
+    assert.equal((await fixture.sync()).document.plugins.length, 400)
   })
 }
 
