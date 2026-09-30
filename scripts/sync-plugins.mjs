@@ -518,7 +518,7 @@ async function main() {
   })
   const discoveredRoots = newCandidates.flatMap(repo => {
     const evidence = targetVerification(repo.full_name, '', repo.full_name)
-    const root = evidence.checked ? [normalizeDiscovered(repo, evidence.manifestShapeValid, evidence.patchExists, evidence.verifiedCommit, {
+    const root = !TOKEN || evidence.checked ? [normalizeDiscovered(repo, evidence.manifestShapeValid, evidence.patchExists, evidence.verifiedCommit, {
       profile: evidence.profile,
       packageName: evidence.packageName,
     })] : []

@@ -31,7 +31,7 @@ test('a corrupt previous snapshot refuses to disable the health gate silently', 
   })
 })
 
-async function syncFixture(t, { count = 400, bundle = false, curatedDirectory = '' } = {}) {
+async function syncFixture(t, { count = 400, bundle = false, curatedDirectory = '', authenticated = true, unrelated = [] } = {}) {
   const root = await mkdtemp(join(tmpdir(), 'hr-sync-partial-'))
   t.after(() => rm(root, { recursive: true, force: true }))
   await mkdir(join(root, 'sources'))
@@ -56,12 +56,20 @@ async function syncFixture(t, { count = 400, bundle = false, curatedDirectory = 
     import { appendFileSync, readFileSync } from 'node:fs'
     const scenario = JSON.parse(readFileSync('scenario.json', 'utf8'))
     const repositories = Array.from({ length: scenario.count }, (_, index) => ({
-      nameWithOwner: 'acme/dsh-plugin-' + index,
-      url: 'https://github.com/acme/dsh-plugin-' + index,
-      description: 'DeepSeek Harness plugin', pushedAt: scenario.pushedAt || '2026-09-01T00:00:00Z',
-      repositoryTopics: { nodes: [{ topic: { name: 'dsh-plugin' } }, { topic: { name: 'dsh' } }] },
+      nameWithOwner: 'acme/' + (scenario.unrelated.includes(index) ? 'generic-' : 'dsh-plugin-') + index,
+      url: 'https://github.com/acme/' + (scenario.unrelated.includes(index) ? 'generic-' : 'dsh-plugin-') + index,
+      description: scenario.unrelated.includes(index) ? 'Other tool' : 'DeepSeek Harness plugin',
+      pushedAt: scenario.pushedAt || '2026-09-01T00:00:00Z',
+      repositoryTopics: { nodes: [{ topic: { name: 'dsh-plugin' } }, ...(scenario.unrelated.includes(index) ? [] : [{ topic: { name: 'dsh' } }])] },
     }))
     globalThis.fetch = async (url, options) => {
+      if (url.startsWith('https://api.github.com/search/repositories?')) {
+        appendFileSync('requests.jsonl', JSON.stringify({ kind: 'rest', key: 'search' }) + '\n')
+        return { ok: true, json: async () => ({ items: repositories.map(repository => ({
+          full_name: repository.nameWithOwner, html_url: repository.url, description: repository.description,
+          pushed_at: repository.pushedAt, topics: repository.repositoryTopics.nodes.map(node => node.topic.name),
+        })) }) }
+      }
       if (url !== 'https://api.github.com/graphql') throw new Error('Unexpected network request: ' + url)
       const { query, variables } = JSON.parse(options.body)
       if (query.includes('RegistryRepositoryDiscovery')) {
@@ -106,11 +114,11 @@ async function syncFixture(t, { count = 400, bundle = false, curatedDirectory = 
   return {
     output, audit,
     async sync(scenario = {}) {
-      await writeFile(join(root, 'scenario.json'), JSON.stringify({ count, bundle, curatedDirectory, ...scenario }))
+      await writeFile(join(root, 'scenario.json'), JSON.stringify({ count, bundle, curatedDirectory, unrelated, ...scenario }))
       await writeFile(join(root, 'requests.jsonl'), '')
       const execution = await run(process.execPath, ['--import', mock, join(repoRoot, 'scripts/sync-plugins.mjs')], {
         cwd: root,
-        env: { ...process.env, GITHUB_TOKEN: 'fixture-only', GH_TOKEN: '', DSH_MAX_PARTIAL_RATIO: '0.05',
+        env: { ...process.env, GITHUB_TOKEN: authenticated ? 'fixture-only' : '', GH_TOKEN: '', DSH_MAX_PARTIAL_RATIO: '0.05',
           DSH_SYNC_ALLOW_UNSAFE: '', DSH_REGISTRY_OUTPUT: output, DSH_REGISTRY_AUDIT_OUTPUT: audit,
           DSH_REGISTRY_VERSION_OUTPUT: join(root, 'version.json') },
       })
@@ -123,6 +131,27 @@ async function syncFixture(t, { count = 400, bundle = false, curatedDirectory = 
     },
   }
 }
+
+test('unauthenticated discovery retains pending and quarantined candidates and cannot replace a complete snapshot', async t => {
+  const fixture = await syncFixture(t, { count: 3, authenticated: false, unrelated: [2] })
+  for (let run = 0; run < 2; run += 1) {
+    const recent = await fixture.sync()
+    assert.equal(recent.document.stats.discoveryMode, 'recent')
+    assert.deepEqual(recent.audit.pendingReview.map(plugin => plugin.id), ['acme/dsh-plugin-1'])
+    assert.deepEqual(recent.audit.quarantined.map(plugin => plugin.id), ['acme/generic-2'])
+    assert.deepEqual(recent.requests, [{ kind: 'rest', key: 'search' }])
+  }
+  const complete = JSON.parse(await readFile(fixture.output, 'utf8'))
+  complete.stats.discoveryMode = 'complete'
+  const baseline = JSON.stringify(complete)
+  await writeFile(fixture.output, baseline)
+  await assert.rejects(fixture.sync(), error => {
+    assert.equal(error.code, 1)
+    assert.match(error.stderr, /partial discovery run cannot overwrite a complete registry snapshot/)
+    return true
+  })
+  assert.equal(await readFile(fixture.output, 'utf8'), baseline)
+})
 
 for (const kind of ['manifest', 'patch']) {
   test(`positive root evidence survives an incomplete ${kind} recheck only while pushedAt is unchanged`, async t => {
