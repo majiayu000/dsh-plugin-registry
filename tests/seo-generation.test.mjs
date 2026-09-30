@@ -54,6 +54,10 @@ test('SEO generation creates bounded detail shards and a complete sitemap', asyn
   assert.equal((await readdir(join(distDir, 'data/plugin-shards'))).length, 256)
   const page = await render('acme/tools#terminal')
   const sitemap = await readFile(join(distDir, 'sitemap.xml'), 'utf8')
+  for (const path of ['publish', 'policy', 'dashboard']) {
+    assert.ok(sitemap.includes(`<loc>https://example.com/registry/${path}</loc>`))
+    assert.ok(!sitemap.includes(`${path}.html`))
+  }
   assert.match(page, /data-plugin-id="acme\/tools#terminal"/)
   assert.match(page, /rel="canonical" href="https:\/\/example.com\/registry\/plugins\/acme\/tools\/terminal\/"/)
   assert.match(page, /application\/ld\+json/)
@@ -87,7 +91,7 @@ test('SEO generation creates bounded detail shards and a complete sitemap', asyn
   assert.match(home, /property="og:title" content="Registry"/)
   assert.match(home, /property="og:image" content="https:\/\/example.com\/assets\/logo\.png"/)
   const publish = await readFile(join(distDir, 'publish.html'), 'utf8')
-  assert.match(publish, /rel="canonical" href="https:\/\/example.com\/registry\/publish\.html"/)
+  assert.match(publish, /rel="canonical" href="https:\/\/example.com\/registry\/publish"/)
   assert.match(publish, /property="og:title" content="Publish"/)
   assert.doesNotMatch(publish, /property="og:description"/)
   await generateSeoFiles({ distDir, registryPath, homepage: 'https://example.com/registry/' })

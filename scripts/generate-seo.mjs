@@ -19,9 +19,9 @@ function xmlEscape(value) {
 
 const STATIC_PAGES = [
   { file: 'index.html', path: '' },
-  { file: 'publish.html', path: 'publish.html' },
-  { file: 'policy.html', path: 'policy.html' },
-  { file: 'dashboard.html', path: 'dashboard.html' },
+  { file: 'publish.html', path: 'publish' },
+  { file: 'policy.html', path: 'policy' },
+  { file: 'dashboard.html', path: 'dashboard' },
 ]
 
 async function inlinePageStyles(page, distDir) {
