@@ -481,7 +481,9 @@ async function main() {
     const cached = manifestCache.get(String(id).toLowerCase()) || manifestCache.get(key)
     const pushedAt = pushedAtFor(fullName)
     const fetched = fetchedKeys.has(key)
-    const unchanged = directory && manifestCacheCompatible && !fetched && cached?.pushedAt === pushedAt && cached.shapeValid && cached.patchStatus === 'exists'
+    const check = fetched ? validateBundleManifest(manifests.get(key)) : null
+    const unchecked = !fetched || (check.valid && !bundlePatches.has(key))
+    const unchanged = manifestCacheCompatible && unchecked && cached?.pushedAt === pushedAt && cached.shapeValid && cached.patchStatus === 'exists'
     if (unchanged) {
       return {
         checked: true,
@@ -492,14 +494,10 @@ async function main() {
         packageName: cached.packageName,
       }
     }
-    if (!fetched) {
+    if (unchecked) {
       return { checked: false, manifestShapeValid: false, patchExists: null, verifiedCommit: cached?.verifiedCommit }
     }
-    const check = validateBundleManifest(manifests.get(key))
     const meta = bundleMeta.get(key)
-    if (check.valid && !bundlePatches.has(key)) {
-      return { checked: false, manifestShapeValid: false, patchExists: null, verifiedCommit: cached?.verifiedCommit }
-    }
     return {
       checked: true,
       manifestShapeValid: check.valid,

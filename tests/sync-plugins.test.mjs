@@ -58,7 +58,7 @@ async function syncFixture(t, { count = 400, bundle = false, curatedDirectory = 
     const repositories = Array.from({ length: scenario.count }, (_, index) => ({
       nameWithOwner: 'acme/dsh-plugin-' + index,
       url: 'https://github.com/acme/dsh-plugin-' + index,
-      description: 'DeepSeek Harness plugin', pushedAt: '2026-09-01T00:00:00Z',
+      description: 'DeepSeek Harness plugin', pushedAt: scenario.pushedAt || '2026-09-01T00:00:00Z',
       repositoryTopics: { nodes: [{ topic: { name: 'dsh-plugin' } }, { topic: { name: 'dsh' } }] },
     }))
     globalThis.fetch = async (url, options) => {
@@ -125,6 +125,23 @@ async function syncFixture(t, { count = 400, bundle = false, curatedDirectory = 
 }
 
 for (const kind of ['manifest', 'patch']) {
+  test(`positive root evidence survives an incomplete ${kind} recheck only while pushedAt is unchanged`, async t => {
+    const fixture = await syncFixture(t)
+    await fixture.sync()
+    const affected = ['acme/dsh-plugin-0', 'acme/dsh-plugin-1']
+    const partial = await fixture.sync({ ['partial' + kind]: affected })
+    assert.equal(partial.document.plugins.length, 400)
+    assert.equal(partial.audit.pendingReview.length, 0)
+    for (const id of affected) assert.equal(partial.document.plugins.find(plugin => plugin.id === id).verification.patch, 'exists')
+    const missing = await fixture.sync({ ['missing' + kind]: [affected[1]] })
+    assert.deepEqual(missing.audit.pendingReview.map(plugin => plugin.id), [affected[1]])
+    await fixture.sync()
+    const changed = await fixture.sync({ ['partial' + kind]: affected, pushedAt: '2026-09-02T00:00:00Z' })
+    assert.ok(!changed.document.plugins.some(plugin => plugin.id === affected[1]))
+    assert.equal(changed.document.plugins.find(plugin => plugin.id === affected[0]).verification.patch, 'not_checked')
+    assert.equal(changed.audit.pendingReview.length, 0)
+  })
+
   test(`partial ${kind} blobs stay unchecked and recover without a repository push`, async t => {
     const fixture = await syncFixture(t)
     const affected = ['acme/dsh-plugin-0', 'acme/dsh-plugin-1']
