@@ -716,6 +716,7 @@ html.modal-open, html.modal-open body { overflow: hidden; }
 .kpi .kd.down { color: var(--danger); }
 .panel { background: var(--bg); border-radius: var(--radius-md); box-shadow: var(--elev-ring); padding: 24px 26px; }
 .panel h3, .panel-title { font-size: 22px; }
+#troubleshooting { scroll-margin-top: 88px; }
 .panel h3::before, .panel-title::before { content: '## '; color: var(--blue); font-family: var(--font-mono); font-weight: 400; font-size: 0.68em; }
 .panel .psub { font: 11px var(--font-mono); color: var(--muted); margin: 8px 0 22px; }
 .dash-grid { display: grid; grid-template-columns: minmax(0,1.6fr) minmax(0,1fr); gap: 16px; margin-top: 16px; }
