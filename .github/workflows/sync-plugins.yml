@@ -21,6 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: main
           # rebase 推送需要完整历史（仓库经 delta 压缩后很小）
           fetch-depth: 0
       - uses: actions/setup-node@v4
