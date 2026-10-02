@@ -7,6 +7,20 @@
   var locale = saved || (navigator.language && navigator.language.toLowerCase().indexOf('zh') === 0 ? 'zh-CN' : 'en-US');
 
   var en = {
+    "为什么插件还没有被收录？": "Why is my plugin not listed?",
+    "收录与安装常见问题": "Listing and installation FAQ",
+    "同步故障与支持": "Sync failures and support",
+    "DSH Desk 安装与常见问题": "DSH Desk setup and FAQ",
+    "只有 Topic，没有安装命令": "Topic present, but no install command",
+    "dsh-plugin 是发现入口。还要有有效的 dsh.bundle.patch 和对应文件；仅有关联信号的候选仓库不会进入默认可安装列表。补齐最低 Manifest 契约后再检查。": "The dsh-plugin topic makes a repository discoverable. An installable entry also needs a valid dsh.bundle.patch and its referenced file. Related candidates are excluded from the default installable list until that contract is met.",
+    "Patch 检查失败": "Patch validation failed",
+    "路径必须以 ./ 开头、相对当前包，不能使用绝对路径或通过 .. 越界；文件要提交到仓库，内容必须是顶层 YAML 数组。最小空 Patch 是 []，不是 {}。子包还需在根 package.json 的 dsh.bundles 中列出。": "The patch path must start with ./, stay within the package, and reference a committed file. Its contents must be a top-level YAML array: the minimal empty patch is [], not {}. List subpackages in dsh.bundles in the root package.json.",
+    "本地通过，网页检查却失败": "Local checks pass, but the web check fails",
+    "网页读的是 GitHub 已推送的文件，不是磁盘上的改动。先确认 owner/repo 和提交。网页检查器检查根包；子包用下面的本地命令指向实际声明 bundle 的包目录。浏览器使用匿名 GitHub API，限流时可稍后重试。本地通过不等于新快照已发布。": "The web checker reads pushed GitHub files, not local edits. Confirm owner/repo and the commit. It checks the root package; use the local command below against a subpackage declaring the bundle. The browser uses anonymous GitHub API requests, so retry later if rate-limited. A local pass does not publish a registry snapshot.",
+    "所有条件满足，列表仍没更新": "All checks pass, but the listing is missing",
+    "等待下一轮计划同步，并在插件库首页核对快照时间。页面报告过期时，不要把旧列表当作最新结果。可在现有同步 Issue 中查看故障或提交脱敏的仓库地址与检查结果。": "Wait for the next scheduled sync and check snapshot freshness on the homepage. A stale snapshot is not current evidence. Check existing sync issues for failures, or report the public repository URL and redacted check results.",
+    "已确认 Manifest，就是安全插件吗？": "Does manifest verification mean a plugin is safe?",
+    "不是。本目录不运行插件代码，也不验证安装后的行为。安装前仍需检查源码、依赖和权限。DSH Desk 用户通过 Plugins… 进入桌面审查流程；目录验证不等于进入桌面的可信目录。": "No. The registry does not run plugin code or validate post-install behavior. Review source, dependencies, and permissions before installing. DSH Desk users enter the desktop review flow through Plugins…; registry verification does not add a plugin to the desktop trusted catalog.",
     '跳到主要内容': 'Skip to main content', '主要导航': 'Primary navigation',
     '浏览插件': 'Browse', '发布': 'Publish', '统计': 'Stats', '规范': 'Policy', '返回插件列表': 'Back to plugins',
     '发布你的插件': 'Publish your plugin', '收录规范': 'Listing policy', 'API 文档': 'API docs',
