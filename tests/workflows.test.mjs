@@ -5,7 +5,7 @@ import test from 'node:test'
 test('registry sync runs every two hours', async () => {
   const workflow = await readFile('.github/workflows/sync-plugins.yml', 'utf8')
   assert.match(workflow, /cron: '17 \*\/2 \* \* \*'/)
-  assert.match(workflow, /timeout-minutes: 30/)
+  assert.match(workflow, /timeout-minutes: 60/)
 })
 
 test('a changed registry deploys the verified build without relying on a bot push event', async () => {
