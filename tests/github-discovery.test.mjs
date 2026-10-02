@@ -112,6 +112,71 @@ test('repository discovery does not split permanent GitHub errors', async () => 
   assert.equal(calls, 1)
 })
 
+test('repository discovery discards a partial page sequence and splits after a pagination gateway error', async () => {
+  const progress = []
+  const queries = []
+  const repositories = await discoverGitHubRepositories({
+    from: new Date('2026-08-14T00:00:00Z'),
+    to: new Date('2026-08-14T00:00:03Z'),
+    async searchPage({ searchQuery, cursor }) {
+      queries.push({ searchQuery, cursor })
+      if (cursor === 'failing-page') throw new Error('502 Bad Gateway: https://api.github.com/graphql')
+      if (searchQuery.includes('00:00:00Z..2026-08-14T00:00:03Z')) return page(2, ['acme/stale'], true, 'failing-page')
+      if (searchQuery.includes('00:00:00Z..2026-08-14T00:00:01Z')) return page(1, ['acme/left'])
+      return page(1, ['acme/right'])
+    },
+    onProgress(entry) { progress.push(entry) },
+  })
+  assert.deepEqual(repositories.map(repository => repository.full_name), ['acme/left', 'acme/right'])
+  assert.equal(queries.length, 4)
+  assert.ok(progress.some(entry => entry.type === 'error-split' && entry.remainingErrorSplits === 15))
+})
+
+test('repository discovery preserves permanent pagination errors without splitting', async () => {
+  let calls = 0
+  await assert.rejects(discoverGitHubRepositories({
+    from: new Date('2026-08-14T00:00:00Z'),
+    to: new Date('2026-08-14T00:00:03Z'),
+    async searchPage({ cursor }) {
+      calls += 1
+      if (cursor) throw new Error('401 Unauthorized: https://api.github.com/graphql')
+      return page(2, ['acme/one'], true, 'next')
+    },
+  }), /401 Unauthorized/)
+  assert.equal(calls, 2)
+})
+
+test('repository discovery fails a pagination gateway error when the window cannot split', async () => {
+  let calls = 0
+  await assert.rejects(discoverGitHubRepositories({
+    from: new Date('2026-08-14T00:00:00Z'),
+    to: new Date('2026-08-14T00:00:01Z'),
+    async searchPage({ cursor }) {
+      calls += 1
+      if (cursor) throw new Error('503 Service Unavailable: https://api.github.com/graphql')
+      return page(2, ['acme/one'], true, 'next')
+    },
+  }), /503 Service Unavailable/)
+  assert.equal(calls, 2)
+})
+
+test('repository discovery keeps pagination gateway recovery within the shared split budget', async () => {
+  let calls = 0
+  const progress = []
+  await assert.rejects(discoverGitHubRepositories({
+    from: new Date('2008-01-01T00:00:00Z'),
+    to: new Date('2026-08-14T00:00:00Z'),
+    async searchPage({ cursor }) {
+      calls += 1
+      if (cursor) throw new Error('504 Gateway Timeout: https://api.github.com/graphql')
+      return page(2, ['acme/one'], true, 'next')
+    },
+    onProgress(entry) { progress.push(entry) },
+  }), /504 Gateway Timeout/)
+  assert.equal(calls, 34)
+  assert.equal(progress.filter(entry => entry.type === 'error-split').length, 16)
+})
+
 test('repository discovery splits a wide window when unique results fall outside live-index drift', async () => {
   const queries = []
   const repositories = await discoverGitHubRepositories({
