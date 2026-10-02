@@ -536,7 +536,20 @@ async function main() {
       })
     return [...root, ...extras]
   })
-  const normalizedCandidates = discoveredRoots
+  // The snapshot stores child IDs, but not the directory declarations in the root manifest.
+  // Preserve prior positive children only when that declaration could not be checked.
+  const cachedChildren = TOKEN && manifestCacheCompatible ? newCandidates.flatMap(repo => {
+    if (manifests.has(targetKey(repo.full_name))) return []
+    return (previous?.plugins || []).filter(plugin => (
+      plugin.source === 'discovered' && String(plugin.id).includes('#')
+      && repositoryKey(plugin) === repo.full_name.toLowerCase()
+      && plugin.pushedAt === pushedAtFor(repo.full_name)
+      && plugin.verification?.manifest === 'shape_validated' && plugin.verification?.patch === 'exists'
+    )).map(plugin => normalizeDiscovered(repo, true, true, plugin.verifiedCommit, {
+      id: plugin.id, name: plugin.name, profile: plugin.profile, packageName: plugin.packageName,
+    }))
+  }) : []
+  const normalizedCandidates = [...discoveredRoots, ...cachedChildren]
   const blocked = new Map((blocklist.repositories || []).map(entry => [String(entry.repo).toLowerCase(), entry]))
   const candidateQuarantined = normalizedCandidates.flatMap(plugin => {
     const block = blocked.get(repoKey(plugin.owner, plugin.name))
