@@ -166,6 +166,69 @@ test('a failed audit fetch does not keep stale pending candidates after reload',
 
 const PINNED_SHA = '0123456789abcdef0123456789abcdef01234567'
 
+for (const locale of ['en-US', 'zh-CN']) {
+  test(`install dialog pin evidence matches the displayed command in ${locale}`, async ({ page }) => {
+    const { renderPluginPage } = await import('../../scripts/render-plugin-page.mjs')
+    const template = await readFile(new URL('../../plugin-detail.html', import.meta.url), 'utf8')
+    const plugin = {
+      id: 'acme/pin-evidence', name: 'Pin Evidence', owner: 'acme',
+      url: 'https://github.com/acme/pin-evidence', stars: 1, forks: 0, category: 'tools',
+      description: { en: 'Pin evidence fixture', zh: '安装命令校验' },
+      install: `dsh plugin --profile web add github:acme/pin-evidence#${PINNED_SHA}`,
+      verifiedCommit: PINNED_SHA, topics: [], source: 'curated', trustLevel: 'curated',
+      verification: { manifest: 'shape_validated', patch: 'exists', installation: 'not_tested' },
+    }
+    await page.addInitScript(locale => {
+      localStorage.setItem('harness-registry-locale', locale)
+      Object.defineProperty(navigator, 'clipboard', {
+        value: { writeText: async command => { window.copiedCommand = command } },
+      })
+    }, locale)
+    await page.route('**/plugins/acme/pin-evidence/', route => route.fulfill({
+      status: 200, contentType: 'text/html',
+      body: renderPluginPage(template, plugin, 'http://127.0.0.1:5173/'),
+    }))
+    await page.goto('/plugins/acme/pin-evidence/')
+    await expect(page.locator('#plugin-name')).toHaveText(plugin.name)
+    await expect.poll(() => page.evaluate(() => Boolean(window.HR?.openInstallDialog))).toBe(true)
+
+    const cases = [
+      { spec: `github:acme/pin-evidence#${PINNED_SHA}`, pinned: true },
+      { spec: 'dsh-better-sidebar' },
+      { spec: '@scope/pkg@1.2.3' },
+      { spec: 'github:acme/pin-evidence' },
+      { spec: `github:acme/pin-evidence#${'a'.repeat(40)}` },
+      { spec: `github:acme/pin-evidence#${PINNED_SHA}`, commit: 'invalid' },
+      { spec: 'dsh-better-sidebar', commit: '' },
+    ]
+    for (const entry of cases) {
+      const current = {
+        ...plugin,
+        install: `dsh plugin --profile web add ${entry.spec}`,
+        verifiedCommit: entry.commit ?? PINNED_SHA,
+      }
+      await page.evaluate(current => HR.openInstallDialog(current), current)
+      const dialog = page.locator('dialog[open]')
+      await expect(dialog.locator('[data-install-command]')).toHaveText(current.install)
+      const commit = dialog.locator('.install-dialog-commit')
+      if (entry.commit !== undefined) {
+        await expect(commit).toHaveCount(0)
+      } else {
+        await expect(commit.locator('a')).toHaveAttribute('href', `${plugin.url}/commit/${PINNED_SHA}`)
+        await expect(commit).toContainText(locale === 'en-US' ? 'Manifest checked against HEAD commit' : 'Manifest 校验时的仓库 HEAD')
+        if (entry.pinned) {
+          await expect(commit).toContainText(locale === 'en-US' ? 'The command pins this commit' : '安装命令钉在这个 commit 上')
+        } else {
+          await expect(commit).toContainText(locale === 'en-US' ? 'The command is not pinned to this commit.' : '安装命令未钉在这个 commit 上。')
+          await expect(commit).not.toContainText(locale === 'en-US' ? 'The command pins this commit' : '安装命令钉在这个 commit 上')
+        }
+      }
+      await dialog.locator('[data-install-copy]').click()
+      await expect.poll(() => page.evaluate(() => window.copiedCommand)).toBe(current.install)
+    }
+  })
+}
+
 async function mockCheckedRepository(page, { packageManifest, patchBody = '', branchStatus = 200, sha = PINNED_SHA } = {}) {
   const requested = []
   const match = pathname => url => url.hostname === 'api.github.com' && url.pathname === pathname

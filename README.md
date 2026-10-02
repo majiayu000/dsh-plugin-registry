@@ -97,7 +97,7 @@ Check a local checkout before publishing:
 npm run check:plugin -- ./hello-plugin
 ```
 
-Use the repository checker at <http://localhost:5173/publish.html>. When the Cloudflare submission channel is configured, authors can submit a trackable review request without leaving the page; GitHub remains available as a fallback. See [submission review setup](docs/submission-review.md).
+Use the public [repository checker and troubleshooting guide](https://plugin.dshdesk.com/publish#troubleshooting), or <http://localhost:5173/publish.html> in local development. When the Cloudflare submission channel is configured, authors can submit a trackable review request without leaving the page; GitHub remains available as a fallback. See [submission review setup](docs/submission-review.md).
 
 ## Known limitations
 
