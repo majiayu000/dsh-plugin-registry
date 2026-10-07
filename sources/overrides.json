@@ -22,6 +22,14 @@
     },
     "raosay/dsh-kanban": {
       "origin": "issue"
+    },
+    "devacc8/dsh-billing-badge": {
+      "description": {
+        "zh": "在输入框统计行里、原生缓存命中读数之后显示计费时段与账户余额：高峰/非高峰圆点与切换倒计时，点击展开面板，按接口返回的货币拆分总额、赠送与充值。",
+        "en": "Billing season and account balance in the composer statistics row, right after the cache-hit reading: a peak/off-peak dot with a countdown to the next switch, and a panel splitting the balance into total, granted and topped up in the currency the API reports."
+      },
+      "category": "ui",
+      "install": "dsh plugin --profile web add dsh-billing-badge"
     }
   }
 }

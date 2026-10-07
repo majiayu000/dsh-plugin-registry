@@ -5,6 +5,7 @@ import { pluginRoute } from './plugin-route.js'
 import { computeRankingScore } from './registry-ranking.js'
 import { trackPluginEvent } from './track.js'
 import { fromBrowseDocument } from './browse-snapshot.js'
+import { githubSpecIsPinned, parseInstallCommand } from './install-command.js'
 
 (function () {
   'use strict';
@@ -163,10 +164,14 @@ import { fromBrowseDocument } from './browse-snapshot.js'
     var manifestChecked = manifestShapeValidated(plugin);
     var patchStatus = plugin.verification && plugin.verification.patch;
     var verifiedCommit = typeof plugin.verifiedCommit === 'string' && /^[0-9a-f]{40}$/.test(plugin.verifiedCommit) ? plugin.verifiedCommit : '';
+    var installCommand = parseInstallCommand(plugin.install);
+    var commandPinned = githubSpecIsPinned(installCommand && installCommand.spec, verifiedCommit);
     var commitLine = verifiedCommit
       ? '<p class="install-dialog-commit">' + (english ? 'Manifest checked against HEAD commit ' : 'Manifest 校验时的仓库 HEAD：') +
         '<a href="https://github.com/' + escapeHtml(String(plugin.id).split('#')[0]) + '/commit/' + escapeHtml(verifiedCommit) + '" target="_blank" rel="noopener">' + escapeHtml(verifiedCommit.slice(0, 7)) + '</a>' +
-        (english ? '. The command pins this commit so a later push cannot change what you install.' : '。安装命令钉在这个 commit 上，后续推送不会悄悄改掉你装到的版本。') + '</p>'
+        (commandPinned
+          ? (english ? '. The command pins this commit so a later push cannot change what you install.' : '。安装命令钉在这个 commit 上，后续推送不会悄悄改掉你装到的版本。')
+          : (english ? '. The command is not pinned to this commit.' : '。安装命令未钉在这个 commit 上。')) + '</p>'
       : '';
     dialog.querySelector('#install-dialog-title').textContent = manifestChecked
       ? (english ? 'How to install ' + plugin.name : '安装 ' + plugin.name + ' 的步骤')

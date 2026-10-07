@@ -164,29 +164,148 @@ test('a failed audit fetch does not keep stale pending candidates after reload',
   await expect(page.locator('main')).not.toContainText('dsh-stale-candidate')
 })
 
-test('repository pre-check returns structured signals and enables GitHub submission', async ({ page }) => {
-  await page.route('https://api.github.com/repos/acme/dsh-plugin', route => route.fulfill({
+const PINNED_SHA = '0123456789abcdef0123456789abcdef01234567'
+
+for (const locale of ['en-US', 'zh-CN']) {
+  test(`install dialog pin evidence matches the displayed command in ${locale}`, async ({ page }) => {
+    const { renderPluginPage } = await import('../../scripts/render-plugin-page.mjs')
+    const template = await readFile(new URL('../../plugin-detail.html', import.meta.url), 'utf8')
+    const plugin = {
+      id: 'acme/pin-evidence', name: 'Pin Evidence', owner: 'acme',
+      url: 'https://github.com/acme/pin-evidence', stars: 1, forks: 0, category: 'tools',
+      description: { en: 'Pin evidence fixture', zh: '安装命令校验' },
+      install: `dsh plugin --profile web add github:acme/pin-evidence#${PINNED_SHA}`,
+      verifiedCommit: PINNED_SHA, topics: [], source: 'curated', trustLevel: 'curated',
+      verification: { manifest: 'shape_validated', patch: 'exists', installation: 'not_tested' },
+    }
+    await page.addInitScript(locale => {
+      localStorage.setItem('harness-registry-locale', locale)
+      Object.defineProperty(navigator, 'clipboard', {
+        value: { writeText: async command => { window.copiedCommand = command } },
+      })
+    }, locale)
+    await page.route('**/plugins/acme/pin-evidence/', route => route.fulfill({
+      status: 200, contentType: 'text/html',
+      body: renderPluginPage(template, plugin, 'http://127.0.0.1:5173/'),
+    }))
+    await page.goto('/plugins/acme/pin-evidence/')
+    await expect(page.locator('#plugin-name')).toHaveText(plugin.name)
+    await expect.poll(() => page.evaluate(() => Boolean(window.HR?.openInstallDialog))).toBe(true)
+
+    const cases = [
+      { spec: `github:acme/pin-evidence#${PINNED_SHA}`, pinned: true },
+      { spec: 'dsh-better-sidebar' },
+      { spec: '@scope/pkg@1.2.3' },
+      { spec: 'github:acme/pin-evidence' },
+      { spec: `github:acme/pin-evidence#${'a'.repeat(40)}` },
+      { spec: `github:acme/pin-evidence#${PINNED_SHA}`, commit: 'invalid' },
+      { spec: 'dsh-better-sidebar', commit: '' },
+    ]
+    for (const entry of cases) {
+      const current = {
+        ...plugin,
+        install: `dsh plugin --profile web add ${entry.spec}`,
+        verifiedCommit: entry.commit ?? PINNED_SHA,
+      }
+      await page.evaluate(current => HR.openInstallDialog(current), current)
+      const dialog = page.locator('dialog[open]')
+      await expect(dialog.locator('[data-install-command]')).toHaveText(current.install)
+      const commit = dialog.locator('.install-dialog-commit')
+      if (entry.commit !== undefined) {
+        await expect(commit).toHaveCount(0)
+      } else {
+        await expect(commit.locator('a')).toHaveAttribute('href', `${plugin.url}/commit/${PINNED_SHA}`)
+        await expect(commit).toContainText(locale === 'en-US' ? 'Manifest checked against HEAD commit' : 'Manifest 校验时的仓库 HEAD')
+        if (entry.pinned) {
+          await expect(commit).toContainText(locale === 'en-US' ? 'The command pins this commit' : '安装命令钉在这个 commit 上')
+        } else {
+          await expect(commit).toContainText(locale === 'en-US' ? 'The command is not pinned to this commit.' : '安装命令未钉在这个 commit 上。')
+          await expect(commit).not.toContainText(locale === 'en-US' ? 'The command pins this commit' : '安装命令钉在这个 commit 上')
+        }
+      }
+      await dialog.locator('[data-install-copy]').click()
+      await expect.poll(() => page.evaluate(() => window.copiedCommand)).toBe(current.install)
+    }
+  })
+}
+
+async function mockCheckedRepository(page, { packageManifest, patchBody = '', branchStatus = 200, sha = PINNED_SHA } = {}) {
+  const requested = []
+  const match = pathname => url => url.hostname === 'api.github.com' && url.pathname === pathname
+  await page.route(match('/repos/acme/dsh-plugin'), route => route.fulfill({
     status: 200,
     contentType: 'application/json',
-    body: JSON.stringify({ full_name: 'acme/dsh-plugin', private: false, archived: false, fork: false, topics: ['dsh-plugin'] }),
+    body: JSON.stringify({ full_name: 'acme/dsh-plugin', private: false, archived: false, fork: false, topics: ['dsh-plugin'], default_branch: 'main' }),
   }))
-  await page.route('https://api.github.com/repos/acme/dsh-plugin/contents/package.json', route => route.fulfill({
-    status: 200,
+  await page.route(match('/repos/acme/dsh-plugin/branches/main'), route => route.fulfill({
+    status: branchStatus,
     contentType: 'application/json',
-    body: JSON.stringify({ name: 'dsh-plugin', dsh: { bundle: { patch: './cordis.patch.yml' } } }),
+    body: JSON.stringify(branchStatus === 200 ? { commit: { sha } } : {}),
   }))
-  await page.route('https://api.github.com/repos/acme/dsh-plugin/contents/cordis.patch.yml', route => route.fulfill({
-    status: 200,
-    contentType: 'text/yaml',
-    body: '- insert:\n    - id: hello\n      name: dsh-plugin\n',
-  }))
+  await page.route(url => url.hostname === 'api.github.com' && url.pathname.startsWith('/repos/acme/dsh-plugin/contents/'), route => {
+    requested.push(route.request().url())
+    const pathname = new URL(route.request().url()).pathname
+    if (pathname === '/repos/acme/dsh-plugin/contents/package.json') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(packageManifest) })
+    }
+    if (pathname === '/repos/acme/dsh-plugin/contents/cordis.patch.yml') {
+      return route.fulfill({ status: 200, contentType: 'text/yaml', body: patchBody })
+    }
+    return route.fulfill({ status: 404, contentType: 'text/plain', body: '' })
+  })
+  return requested
+}
+
+async function submitRepositoryCheck(page) {
+  const channelReady = page.waitForResponse(response => response.url().includes('/api/submissions') && response.request().method() === 'GET')
   await page.goto('/publish.html')
+  await channelReady
   await page.locator('#repo-input').fill('acme/dsh-plugin')
   await page.locator('#repo-checker-form').evaluate(form => form.requestSubmit())
+}
+
+test('repository pre-check returns structured signals and enables GitHub submission', async ({ page }) => {
+  const requested = await mockCheckedRepository(page, {
+    packageManifest: { name: 'dsh-plugin', dsh: { bundle: { patch: './cordis.patch.yml' } } },
+    patchBody: '- insert:\n    - id: hello\n      name: dsh-plugin\n',
+  })
+  await submitRepositoryCheck(page)
   await expect(page.locator('[data-check="bundle"]')).toHaveClass(/ok/)
+  await expect(page.locator('[data-check="patch"]')).toHaveClass(/ok/)
   await expect(page.locator('#submission-actions')).toBeVisible()
   await expect(page.locator('#github-submit')).toHaveAttribute('href', /github\.com\/majiayu000\/dsh-plugin-registry\/issues\/new/)
   await expect(page.locator('#review-submit')).toBeDisabled()
+  expect(requested.map(url => new URL(url).pathname)).toEqual([
+    '/repos/acme/dsh-plugin/contents/package.json',
+    '/repos/acme/dsh-plugin/contents/cordis.patch.yml',
+  ])
+  for (const url of requested) expect(new URL(url).searchParams.get('ref')).toBe(PINNED_SHA)
+})
+
+test('repository pre-check leaves the patch row failed when the patch path smuggles a ref', async ({ page }) => {
+  const requested = await mockCheckedRepository(page, {
+    packageManifest: { name: 'dsh-plugin', dsh: { bundle: { patch: './ok.yml?ref=deadbeef' } } },
+  })
+  await submitRepositoryCheck(page)
+  await expect(page.locator('[data-check="bundle"]')).toHaveClass(/fail/)
+  await expect(page.locator('[data-check="patch"]')).toHaveClass(/fail/)
+  await expect(page.locator('#check-message')).toContainText('dsh.bundle.patch')
+  expect(requested.map(url => new URL(url).pathname)).toEqual(['/repos/acme/dsh-plugin/contents/package.json'])
+  expect(requested.some(url => url.includes('deadbeef'))).toBe(false)
+  expect(new URL(requested[0]).searchParams.get('ref')).toBe(PINNED_SHA)
+})
+
+test('repository pre-check skips contents when the default branch cannot be pinned', async ({ page }) => {
+  const requested = await mockCheckedRepository(page, {
+    branchStatus: 404,
+    packageManifest: { name: 'dsh-plugin', dsh: { bundle: { patch: './cordis.patch.yml' } } },
+    patchBody: '- insert:\n    - id: hello\n      name: dsh-plugin\n',
+  })
+  await submitRepositoryCheck(page)
+  await expect(page.locator('[data-check="bundle"]')).toHaveClass(/fail/)
+  await expect(page.locator('[data-check="patch"]')).toHaveClass(/fail/)
+  await expect(page.locator('#check-message')).toContainText('could not be pinned to a commit')
+  expect(requested).toEqual([])
 })
 
 test('rendered details hydrate inline while listing installs use the JSON API', async ({ page }) => {

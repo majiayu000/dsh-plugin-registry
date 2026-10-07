@@ -20,8 +20,8 @@ const REPOSITORY_METADATA_FIELDS = `
 `
 
 export const REPOSITORY_DISCOVERY_QUERY = `
-  query RegistryRepositoryDiscovery($searchQuery: String!, $cursor: String) {
-    search(query: $searchQuery, type: REPOSITORY, first: 100, after: $cursor) {
+  query RegistryRepositoryDiscovery($searchQuery: String!, $cursor: String, $pageSize: Int!) {
+    search(query: $searchQuery, type: REPOSITORY, first: $pageSize, after: $cursor) {
       repositoryCount
       pageInfo { hasNextPage endCursor }
       nodes {
@@ -160,8 +160,21 @@ export async function discoverGitHubRepositories({
     const range = `${toSearchTimestamp(windowFrom)}..${toSearchTimestamp(windowTo)}`
     const searchQuery = `topic:dsh-plugin created:${range}`
     let first
+    let repositories
     try {
       first = await searchPage({ searchQuery, cursor: null })
+      const totalCount = first.repositoryCount
+      onProgress({ type: 'window', range, totalCount, depth, rateLimit: first.rateLimit })
+      repositories = [...first.repositories]
+      let pageInfo = first.pageInfo
+      let page = 1
+      while (totalCount <= MAX_SEARCH_RESULTS && pageInfo.hasNextPage) {
+        page += 1
+        const next = await searchPage({ searchQuery, cursor: pageInfo.endCursor })
+        repositories.push(...next.repositories)
+        pageInfo = next.pageInfo
+        onProgress({ type: 'page', range, totalCount, fetched: repositories.length, page, rateLimit: next.rateLimit })
+      }
     } catch (error) {
       if (!canRecoverBySplitting(error) || remainingErrorSplits <= 0 || !canSplitWindow(windowFrom, windowTo)) throw error
       remainingErrorSplits -= 1
@@ -173,7 +186,6 @@ export async function discoverGitHubRepositories({
       ]
     }
     const totalCount = first.repositoryCount
-    onProgress({ type: 'window', range, totalCount, depth, rateLimit: first.rateLimit })
 
     if (totalCount > MAX_SEARCH_RESULTS) {
       const windows = splitWindow(windowFrom, windowTo)
@@ -181,17 +193,6 @@ export async function discoverGitHubRepositories({
         ...(await discoverWindow(windows[0][0], windows[0][1], depth + 1)),
         ...(await discoverWindow(windows[1][0], windows[1][1], depth + 1)),
       ]
-    }
-
-    const repositories = [...first.repositories]
-    let pageInfo = first.pageInfo
-    let page = 1
-    while (pageInfo.hasNextPage) {
-      page += 1
-      const next = await searchPage({ searchQuery, cursor: pageInfo.endCursor })
-      repositories.push(...next.repositories)
-      pageInfo = next.pageInfo
-      onProgress({ type: 'page', range, totalCount, fetched: repositories.length, page, rateLimit: next.rateLimit })
     }
 
     const uniqueRepositories = [...new Map(repositories.map(repository => [repository.full_name.toLowerCase(), repository])).values()]

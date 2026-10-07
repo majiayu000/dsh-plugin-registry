@@ -97,6 +97,19 @@
 }</code></pre>
       <p class="psub">从 GitHub 安装会拉取源码，不是构建产物。TypeScript 包需要自包含的 <code>prepare</code> 脚本；用户可能还要在 profile 的 <code>pnpm-workspace.yaml</code> 里允许 <code>allowBuilds</code>。更稳妥的方式是发布到 npm，或让用户安装 <code>github:owner/repo#commit</code>。</p>
       <p class="psub">官方打包说明：<a href="https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/develop/basic/publish.md" target="_blank" rel="noopener">Package and install a plugin</a></p>
+      <h2 class="panel-title" id="troubleshooting">为什么插件还没有被收录？</h2>
+      <p class="psub"><strong>只有 Topic，没有安装命令</strong></p>
+      <p class="psub">dsh-plugin 是发现入口。还要有有效的 dsh.bundle.patch 和对应文件；仅有关联信号的候选仓库不会进入默认可安装列表。补齐最低 Manifest 契约后再检查。</p>
+      <p class="psub"><strong>Patch 检查失败</strong></p>
+      <p class="psub">路径必须以 ./ 开头、相对当前包，不能使用绝对路径或通过 .. 越界；文件要提交到仓库，内容必须是顶层 YAML 数组。最小空 Patch 是 []，不是 {}。子包还需在根 package.json 的 dsh.bundles 中列出。</p>
+      <p class="psub"><strong>本地通过，网页检查却失败</strong></p>
+      <p class="psub">网页读的是 GitHub 已推送的文件，不是磁盘上的改动。先确认 owner/repo 和提交。网页检查器检查根包；子包用下面的本地命令指向实际声明 bundle 的包目录。浏览器使用匿名 GitHub API，限流时可稍后重试。本地通过不等于新快照已发布。</p>
+      <pre class="codeblock"><code>npm run check:plugin -- /path/to/your-plugin-package</code></pre>
+      <p class="psub"><strong>所有条件满足，列表仍没更新</strong></p>
+      <p class="psub">等待下一轮计划同步，并在插件库首页核对快照时间。页面报告过期时，不要把旧列表当作最新结果。可在现有同步 Issue 中查看故障或提交脱敏的仓库地址与检查结果。</p>
+      <p class="psub"><strong>已确认 Manifest，就是安全插件吗？</strong></p>
+      <p class="psub">不是。本目录不运行插件代码，也不验证安装后的行为。安装前仍需检查源码、依赖和权限。DSH Desk 用户通过 Plugins… 进入桌面审查流程；目录验证不等于进入桌面的可信目录。</p>
+      <p class="psub"><a href="policy.html#manifest">Manifest 最低契约</a> · <a href="index.html">返回插件库</a> · <a href="https://github.com/majiayu000/dsh-plugin-registry/issues" target="_blank" rel="noopener">同步故障与支持</a> · <a href="https://www.dshdesk.com/#getting-started" target="_blank" rel="noopener">DSH Desk 安装与常见问题</a></p>
       <h2 class="panel-title">审核会怎样进行</h2>
       <ol class="publish-list">
         <li>系统创建公开审核 Issue，并指派维护者。</li>

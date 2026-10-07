@@ -54,6 +54,12 @@ function sleep(ms) {
   return new Promise(resolvePromise => setTimeout(resolvePromise, ms))
 }
 
+const TRANSIENT_ATTEMPTS = 3
+const RATE_LIMIT_RETRIES = 5
+const RATE_LIMIT_BASE_WAIT_MS = 5_000
+const RATE_LIMIT_MIN_WAIT_MS = 1_000
+const RATE_LIMIT_MAX_WAIT_MS = 120_000
+
 function invalidJsonResponseError(url, cause) {
   // Gateway hiccups often return HTTP 200 with an empty/truncated body. response.json()
   // then throws SyntaxError without a 502/503/504 code, which blocks discovery window splits.
@@ -62,8 +68,39 @@ function invalidJsonResponseError(url, cause) {
   return error
 }
 
+function exhaustedRateLimitError(status, statusText, url) {
+  // The rate-limit budget is already spent, so the transient retry path must not spend
+  // further requests on this error.
+  const error = new Error(`${status} ${statusText}: ${url}`)
+  error.retryable = false
+  return error
+}
+
+export function rateLimitWaitMs(response, retry) {
+  const clamp = ms => Math.min(Math.max(ms, RATE_LIMIT_MIN_WAIT_MS), RATE_LIMIT_MAX_WAIT_MS)
+  // Secondary rate limits answer with retry-after and leave x-ratelimit-reset pointing at
+  // the primary window, so retry-after has to win whenever GitHub sends it.
+  const retryAfter = response.headers?.get('retry-after')
+  if (retryAfter) {
+    const seconds = Number(retryAfter)
+    if (Number.isFinite(seconds) && seconds > 0) return clamp(seconds * 1_000)
+    const until = Date.parse(retryAfter)
+    if (Number.isFinite(until)) return clamp(until - Date.now() + 1_000)
+  }
+  // Compare the raw header against '0': Number(null) is 0, so a missing budget header would
+  // otherwise read as an exhausted budget and wait on a reset timestamp that does not exist.
+  const remaining = response.headers?.get('x-ratelimit-remaining')
+  const reset = Number(response.headers?.get('x-ratelimit-reset'))
+  if (remaining === '0' && Number.isFinite(reset) && reset > 0) {
+    return clamp(reset * 1_000 - Date.now() + 1_000)
+  }
+  return clamp(RATE_LIMIT_BASE_WAIT_MS * 2 ** retry)
+}
+
 export async function fetchJson(url, options = {}) {
-  for (let attempt = 0; attempt < 3; attempt += 1) {
+  let transientAttempt = 0
+  let rateLimitRetry = 0
+  for (;;) {
     try {
       const response = await fetch(url, {
         ...options,
@@ -82,20 +119,27 @@ export async function fetchJson(url, options = {}) {
           throw error
         }
       }
-      if ((response.status === 403 || response.status === 429) && attempt < 2) {
-        const reset = Number(response.headers.get('x-ratelimit-reset')) * 1000
-        const wait = Number.isFinite(reset) ? Math.max(1_000, Math.min(reset - Date.now() + 1_000, 60_000)) : 5_000
+      if (response.status === 403 || response.status === 429) {
+        if (rateLimitRetry >= RATE_LIMIT_RETRIES) {
+          throw exhaustedRateLimitError(response.status, response.statusText, url)
+        }
+        const wait = rateLimitWaitMs(response, rateLimitRetry)
+        rateLimitRetry += 1
+        console.warn(
+          `GitHub rate limit (${response.status}); waiting ${Math.round(wait / 1_000)}s before retry ${rateLimitRetry}/${RATE_LIMIT_RETRIES}: ${url}`,
+        )
         await sleep(wait)
         continue
       }
       throw new Error(`${response.status} ${response.statusText}: ${url}`)
     } catch (error) {
-      if (attempt === 2) throw error
-      console.warn(`GitHub request failed; retrying (${attempt + 1}/3): ${error.message}`)
-      await sleep(2_000 * (attempt + 1))
+      if (error?.retryable === false) throw error
+      transientAttempt += 1
+      if (transientAttempt >= TRANSIENT_ATTEMPTS) throw error
+      console.warn(`GitHub request failed; retrying (${transientAttempt}/${TRANSIENT_ATTEMPTS}): ${error.message}`)
+      await sleep(2_000 * transientAttempt)
     }
   }
-  throw new Error(`Unable to fetch ${url}`)
 }
 
 export async function loadPrevious() {
@@ -139,14 +183,14 @@ async function githubGraphql(query, variables, options = {}) {
     })
     if (!response.errors?.length) {
       graphqlRequests.total += 1
-      return response.data
+      return response
     }
     const message = response.errors.map(error => error.message).join('; ')
     if (options.allowPartial && response.data) {
       graphqlRequests.total += 1
       graphqlRequests.partial += 1
       console.warn(`GitHub GraphQL returned partial data: ${message}`)
-      return response.data
+      return response
     }
     if (attempt === 2) throw new Error(`GitHub GraphQL failed: ${message}`)
     console.warn(`GitHub GraphQL warning; retrying (${attempt + 1}/3): ${message}`)
@@ -156,7 +200,11 @@ async function githubGraphql(query, variables, options = {}) {
 }
 
 async function githubSearchPage({ searchQuery, cursor }) {
-  const data = await githubGraphql(REPOSITORY_DISCOVERY_QUERY, { searchQuery, cursor })
+  // Wide ranges need the count before splitting; hydrating 100 repositories here
+  // can time out before GitHub returns it. Retain the first result, then paginate.
+  const { data } = await githubGraphql(REPOSITORY_DISCOVERY_QUERY, {
+    searchQuery, cursor, pageSize: cursor === null ? 1 : 100,
+  })
   return {
     repositoryCount: data.search.repositoryCount,
     repositories: data.search.nodes.filter(Boolean).map(mapGraphqlRepository),
@@ -180,7 +228,7 @@ async function loadCuratedRepositoryMetadata(repositoryKeys) {
       const batch = batches[nextBatch]
       nextBatch += 1
       try {
-        const data = await githubGraphql(buildRepositoryMetadataQuery(batch), {}, { allowPartial: true })
+        const { data } = await githubGraphql(buildRepositoryMetadataQuery(batch), {}, { allowPartial: true })
         for (const [key, value] of mapGraphqlRepositoryMetadataBatch(data, batch)) metadata.set(key, value)
       } catch (error) {
         console.warn(`Curated repository metadata unavailable for batch; keeping curated fallbacks: ${error.message}`)
@@ -254,10 +302,14 @@ async function loadPackageManifests(targets) {
         const [owner, name] = target.full_name.split('/')
         return `r${index}: repository(owner: ${JSON.stringify(owner)}, name: ${JSON.stringify(name)}) { object(expression: ${JSON.stringify(packageExpression(target.directory))}) { ... on Blob { text } } defaultBranchRef { target { ... on Commit { oid } } } }`
       }).join('\n')
-      const data = await githubGraphql(`query { ${fields} }`, {}, { allowPartial: true })
+      const { data, errors } = await githubGraphql(`query { ${fields} }`, {}, { allowPartial: true })
       batch.forEach((target, index) => {
         const key = targetKey(target.full_name, target.directory)
-        manifests.set(key, data?.[`r${index}`]?.object?.text || '')
+        const text = data?.[`r${index}`]?.object?.text
+        // An errored null blob is unknown; an unaffected alias can still prove absence.
+        const failed = errors?.some(error => !error.path?.length || error.path[0] === `r${index}`)
+        if (failed && typeof text !== 'string') return
+        manifests.set(key, text || '')
         const oid = data?.[`r${index}`]?.defaultBranchRef?.target?.oid
         if (typeof oid === 'string' && /^[0-9a-f]{40}$/.test(oid)) headCommits.set(key, oid)
       })
@@ -287,9 +339,11 @@ async function loadBundlePatches(candidates) {
         const [owner, name] = candidate.full_name.split('/')
         return `r${index}: repository(owner: ${JSON.stringify(owner)}, name: ${JSON.stringify(name)}) { object(expression: ${JSON.stringify(patchExpression(candidate.patch, candidate.directory))}) { ... on Blob { text } } }`
       }).join('\n')
-      const data = await githubGraphql(`query { ${fields} }`, {}, { allowPartial: true })
+      const { data, errors } = await githubGraphql(`query { ${fields} }`, {}, { allowPartial: true })
       batch.forEach((candidate, index) => {
         const text = data?.[`r${index}`]?.object?.text
+        const failed = errors?.some(error => !error.path?.length || error.path[0] === `r${index}`)
+        if (failed && typeof text !== 'string') return
         if (typeof text !== 'string') {
           results.set(candidate.key, false)
           return
@@ -374,7 +428,8 @@ async function main() {
     directory: bundleDirectoryFromUrl(plugin.url),
     id: plugin.id,
   }))
-  const initialTargets = [...new Map([...rootTargets, ...curatedTargets].map(target => [targetKey(target.full_name, target.directory), target])).values()]
+  const initialTargetMap = new Map([...rootTargets, ...curatedTargets].map(target => [targetKey(target.full_name, target.directory), target]))
+  const initialTargets = [...initialTargetMap.values()]
   const previousValidationVersion = previous?.stats?.manifestValidationVersion ?? 0
   const manifestCacheCompatible = previousValidationVersion === MANIFEST_VALIDATION_VERSION
   if (!manifestCacheCompatible) {
@@ -382,9 +437,12 @@ async function main() {
   }
   const targetsToValidate = initialTargets.filter(target => {
     if (!manifestCacheCompatible) return true
+    // Root manifests also discover dsh.bundles, which the verification cache does not store.
+    // Re-read them so an unchecked child bundle can recover without a repository push.
+    if (!target.directory) return true
     const cached = manifestCache.get(target.id?.toLowerCase()) || manifestCache.get(targetKey(target.full_name, target.directory))
     const pushedAt = pushedAtFor(target.full_name)
-    return cached?.pushedAt !== pushedAt || (cached.shapeValid && !cached.patchStatus)
+    return cached?.pushedAt !== pushedAt || !cached?.shapeValid || cached.patchStatus !== 'exists'
   })
   console.log(`Manifest cache: ${initialTargets.length - targetsToValidate.length} unchanged, ${targetsToValidate.length} to validate.`)
   const { manifests, headCommits } = await loadPackageManifests(targetsToValidate)
@@ -395,7 +453,7 @@ async function main() {
     if (!rootText) continue
     for (const directory of listBundleDirectories(rootText)) {
       const key = targetKey(repo.full_name, directory)
-      if (manifests.has(key) || extraTargets.some(target => targetKey(target.full_name, target.directory) === key)) continue
+      if (initialTargetMap.has(key) || extraTargets.some(target => targetKey(target.full_name, target.directory) === key)) continue
       extraTargets.push({ full_name: repo.full_name, directory })
     }
   }
@@ -427,7 +485,9 @@ async function main() {
     const cached = manifestCache.get(String(id).toLowerCase()) || manifestCache.get(key)
     const pushedAt = pushedAtFor(fullName)
     const fetched = fetchedKeys.has(key)
-    const unchanged = manifestCacheCompatible && !fetched && cached && cached.pushedAt === pushedAt && (!cached.shapeValid || cached.patchStatus)
+    const check = fetched ? validateBundleManifest(manifests.get(key)) : null
+    const unchecked = !fetched || (check.valid && !bundlePatches.has(key))
+    const unchanged = manifestCacheCompatible && unchecked && cached?.pushedAt === pushedAt && cached.shapeValid && cached.patchStatus === 'exists'
     if (unchanged) {
       return {
         checked: true,
@@ -438,10 +498,9 @@ async function main() {
         packageName: cached.packageName,
       }
     }
-    if (!fetched) {
+    if (unchecked) {
       return { checked: false, manifestShapeValid: false, patchExists: null, verifiedCommit: cached?.verifiedCommit }
     }
-    const check = validateBundleManifest(manifests.get(key))
     const meta = bundleMeta.get(key)
     return {
       checked: true,
@@ -463,24 +522,38 @@ async function main() {
   })
   const discoveredRoots = newCandidates.flatMap(repo => {
     const evidence = targetVerification(repo.full_name, '', repo.full_name)
-    const root = normalizeDiscovered(repo, evidence.manifestShapeValid, evidence.patchExists, evidence.verifiedCommit, {
+    const root = !TOKEN || evidence.checked ? [normalizeDiscovered(repo, evidence.manifestShapeValid, evidence.patchExists, evidence.verifiedCommit, {
       profile: evidence.profile,
       packageName: evidence.packageName,
-    })
+    })] : []
     const extras = extraTargets
       .filter(target => target.full_name.toLowerCase() === repo.full_name.toLowerCase())
-      .map(target => {
+      .flatMap(target => {
         const extra = targetVerification(target.full_name, target.directory, `${target.full_name}#${target.directory}`)
-        return normalizeDiscovered(repo, extra.manifestShapeValid, extra.patchExists, extra.verifiedCommit, {
+        if (!extra.checked) return []
+        return [normalizeDiscovered(repo, extra.manifestShapeValid, extra.patchExists, extra.verifiedCommit, {
           directory: target.directory,
           profile: extra.profile,
           packageName: extra.packageName,
           url: repo.html_url,
-        })
+        })]
       })
-    return [root, ...extras]
+    return [...root, ...extras]
   })
-  const normalizedCandidates = discoveredRoots
+  // The snapshot stores child IDs, but not the directory declarations in the root manifest.
+  // Preserve prior positive children only when that declaration could not be checked.
+  const cachedChildren = TOKEN && manifestCacheCompatible ? newCandidates.flatMap(repo => {
+    if (manifests.has(targetKey(repo.full_name))) return []
+    return (previous?.plugins || []).filter(plugin => (
+      plugin.source === 'discovered' && String(plugin.id).includes('#')
+      && repositoryKey(plugin) === repo.full_name.toLowerCase()
+      && plugin.pushedAt === pushedAtFor(repo.full_name)
+      && plugin.verification?.manifest === 'shape_validated' && plugin.verification?.patch === 'exists'
+    )).map(plugin => normalizeDiscovered(repo, true, true, plugin.verifiedCommit, {
+      id: plugin.id, name: plugin.name, profile: plugin.profile, packageName: plugin.packageName,
+    }))
+  }) : []
+  const normalizedCandidates = [...discoveredRoots, ...cachedChildren]
   const blocked = new Map((blocklist.repositories || []).map(entry => [String(entry.repo).toLowerCase(), entry]))
   const candidateQuarantined = normalizedCandidates.flatMap(plugin => {
     const block = blocked.get(repoKey(plugin.owner, plugin.name))
