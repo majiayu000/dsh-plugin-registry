@@ -16509,6 +16509,32 @@
       "added": "2026-08-20",
       "stars": 4,
       "forks": 1
+    },
+    {
+      "id": "majiayu000/remem#dsh-remem",
+      "name": "remem#dsh-remem",
+      "url": "https://github.com/majiayu000/remem/tree/main/plugins/dsh-remem",
+      "description": {
+        "zh": "通过本机 remem 运行时为 DSH 注入相关记忆、记录工具观察并在每轮结束自动采集会话。",
+        "en": "Uses the local remem runtime to inject relevant memory, record tool observations, and capture DSH sessions at turn end."
+      },
+      "category": "memory",
+      "install": "dsh plugin --profile web add @remem-ai/dsh-remem@0.1.0",
+      "icon": "https://github.com/majiayu000.png?size=96",
+      "added": "2026-10-07"
+    },
+    {
+      "id": "majiayu000/vibeguard#dsh",
+      "name": "vibeguard#dsh",
+      "url": "https://github.com/majiayu000/vibeguard/tree/main/plugins/dsh",
+      "description": {
+        "zh": "调用本机 VibeGuard Rust 运行时检查 DSH Bash 命令并记录结果；策略拦截使用 DSH 原生审批，运行时错误直接拒绝。",
+        "en": "Checks DSH Bash commands and records results through the local VibeGuard Rust runtime, using native DSH approval for policy blocks and denying runtime failures."
+      },
+      "category": "dev",
+      "install": "dsh plugin --profile web add @vibeguard/dsh@0.1.0",
+      "icon": "https://github.com/majiayu000.png?size=96",
+      "added": "2026-10-07"
     }
   ]
 }
