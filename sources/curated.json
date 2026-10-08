@@ -16532,7 +16532,7 @@
         "en": "Checks DSH Bash commands and records results through the local VibeGuard Rust runtime, using native DSH approval for policy blocks and denying runtime failures."
       },
       "category": "dev",
-      "install": "dsh plugin --profile web add @vibeguard/dsh@0.1.0",
+      "install": "dsh plugin --profile web add @vibeguard-ai/dsh@0.1.0",
       "icon": "https://github.com/majiayu000.png?size=96",
       "added": "2026-10-07"
     }

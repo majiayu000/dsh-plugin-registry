@@ -8,7 +8,7 @@ and their source links are available. The current public snapshot is unchanged.
 | Adapter | Package | Source directory | Registry / awesome category |
 | --- | --- | --- | --- |
 | remem | `@remem-ai/dsh-remem@0.1.0` | `majiayu000/remem/plugins/dsh-remem` | memory / memory |
-| VibeGuard | `@vibeguard/dsh@0.1.0` | `majiayu000/vibeguard/plugins/dsh` | dev / security |
+| VibeGuard | `@vibeguard-ai/dsh@0.1.0` | `majiayu000/vibeguard/plugins/dsh` | dev / security |
 
 remem delegates memory retrieval, observation recording and turn-end capture to
 the local remem runtime. VibeGuard delegates Bash pre/post checks to the local
