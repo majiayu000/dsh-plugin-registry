@@ -1,0 +1,6 @@
+url: https://github.com/majiayu000/vibeguard/tree/main/plugins/dsh
+name: majiayu000/vibeguard#dsh
+category: security
+description:
+  en: Checks DSH Bash commands and records results through the local VibeGuard Rust runtime, using native DSH approval for policy blocks and denying runtime failures.
+  zh: 调用本机 VibeGuard Rust 运行时检查 DSH Bash 命令并记录结果；策略拦截使用 DSH 原生审批，运行时错误直接拒绝。
