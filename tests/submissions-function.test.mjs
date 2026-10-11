@@ -142,6 +142,25 @@ test('a patch path cannot retarget the submission precheck ref', async () => {
   assert.equal(calls.some(call => call.url.includes('deadbeef')), false)
 })
 
+test('submission precheck does not approve a bundle whose second patch is absent', async () => {
+  const calls = []
+  const fixture = precheckFetcher({ calls, packageBody: { dsh: { bundle: { patch: ['./cordis.patch.yml', './second.yml'] } } } })
+  const fetcher = async (url, init) => {
+    if (new URL(url).pathname.endsWith('/second.yml')) {
+      calls.push({ url: String(url), init })
+      return new Response('', { status: 404 })
+    }
+    return fixture(url, init)
+  }
+  const response = await handleSubmission({ request: submissionRequest(), env: { GITHUB_SUBMISSIONS_TOKEN: 'secret-token', TURNSTILE_SECRET_KEY: 'secret-turnstile-key' } }, fetcher)
+  assert.equal(response.status, 201)
+  const issue = JSON.parse(calls.find(call => call.init?.method === 'POST' && call.url.endsWith('/issues')).init.body)
+  assert.match(issue.body, /- \[x\] 声明有效的 dsh\.bundle/)
+  assert.match(issue.body, /- \[ \] Patch 文件是顶层 YAML 数组/)
+  assert.equal(contentUrls(calls).length, 3)
+  for (const url of contentUrls(calls)) assert.equal(url.searchParams.get('ref'), PINNED_SHA)
+})
+
 test('submission precheck skips contents when the default branch sha cannot be pinned', async () => {
   const calls = []
   const fetcher = precheckFetcher({ calls, branchStatus: 404 })

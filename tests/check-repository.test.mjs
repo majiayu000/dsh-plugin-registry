@@ -32,7 +32,28 @@ test('local plugin check accepts a valid bundle and patch', async () => {
   await writeFile(join(root, 'cordis.patch.yml'), '- insert:\n    - id: hello\n      name: dsh-hello-plugin\n')
   const result = await checkLocalPlugin(root)
   assert.equal(result.ok, true)
-  assert.equal(result.manifest.patch, './cordis.patch.yml')
+  assert.deepEqual(result.manifest.patch, ['./cordis.patch.yml'])
+})
+
+test('github plugin check verifies every ordered patch at one commit', async () => {
+  for (const { second, ok, reason } of [
+    { second: new Response('[]'), ok: true },
+    { second: new Response('', { status: 404 }), ok: false, reason: 'patch_file_missing' },
+    { second: new Response('key: value'), ok: false, reason: 'patch_not_array' },
+  ]) {
+    const calls = []
+    const fixture = githubFetcher({ calls, packageBody: { dsh: { bundle: { patch: ['./cordis.patch.yml', './presets/cordis.patch.yml'] } } } })
+    const fetcher = async url => {
+      if (new URL(url).pathname.endsWith('/presets/cordis.patch.yml')) { calls.push(String(url)); return second }
+      return fixture(url)
+    }
+    const result = await checkGitHubPlugin('acme/plugin', fetcher)
+    assert.equal(result.ok, ok)
+    assert.equal(result.patch.reason_code, reason)
+    const contents = calls.filter(url => url.includes('/contents/')).map(url => new URL(url))
+    assert.equal(contents.length, 3)
+    for (const url of contents) assert.equal(url.searchParams.get('ref'), PINNED_SHA)
+  }
 })
 
 test('local plugin check accepts an empty YAML array overlay', async () => {

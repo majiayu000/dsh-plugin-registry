@@ -90,11 +90,11 @@ export function validateBundleManifest(value) {
     return { valid: false, reason_code: 'bundle_not_object', reason: 'dsh.bundle must be an object.' }
   }
 
-  const patch = bundle.patch
-  if (typeof patch !== 'string' || !patch.trim()) {
-    return { valid: false, reason_code: 'patch_missing', reason: 'dsh.bundle.patch must be a non-empty string.' }
+  const patch = Array.isArray(bundle.patch) ? bundle.patch : [bundle.patch]
+  if (!patch.length || patch.some(path => typeof path !== 'string' || !path.trim())) {
+    return { valid: false, reason_code: 'patch_missing', reason: 'dsh.bundle.patch must be a non-empty string or list of non-empty strings.' }
   }
-  if (!isSafeRelativePath(patch)) {
+  if (!patch.every(isSafeRelativePath)) {
     return { valid: false, reason_code: 'patch_unsafe', reason: 'dsh.bundle.patch must be a safe relative path beginning with "./".' }
   }
 
