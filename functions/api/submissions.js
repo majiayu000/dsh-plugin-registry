@@ -151,15 +151,18 @@ async function inspectRepository(fetcher, token, repository) {
     }
 
     if (bundleCheck.valid) {
-      const patchResponse = await fetcher(githubContentsUrl(repository, bundleCheck.patch, sha), {
-        method: 'GET',
-        headers: githubHeaders(token, 'application/vnd.github.raw+json'),
-      })
-      if (patchResponse.ok) patchCheck = validateBundlePatch(await patchResponse.text())
-      else if (patchResponse.status !== 404) {
-        const error = new Error(`GitHub patch request failed with ${patchResponse.status}`)
-        error.status = patchResponse.status
-        throw error
+      for (const path of bundleCheck.patch) {
+        const patchResponse = await fetcher(githubContentsUrl(repository, path, sha), {
+          method: 'GET',
+          headers: githubHeaders(token, 'application/vnd.github.raw+json'),
+        })
+        if (patchResponse.ok) patchCheck = validateBundlePatch(await patchResponse.text())
+        else if (patchResponse.status !== 404) {
+          const error = new Error(`GitHub patch request failed with ${patchResponse.status}`)
+          error.status = patchResponse.status
+          throw error
+        } else patchCheck = { valid: false, reason: '引用的 Patch 文件在仓库中不存在。' }
+        if (!patchCheck.valid) break
       }
     }
   }

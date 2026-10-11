@@ -7,7 +7,7 @@ import { validateBundlePatch } from '../assets/bundle-patch.js'
 function printResult(label, result) {
   const status = result.valid ? 'pass' : 'fail'
   const detail = result.valid
-    ? (result.patch || result.names?.join(', ') || 'ok')
+    ? (result.patch?.join(', ') || result.names?.join(', ') || 'ok')
     : `${result.reason_code}: ${result.reason}`
   console.log(`${status}\t${label}\t${detail}`)
 }
@@ -17,9 +17,13 @@ export async function checkLocalPlugin(directory) {
   const manifestText = await readFile(resolve(root, 'package.json'), 'utf8')
   const manifest = validateBundleManifest(manifestText)
   if (!manifest.valid) return { ok: false, manifest, patch: null }
-  const patchText = await readFile(resolve(root, manifest.patch), 'utf8')
-  const patch = validateBundlePatch(patchText)
-  return { ok: patch.valid, manifest, patch }
+  const names = []
+  for (const path of manifest.patch) {
+    const patch = validateBundlePatch(await readFile(resolve(root, path), 'utf8'))
+    if (!patch.valid) return { ok: false, manifest, patch }
+    names.push(...patch.names)
+  }
+  return { ok: true, manifest, patch: { valid: true, names } }
 }
 
 function githubStatusResult(status) {
@@ -57,12 +61,17 @@ export async function checkGitHubPlugin(repository, fetcher = fetch) {
   if (!packageResponse.ok) return githubStatusResult(packageResponse.status)
   const manifest = validateBundleManifest(await packageResponse.text())
   if (!manifest.valid) return { ok: false, manifest, patch: null }
-  const patchResponse = await fetcher(githubContentsUrl(repository, manifest.patch, sha), { headers: rawHeaders })
-  if (!patchResponse.ok) {
-    return { ok: false, manifest, patch: { valid: false, reason_code: 'patch_file_missing', reason: `GitHub returned ${patchResponse.status}` } }
+  const names = []
+  for (const path of manifest.patch) {
+    const patchResponse = await fetcher(githubContentsUrl(repository, path, sha), { headers: rawHeaders })
+    if (!patchResponse.ok) {
+      return { ok: false, manifest, patch: { valid: false, reason_code: 'patch_file_missing', reason: `GitHub returned ${patchResponse.status}` } }
+    }
+    const patch = validateBundlePatch(await patchResponse.text())
+    if (!patch.valid) return { ok: false, manifest, patch }
+    names.push(...patch.names)
   }
-  const patch = validateBundlePatch(await patchResponse.text())
-  return { ok: patch.valid, manifest, patch }
+  return { ok: true, manifest, patch: { valid: true, names } }
 }
 
 async function main() {
