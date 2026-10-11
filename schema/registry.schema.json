@@ -32,7 +32,7 @@
           ]
         },
         "properties": {
-          "id": { "type": "string", "pattern": "^[^/]+/[^/#]+(?:#[^/#]+)?$" },
+          "id": { "type": "string", "pattern": "^[^/]+/[^/#]+(?:#[^/#]+(?:/[^/#]+)*)?$" },
           "name": { "type": "string", "minLength": 1 },
           "owner": { "type": "string", "minLength": 1 },
           "url": { "type": "string", "pattern": "^https://github\\.com/[^/]+/[^/]+" },

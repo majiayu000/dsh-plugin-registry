@@ -156,3 +156,18 @@ test('invalid verification.patch values are rejected', () => {
   }))
   assert.equal(result.errors.length, 0)
 })
+
+test('the JSON schema accepts nested monorepo IDs without empty path segments', async () => {
+  const { readFile } = await import('node:fs/promises')
+  const schema = JSON.parse(await readFile('schema/registry.schema.json', 'utf8'))
+  const idPattern = new RegExp(schema.properties.plugins.items.properties.id.pattern)
+  for (const id of ['acme/plugin', 'acme/plugin#bundle', 'acme/plugin#packages/bundle', 'acme/plugin#packages/nested/bundle']) {
+    assert.equal(idPattern.test(id), true, id)
+    assert.deepEqual(validateRegistry(registry({ id })).errors, [], id)
+  }
+  for (const id of ['acme', '/plugin', 'acme/', 'acme/plugin/extra', 'acme/plugin#', 'acme/plugin#/bundle', 'acme/plugin#packages/', 'acme/plugin#packages//bundle', 'acme/plugin#packages/bundle#extra']) {
+    assert.equal(idPattern.test(id), false, id)
+  }
+  const snapshot = JSON.parse(await readFile('public/data/plugins.json', 'utf8'))
+  assert.deepEqual(snapshot.plugins.filter(plugin => !idPattern.test(plugin.id)).map(plugin => plugin.id), [])
+})

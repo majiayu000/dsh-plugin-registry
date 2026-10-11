@@ -155,9 +155,13 @@ const { evaluateRepository, findRegistryEntry, githubFailureMessage, manifestFai
         if (packageResponse.ok) bundleCheck = validateBundleManifest(await packageResponse.text());
         else if (packageResponse.status !== 404) { var packageError = new Error('package fetch failed'); packageError.status = packageResponse.status; throw packageError; }
         if (bundleCheck.valid) {
-          var patchResponse = await fetch(githubContentsUrl(repo, bundleCheck.patch, sha), { headers: { accept: 'application/vnd.github.raw+json' } });
-          if (patchResponse.ok) patchCheck = validateBundlePatch(await patchResponse.text());
-          else if (patchResponse.status !== 404) { var patchError = new Error('patch fetch failed'); patchError.status = patchResponse.status; throw patchError; }
+          for (var patchPath of bundleCheck.patch) {
+            var patchResponse = await fetch(githubContentsUrl(repo, patchPath, sha), { headers: { accept: 'application/vnd.github.raw+json' } });
+            if (patchResponse.ok) patchCheck = validateBundlePatch(await patchResponse.text());
+            else if (patchResponse.status !== 404) { var patchError = new Error('patch fetch failed'); patchError.status = patchResponse.status; throw patchError; }
+            else patchCheck = { valid: false, reason_code: 'patch_file_missing', reason: copy.patch_file_missing };
+            if (!patchCheck.valid) break;
+          }
         }
       }
       var registryEntry = null;

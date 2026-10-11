@@ -30,6 +30,10 @@
       },
       "category": "ui",
       "install": "dsh plugin --profile web add dsh-billing-badge"
+    },
+    "gulagala001/dsh-intelligent-ui": {
+      "name": "DSH Intelligent UI (gulagala001)",
+      "origin": "issue"
     }
   }
 }

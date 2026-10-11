@@ -88,10 +88,11 @@ async function syncFixture(t, { count = 400, bundle = false, curatedDirectory = 
         const directory = expression.slice(5).split('/').slice(0, -1).join('/')
         const key = owner + '/' + name + (directory ? '#' + directory : '')
         appendFileSync('requests.jsonl', JSON.stringify({ kind, key }) + '\n')
-        const partial = scenario['partial' + kind]?.includes(key)
-        const missing = scenario['missing' + kind]?.includes(key)
-        const invalid = scenario['invalid' + kind]?.includes(key)
-        const manifest = { name, dsh: { bundle: { patch: './bundle.yaml', profile: 'web' },
+        const secondPatch = kind === 'patch' && expression === 'HEAD:second.yaml' && name === 'dsh-plugin-1'
+        const partial = scenario['partial' + kind]?.includes(key) || (secondPatch && scenario.secondPatch === 'partial')
+        const missing = scenario['missing' + kind]?.includes(key) || (secondPatch && scenario.secondPatch === 'missing')
+        const invalid = scenario['invalid' + kind]?.includes(key) || (secondPatch && scenario.secondPatch === 'invalid')
+        const manifest = { name, dsh: { bundle: { patch: scenario.multiPatch && name === 'dsh-plugin-1' ? ['./bundle.yaml', './second.yaml'] : './bundle.yaml', profile: 'web' },
           ...(scenario.bundle && name === 'dsh-plugin-2' && !directory ? { bundles: ['./bundles/sample'] } : {}),
           ...(scenario.curatedDirectory && name === 'dsh-plugin-0' && !directory ? { bundles: ['./' + scenario.curatedDirectory] } : {}),
         } }
@@ -131,6 +132,20 @@ async function syncFixture(t, { count = 400, bundle = false, curatedDirectory = 
     },
   }
 }
+
+test('sync requires every patch and keeps partial second-patch evidence unknown', async t => {
+  const fixture = await syncFixture(t)
+  const accepted = await fixture.sync({ multiPatch: true })
+  assert.equal(accepted.document.plugins.find(p => p.id === 'acme/dsh-plugin-1').verification.patch, 'exists')
+  const mixed = await fixture.sync({ multiPatch: true, secondPatch: 'partial', missingpatch: ['acme/dsh-plugin-1'] })
+  assert.equal(mixed.document.plugins.some(p => p.id === 'acme/dsh-plugin-1'), false)
+  assert.match(mixed.audit.pendingReview.find(p => p.id === 'acme/dsh-plugin-1').reason, /patch does not resolve/)
+  for (const secondPatch of ['missing', 'invalid', 'partial']) {
+    const result = await fixture.sync({ multiPatch: true, secondPatch, pushedAt: '2026-10-11T00:00:00Z' })
+    assert.equal(result.document.plugins.some(p => p.id === 'acme/dsh-plugin-1'), false)
+    assert.equal(result.audit.pendingReview.some(p => p.id === 'acme/dsh-plugin-1'), secondPatch !== 'partial')
+  }
+})
 
 test('unauthenticated discovery retains pending and quarantined candidates and cannot replace a complete snapshot', async t => {
   const fixture = await syncFixture(t, { count: 3, authenticated: false, unrelated: [2] })

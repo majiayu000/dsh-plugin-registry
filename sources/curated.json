@@ -16535,6 +16535,19 @@
       "install": "dsh plugin --profile web add @vibeguard-ai/dsh@0.1.0",
       "icon": "https://github.com/majiayu000.png?size=96",
       "added": "2026-10-07"
+    },
+    {
+      "id": "gulagala001/dsh-intelligent-ui",
+      "name": "dsh-intelligent-ui",
+      "url": "https://github.com/gulagala001/dsh-intelligent-ui",
+      "description": {
+        "zh": "gulagala001 的 DSH Web 交互式回答插件：计算器、图表、表单与小游戏，可保存界面状态。此安装命令仅对应 DSH 0.2.1-alpha.2；0.2.0-rc.2 和 0.2.1-alpha.1 请按仓库说明选择对应 Release。与 yunyv 的同名项目不同。",
+        "en": "Interactive calculators, charts, forms and games in DSH Web, with saved UI state. This install targets DSH 0.2.1-alpha.2; use the matching repository release for 0.2.0-rc.2 or 0.2.1-alpha.1. This is gulagala001’s project, separate from yunyv’s namesake."
+      },
+      "category": "ui",
+      "install": "dsh plugin --profile web add https://github.com/gulagala001/dsh-intelligent-ui/releases/download/v0.2.1-alpha.2.iui.1.0.0/dsh-intelligent-ui-0.2.1-alpha.2.iui.1.0.0.tgz",
+      "icon": "https://github.com/gulagala001.png?size=96",
+      "added": "2026-10-11"
     }
   ]
 }

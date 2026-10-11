@@ -326,9 +326,14 @@ async function loadPackageManifests(targets) {
 async function loadBundlePatches(candidates) {
   if (!TOKEN || candidates.length === 0) return new Map()
   const results = new Map()
+  const targets = candidates.map(candidate => ({
+    key: candidate.key,
+    patches: candidate.patch.map(patch => ({ ...candidate, patch, status: undefined })),
+  }))
+  const patches = targets.flatMap(target => target.patches)
   const batchSize = 40
   const batches = []
-  for (let offset = 0; offset < candidates.length; offset += batchSize) batches.push(candidates.slice(offset, offset + batchSize))
+  for (let offset = 0; offset < patches.length; offset += batchSize) batches.push(patches.slice(offset, offset + batchSize))
   let nextBatch = 0
 
   async function worker() {
@@ -345,16 +350,22 @@ async function loadBundlePatches(candidates) {
         const failed = errors?.some(error => !error.path?.length || error.path[0] === `r${index}`)
         if (failed && typeof text !== 'string') return
         if (typeof text !== 'string') {
-          results.set(candidate.key, false)
+          candidate.status = false
           return
         }
         const check = validateBundlePatch(text)
-        results.set(candidate.key, check.valid ? true : 'invalid')
+        candidate.status = check.valid ? true : 'invalid'
       })
     }
   }
 
   await Promise.all(Array.from({ length: Math.min(4, batches.length) }, () => worker()))
+  for (const target of targets) {
+    const statuses = target.patches.map(patch => patch.status)
+    if (statuses.includes(false)) results.set(target.key, false)
+    else if (statuses.includes('invalid')) results.set(target.key, 'invalid')
+    else if (!statuses.includes(undefined)) results.set(target.key, true)
+  }
   return results
 }
 

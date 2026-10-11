@@ -5,16 +5,27 @@ import { githubContentsUrl, listBundleDirectories, validateBundleManifest } from
 test('bundle manifest returns the validated patch path and default profile', () => {
   assert.deepEqual(
     validateBundleManifest({ name: 'dsh-hello-plugin', dsh: { bundle: { patch: './cordis.patch.yml' } } }),
-    { valid: true, patch: './cordis.patch.yml', profile: 'web', packageName: 'dsh-hello-plugin' },
+    { valid: true, patch: ['./cordis.patch.yml'], profile: 'web', packageName: 'dsh-hello-plugin' },
   )
 })
 
 test('bundle manifest can declare a non-web profile', () => {
   assert.deepEqual(
     validateBundleManifest({ dsh: { bundle: { patch: './cordis.patch.yml', profile: 'tui' } } }),
-    { valid: true, patch: './cordis.patch.yml', profile: 'tui' },
+    { valid: true, patch: ['./cordis.patch.yml'], profile: 'tui' },
   )
   assert.equal(validateBundleManifest({ dsh: { bundle: { patch: './cordis.patch.yml', profile: 'desktop' } } }).reason_code, 'profile_invalid')
+})
+
+test('ordered bundle patches require every path to be a safe non-empty string', () => {
+  const patch = ['./cordis.patch.yml', './presets/cordis.patch.yml']
+  assert.deepEqual(validateBundleManifest({ dsh: { bundle: { patch } } }).patch, patch)
+  for (const second of ['../outside.yml', './%2e%2e/outside.yml', './ok.yml?ref=other']) {
+    assert.equal(validateBundleManifest({ dsh: { bundle: { patch: [patch[0], second] } } }).reason_code, 'patch_unsafe')
+  }
+  for (const invalid of [[], [patch[0], ''], [patch[0], 42], [patch[0], null], [patch[0], ['./nested.yml']]]) {
+    assert.equal(validateBundleManifest({ dsh: { bundle: { patch: invalid } } }).reason_code, 'patch_missing')
+  }
 })
 
 test('root package.json may declare additional bundle directories', () => {
