@@ -16522,6 +16522,71 @@
       "install": "dsh plugin --profile web add https://github.com/gulagala001/dsh-intelligent-ui/releases/download/v0.2.1-alpha.2.iui.1.0.0/dsh-intelligent-ui-0.2.1-alpha.2.iui.1.0.0.tgz",
       "icon": "https://github.com/gulagala001.png?size=96",
       "added": "2026-10-11"
+    },
+    {
+      "id": "gulagala001/dsh-workflow",
+      "name": "dsh-workflow",
+      "url": "https://github.com/gulagala001/dsh-workflow",
+      "description": {
+        "zh": "可续跑的 JavaScript 工作流，沿用原生子代理、Jobs、权限和 worktree。仅适配 DSH 0.2.1-rc.2、Node.js 22.19+，通过固定 GitHub Release 包分发。",
+        "en": "Resumable JavaScript workflows using native subagents, Jobs, permissions and worktrees. Requires DSH 0.2.1-rc.2 exactly and Node.js 22.19+; distributed through a pinned GitHub Release package."
+      },
+      "category": "workflow",
+      "install": "dsh plugin --profile web add https://github.com/gulagala001/dsh-workflow/releases/download/v0.1.1-dsh.0.2.1-rc.2/dsh-workflow-plus-0.1.1-dsh.0.2.1-rc.2.tgz",
+      "icon": "https://github.com/gulagala001.png?size=96",
+      "added": "2026-10-21"
+    },
+    {
+      "id": "gulagala001/dsh-undo-plugin",
+      "name": "dsh-undo-plugin",
+      "url": "https://github.com/gulagala001/dsh-undo-plugin",
+      "description": {
+        "zh": "确认后回退会话与工作区文件，并支持撤销；外部副作用不会被撤销，无文件快照时仅恢复会话。仅适配 DSH 0.2.1-rc.2、Node.js 22.19+；使用固定 Release 包。",
+        "en": "Rewind conversations and workspace files with confirmation and undo. External effects are not reversed; without a file snapshot, recovery is conversation-only. Requires DSH 0.2.1-rc.2 exactly and Node.js 22.19+; pinned Release distribution."
+      },
+      "category": "session",
+      "install": "dsh plugin --profile web add https://github.com/gulagala001/dsh-undo-plugin/releases/download/v0.1.0-dsh.0.2.1-rc.2/gulagala001-dsh-undo-plugin-0.1.0-dsh.0.2.1-rc.2.tgz",
+      "icon": "https://github.com/gulagala001.png?size=96",
+      "added": "2026-10-21"
+    },
+    {
+      "id": "gulagala001/dsh-deepseek-workbench",
+      "name": "dsh-deepseek-workbench",
+      "url": "https://github.com/gulagala001/dsh-deepseek-workbench",
+      "description": {
+        "zh": "DeepSeek 网页聊天、临时侧栏与会话导入。仅适配 DSH 0.2.1-rc.2、Node.js 22.19+；内嵌操作与提取需要配套桌面桥接，Web/Tauri 可使用外部浏览器入口，不能据此承诺完整桌面功能。",
+        "en": "DeepSeek web chat, temporary sidebar chat and conversation import. Requires DSH 0.2.1-rc.2 exactly and Node.js 22.19+. Embedded operations and extraction need the companion desktop bridge; Web/Tauri users can use the external-browser entry point without a full desktop feature guarantee."
+      },
+      "category": "client",
+      "install": "dsh plugin --profile web add https://github.com/gulagala001/dsh-deepseek-workbench/releases/download/v0.1.0-dsh.0.2.1-rc.2/dsh-deepseek-workbench-0.1.0-dsh.0.2.1-rc.2.tgz",
+      "icon": "https://github.com/gulagala001.png?size=96",
+      "added": "2026-10-21"
+    },
+    {
+      "id": "gulagala001/dsh-btw",
+      "name": "dsh-btw",
+      "url": "https://github.com/gulagala001/dsh-btw",
+      "description": {
+        "zh": "用当前会话上下文进行独立侧聊，不改写主会话、不执行工具；使用现有模型的正常用量计费，不保证缓存命中。仅适配 DSH 0.2.1-rc.2、Node.js 22.19+；固定 Release 包分发。",
+        "en": "Ask independent side questions using the current conversation without rewriting it or running tools. Uses the existing provider with normal usage charges; cache hits are not guaranteed. Requires DSH 0.2.1-rc.2 exactly and Node.js 22.19+; pinned Release distribution."
+      },
+      "category": "session",
+      "install": "dsh plugin --profile web add https://github.com/gulagala001/dsh-btw/releases/download/v0.1.0-dsh.0.2.1-rc.2/gulagala001-dsh-btw-0.1.0-dsh.0.2.1-rc.2.tgz",
+      "icon": "https://github.com/gulagala001.png?size=96",
+      "added": "2026-10-21"
+    },
+    {
+      "id": "gulagala001/dsh-theme-plugin",
+      "name": "dsh-theme-plugin",
+      "url": "https://github.com/gulagala001/dsh-theme-plugin",
+      "description": {
+        "zh": "主题、外观与可视化市场管理，提供安装前检查和失败恢复。仅适配 DSH 0.2.1-rc.2、Node.js 22.19+；下载主题仍有正常 Node/页面能力，预检不构成恶意代码沙箱。",
+        "en": "Manage themes, appearance and visual markets with pre-install checks and failure recovery. Requires DSH 0.2.1-rc.2 exactly and Node.js 22.19+. Downloaded themes retain normal Node/page capabilities; preflight is not a malicious-code sandbox."
+      },
+      "category": "theme",
+      "install": "dsh plugin --profile web add https://github.com/gulagala001/dsh-theme-plugin/releases/download/v0.2.0-dsh.0.2.1-rc.2/gulagala001-dsh-theme-plugin-0.2.0-dsh.0.2.1-rc.2.tgz",
+      "icon": "https://github.com/gulagala001.png?size=96",
+      "added": "2026-10-21"
     }
   ]
 }

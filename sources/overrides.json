@@ -34,6 +34,26 @@
     "gulagala001/dsh-intelligent-ui": {
       "name": "DSH Intelligent UI (gulagala001)",
       "origin": "issue"
+    },
+    "gulagala001/dsh-workflow": {
+      "name": "DSH Workflow",
+      "origin": "issue"
+    },
+    "gulagala001/dsh-undo-plugin": {
+      "name": "DSH Rewind & Undo (gulagala001)",
+      "origin": "issue"
+    },
+    "gulagala001/dsh-deepseek-workbench": {
+      "name": "DeepSeek Workbench",
+      "origin": "issue"
+    },
+    "gulagala001/dsh-btw": {
+      "name": "DSH BTW",
+      "origin": "issue"
+    },
+    "gulagala001/dsh-theme-plugin": {
+      "name": "DSH Themes (gulagala001)",
+      "origin": "issue"
     }
   }
 }

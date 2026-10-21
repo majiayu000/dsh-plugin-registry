@@ -61,9 +61,9 @@
   },
   "stats": {
     "topicCandidates": 20951,
-    "curated": 735,
-    "curatedSource": 772,
-    "automaticallyDiscovered": 15859,
+    "curated": 740,
+    "curatedSource": 777,
+    "automaticallyDiscovered": 15854,
     "patchFilesConfirmed": 16576,
     "published": 16594,
     "manifestRejected": 4093,
@@ -234387,15 +234387,14 @@
     },
     {
       "id": "gulagala001/dsh-deepseek-workbench",
-      "name": "dsh-deepseek-workbench",
+      "name": "DeepSeek Workbench",
       "owner": "gulagala001",
       "url": "https://github.com/gulagala001/dsh-deepseek-workbench",
-      "verifiedCommit": "9932561d940f9659d8e59e62a001ba09914385d1",
       "description": {
-        "zh": "DeepSeek 网页聊天、临时侧栏聊天、API 开放平台与 DSH 会话迁移。",
-        "en": "DeepSeek 网页聊天、临时侧栏聊天、API 开放平台与 DSH 会话迁移。"
+        "zh": "DeepSeek 网页聊天、临时侧栏与会话导入。仅适配 DSH 0.2.1-rc.2、Node.js 22.19+；内嵌操作与提取需要配套桌面桥接，Web/Tauri 可使用外部浏览器入口，不能据此承诺完整桌面功能。",
+        "en": "DeepSeek web chat, temporary sidebar chat and conversation import. Requires DSH 0.2.1-rc.2 exactly and Node.js 22.19+. Embedded operations and extraction need the companion desktop bridge; Web/Tauri users can use the external-browser entry point without a full desktop feature guarantee."
       },
-      "category": "ui",
+      "category": "client",
       "stars": 1,
       "forks": 0,
       "language": "JavaScript",
@@ -234405,17 +234404,18 @@
         "publishedAt": "2026-10-20T13:26:37Z"
       },
       "pushedAt": "2026-10-20T20:16:55Z",
-      "addedAt": null,
-      "source": "discovered",
-      "trustLevel": "manifest_verified",
+      "addedAt": "2026-10-21",
+      "source": "curated",
+      "trustLevel": "curated",
       "verification": {
         "manifest": "shape_validated",
         "patch": "exists",
         "installation": "not_tested"
       },
-      "install": "dsh plugin --profile web add github:gulagala001/dsh-deepseek-workbench#9932561d940f9659d8e59e62a001ba09914385d1",
+      "install": "dsh plugin --profile web add https://github.com/gulagala001/dsh-deepseek-workbench/releases/download/v0.1.0-dsh.0.2.1-rc.2/dsh-deepseek-workbench-0.1.0-dsh.0.2.1-rc.2.tgz",
       "profile": "web",
       "packageName": "dsh-deepseek-workbench",
+      "verifiedCommit": "9932561d940f9659d8e59e62a001ba09914385d1",
       "archived": false,
       "topics": [
         "chat",
@@ -234424,19 +234424,19 @@
         "dsh-plugin",
         "sidebar"
       ],
-      "icon": "https://avatars.githubusercontent.com/u/293081919?v=4"
+      "icon": "https://github.com/gulagala001.png?size=96",
+      "origin": "issue"
     },
     {
       "id": "gulagala001/dsh-theme-plugin",
-      "name": "dsh-theme-plugin",
+      "name": "DSH Themes (gulagala001)",
       "owner": "gulagala001",
       "url": "https://github.com/gulagala001/dsh-theme-plugin",
-      "verifiedCommit": "5e68decbd1e4c0781202c4a6a0b78462c94a4f1f",
       "description": {
-        "zh": "DSH 主题与外观管理：图片市场、一键兼容安装、故障恢复和 AI 修复说明。Visual theme markets and checked installation for DeepSeek Harness.",
-        "en": "DSH 主题与外观管理：图片市场、一键兼容安装、故障恢复和 AI 修复说明。Visual theme markets and checked installation for DeepSeek Harness."
+        "zh": "主题、外观与可视化市场管理，提供安装前检查和失败恢复。仅适配 DSH 0.2.1-rc.2、Node.js 22.19+；下载主题仍有正常 Node/页面能力，预检不构成恶意代码沙箱。",
+        "en": "Manage themes, appearance and visual markets with pre-install checks and failure recovery. Requires DSH 0.2.1-rc.2 exactly and Node.js 22.19+. Downloaded themes retain normal Node/page capabilities; preflight is not a malicious-code sandbox."
       },
-      "category": "market",
+      "category": "theme",
       "stars": 1,
       "forks": 0,
       "language": "JavaScript",
@@ -234446,17 +234446,18 @@
         "publishedAt": "2026-10-20T20:58:33Z"
       },
       "pushedAt": "2026-10-20T20:58:35Z",
-      "addedAt": null,
-      "source": "discovered",
-      "trustLevel": "manifest_verified",
+      "addedAt": "2026-10-21",
+      "source": "curated",
+      "trustLevel": "curated",
       "verification": {
         "manifest": "shape_validated",
         "patch": "exists",
         "installation": "not_tested"
       },
-      "install": "dsh plugin --profile web add github:gulagala001/dsh-theme-plugin#5e68decbd1e4c0781202c4a6a0b78462c94a4f1f",
+      "install": "dsh plugin --profile web add https://github.com/gulagala001/dsh-theme-plugin/releases/download/v0.2.0-dsh.0.2.1-rc.2/gulagala001-dsh-theme-plugin-0.2.0-dsh.0.2.1-rc.2.tgz",
       "profile": "web",
       "packageName": "@gulagala001/dsh-theme-plugin",
+      "verifiedCommit": "5e68decbd1e4c0781202c4a6a0b78462c94a4f1f",
       "archived": false,
       "topics": [
         "appearance",
@@ -234467,19 +234468,19 @@
         "themes",
         "theme-market"
       ],
-      "icon": "https://avatars.githubusercontent.com/u/293081919?v=4"
+      "icon": "https://github.com/gulagala001.png?size=96",
+      "origin": "issue"
     },
     {
       "id": "gulagala001/dsh-workflow",
-      "name": "dsh-workflow",
+      "name": "DSH Workflow",
       "owner": "gulagala001",
       "url": "https://github.com/gulagala001/dsh-workflow",
-      "verifiedCommit": "d0c0cfdabc33947eec3ef54f213597a1785a657b",
       "description": {
-        "zh": "Resumable JavaScript workflows with native DSH subagents, jobs, token budgets and worktree isolation.",
-        "en": "Resumable JavaScript workflows with native DSH subagents, jobs, token budgets and worktree isolation."
+        "zh": "可续跑的 JavaScript 工作流，沿用原生子代理、Jobs、权限和 worktree。仅适配 DSH 0.2.1-rc.2、Node.js 22.19+，通过固定 GitHub Release 包分发。",
+        "en": "Resumable JavaScript workflows using native subagents, Jobs, permissions and worktrees. Requires DSH 0.2.1-rc.2 exactly and Node.js 22.19+; distributed through a pinned GitHub Release package."
       },
-      "category": "model",
+      "category": "workflow",
       "stars": 1,
       "forks": 0,
       "language": "JavaScript",
@@ -234489,17 +234490,18 @@
         "publishedAt": "2026-10-20T07:50:51Z"
       },
       "pushedAt": "2026-10-20T20:16:59Z",
-      "addedAt": null,
-      "source": "discovered",
-      "trustLevel": "manifest_verified",
+      "addedAt": "2026-10-21",
+      "source": "curated",
+      "trustLevel": "curated",
       "verification": {
         "manifest": "shape_validated",
         "patch": "exists",
         "installation": "not_tested"
       },
-      "install": "dsh plugin --profile web add github:gulagala001/dsh-workflow#d0c0cfdabc33947eec3ef54f213597a1785a657b",
+      "install": "dsh plugin --profile web add https://github.com/gulagala001/dsh-workflow/releases/download/v0.1.1-dsh.0.2.1-rc.2/dsh-workflow-plus-0.1.1-dsh.0.2.1-rc.2.tgz",
       "profile": "web",
       "packageName": "dsh-workflow-plus",
+      "verifiedCommit": "d0c0cfdabc33947eec3ef54f213597a1785a657b",
       "archived": false,
       "topics": [
         "agent-orchestration",
@@ -234510,7 +234512,8 @@
         "dsh-plugin",
         "workflow"
       ],
-      "icon": "https://avatars.githubusercontent.com/u/293081919?v=4"
+      "icon": "https://github.com/gulagala001.png?size=96",
+      "origin": "issue"
     },
     {
       "id": "gulagala001/oh-my-agents-above-all",
@@ -405602,15 +405605,14 @@
     },
     {
       "id": "gulagala001/dsh-btw",
-      "name": "dsh-btw",
+      "name": "DSH BTW",
       "owner": "gulagala001",
       "url": "https://github.com/gulagala001/dsh-btw",
-      "verifiedCommit": "c8c0d0d0ebcd56875bdb5d1cbe44f1622f1166bf",
       "description": {
-        "zh": "Context-aware side questions for DeepSeek Harness, with prompt cache reuse and a native composer popover.",
-        "en": "Context-aware side questions for DeepSeek Harness, with prompt cache reuse and a native composer popover."
+        "zh": "用当前会话上下文进行独立侧聊，不改写主会话、不执行工具；使用现有模型的正常用量计费，不保证缓存命中。仅适配 DSH 0.2.1-rc.2、Node.js 22.19+；固定 Release 包分发。",
+        "en": "Ask independent side questions using the current conversation without rewriting it or running tools. Uses the existing provider with normal usage charges; cache hits are not guaranteed. Requires DSH 0.2.1-rc.2 exactly and Node.js 22.19+; pinned Release distribution."
       },
-      "category": "tools",
+      "category": "session",
       "stars": 0,
       "forks": 0,
       "language": "JavaScript",
@@ -405620,17 +405622,18 @@
         "publishedAt": "2026-10-20T14:18:29Z"
       },
       "pushedAt": "2026-10-20T20:16:53Z",
-      "addedAt": null,
-      "source": "discovered",
-      "trustLevel": "manifest_verified",
+      "addedAt": "2026-10-21",
+      "source": "curated",
+      "trustLevel": "curated",
       "verification": {
         "manifest": "shape_validated",
         "patch": "exists",
         "installation": "not_tested"
       },
-      "install": "dsh plugin --profile web add github:gulagala001/dsh-btw#c8c0d0d0ebcd56875bdb5d1cbe44f1622f1166bf",
+      "install": "dsh plugin --profile web add https://github.com/gulagala001/dsh-btw/releases/download/v0.1.0-dsh.0.2.1-rc.2/gulagala001-dsh-btw-0.1.0-dsh.0.2.1-rc.2.tgz",
       "profile": "web",
       "packageName": "@gulagala001/dsh-btw",
+      "verifiedCommit": "c8c0d0d0ebcd56875bdb5d1cbe44f1622f1166bf",
       "archived": false,
       "topics": [
         "btw",
@@ -405640,19 +405643,19 @@
         "dsh-plugin",
         "prompt-caching"
       ],
-      "icon": "https://avatars.githubusercontent.com/u/293081919?v=4"
+      "icon": "https://github.com/gulagala001.png?size=96",
+      "origin": "issue"
     },
     {
       "id": "gulagala001/dsh-undo-plugin",
-      "name": "dsh-undo-plugin",
+      "name": "DSH Rewind & Undo (gulagala001)",
       "owner": "gulagala001",
       "url": "https://github.com/gulagala001/dsh-undo-plugin",
-      "verifiedCommit": "0d05fb195d14e0015a4b59eb9f7462a965486182",
       "description": {
-        "zh": "Rewind conversations and files in DeepSeek Harness, with undo.",
-        "en": "Rewind conversations and files in DeepSeek Harness, with undo."
+        "zh": "确认后回退会话与工作区文件，并支持撤销；外部副作用不会被撤销，无文件快照时仅恢复会话。仅适配 DSH 0.2.1-rc.2、Node.js 22.19+；使用固定 Release 包。",
+        "en": "Rewind conversations and workspace files with confirmation and undo. External effects are not reversed; without a file snapshot, recovery is conversation-only. Requires DSH 0.2.1-rc.2 exactly and Node.js 22.19+; pinned Release distribution."
       },
-      "category": "tools",
+      "category": "session",
       "stars": 0,
       "forks": 0,
       "language": "JavaScript",
@@ -405662,17 +405665,18 @@
         "publishedAt": "2026-10-20T11:48:40Z"
       },
       "pushedAt": "2026-10-20T20:16:57Z",
-      "addedAt": null,
-      "source": "discovered",
-      "trustLevel": "manifest_verified",
+      "addedAt": "2026-10-21",
+      "source": "curated",
+      "trustLevel": "curated",
       "verification": {
         "manifest": "shape_validated",
         "patch": "exists",
         "installation": "not_tested"
       },
-      "install": "dsh plugin --profile web add github:gulagala001/dsh-undo-plugin#0d05fb195d14e0015a4b59eb9f7462a965486182",
+      "install": "dsh plugin --profile web add https://github.com/gulagala001/dsh-undo-plugin/releases/download/v0.1.0-dsh.0.2.1-rc.2/gulagala001-dsh-undo-plugin-0.1.0-dsh.0.2.1-rc.2.tgz",
       "profile": "web",
       "packageName": "@gulagala001/dsh-undo-plugin",
+      "verifiedCommit": "0d05fb195d14e0015a4b59eb9f7462a965486182",
       "archived": false,
       "topics": [
         "checkpoint",
@@ -405683,7 +405687,8 @@
         "rewind",
         "undo"
       ],
-      "icon": "https://avatars.githubusercontent.com/u/293081919?v=4"
+      "icon": "https://github.com/gulagala001.png?size=96",
+      "origin": "issue"
     },
     {
       "id": "guntur-d/dsh-memory",
