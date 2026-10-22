@@ -16587,6 +16587,19 @@
       "install": "dsh plugin --profile web add https://github.com/gulagala001/dsh-theme-plugin/releases/download/v0.2.0-dsh.0.2.1-rc.2/gulagala001-dsh-theme-plugin-0.2.0-dsh.0.2.1-rc.2.tgz",
       "icon": "https://github.com/gulagala001.png?size=96",
       "added": "2026-10-21"
+    },
+    {
+      "id": "majiayu000/remem#dsh-remem",
+      "name": "remem#dsh-remem",
+      "url": "https://github.com/majiayu000/remem/tree/main/plugins/dsh-remem",
+      "description": {
+        "zh": "通过本机 remem 运行时为 DSH 注入相关记忆、记录工具观察并在每轮结束自动采集会话。",
+        "en": "Uses the local remem runtime to inject relevant memory, record tool observations, and capture DSH sessions at turn end."
+      },
+      "category": "memory",
+      "install": "dsh plugin --profile web add @remem-ai/dsh-remem@0.1.0",
+      "icon": "https://github.com/majiayu000.png?size=96",
+      "added": "2026-10-07"
     }
   ]
 }
