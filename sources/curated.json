@@ -16587,6 +16587,19 @@
       "install": "dsh plugin --profile web add https://github.com/gulagala001/dsh-theme-plugin/releases/download/v0.2.0-dsh.0.2.1-rc.2/gulagala001-dsh-theme-plugin-0.2.0-dsh.0.2.1-rc.2.tgz",
       "icon": "https://github.com/gulagala001.png?size=96",
       "added": "2026-10-21"
+    },
+    {
+      "id": "majiayu000/vibeguard#dsh",
+      "name": "vibeguard#dsh",
+      "url": "https://github.com/majiayu000/vibeguard/tree/main/plugins/dsh",
+      "description": {
+        "zh": "调用本机 VibeGuard Rust 运行时检查 DSH Bash 命令并记录结果；策略拦截使用 DSH 原生审批，运行时错误直接拒绝。",
+        "en": "Checks DSH Bash commands and records results through the local VibeGuard Rust runtime, using native DSH approval for policy blocks and denying runtime failures."
+      },
+      "category": "dev",
+      "install": "dsh plugin --profile web add @vibeguard-ai/dsh@0.1.0",
+      "icon": "https://github.com/majiayu000.png?size=96",
+      "added": "2026-10-22"
     }
   ]
 }
