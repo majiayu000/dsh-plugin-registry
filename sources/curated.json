@@ -16593,8 +16593,8 @@
       "name": "vibeguard#dsh",
       "url": "https://github.com/majiayu000/vibeguard/tree/main/plugins/dsh",
       "description": {
-        "zh": "调用本机 VibeGuard Rust 运行时检查 DSH Bash 命令并记录结果；策略拦截使用 DSH 原生审批，运行时错误直接拒绝。",
-        "en": "Checks DSH Bash commands and records results through the local VibeGuard Rust runtime, using native DSH approval for policy blocks and denying runtime failures."
+        "zh": "仅支持 DSH 0.2.0-rc.2；需 Node.js ^22.19.0 或 >=24.0.0 及 VibeGuard 2.0.2 Rust 运行时。检查 Bash 命令并记录结果；策略拦截走原生审批，运行时错误直接拒绝。",
+        "en": "For DSH 0.2.0-rc.2 only; requires Node.js ^22.19.0 or >=24.0.0 and the VibeGuard 2.0.2 Rust runtime. Checks Bash commands and records results, with native approval for policy blocks and fail-closed runtime errors."
       },
       "category": "dev",
       "install": "dsh plugin --profile web add @vibeguard-ai/dsh@0.1.0",
