@@ -257,6 +257,8 @@ async function discoverRepositories() {
         console.log(`Discovery page ${progress.page}: ${progress.fetched}/${progress.totalCount} for ${progress.range} (rate limit ${remaining} remaining).`)
       } else if (progress.type === 'resplit') {
         console.warn(`Discovery window ${progress.range} returned ${progress.fetched}/${progress.totalCount} unique repositories; splitting further.`)
+      } else if (progress.type === 'retry-split') {
+        console.warn(`Discovery children for ${progress.range} returned ${progress.fetched}/${progress.totalCount} unique repositories; retrying child windows (${progress.remainingReconciliationRetries} reconciliation retries left).`)
       } else if (progress.type === 'error-split') {
         console.warn(`Discovery window ${progress.range} failed with ${progress.error}; splitting further (${progress.remainingErrorSplits} recovery splits left).`)
       } else {
