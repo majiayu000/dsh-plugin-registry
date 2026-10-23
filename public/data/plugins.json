@@ -61,9 +61,9 @@
   },
   "stats": {
     "topicCandidates": 21680,
-    "curated": 741,
-    "curatedSource": 778,
-    "automaticallyDiscovered": 16581,
+    "curated": 743,
+    "curatedSource": 780,
+    "automaticallyDiscovered": 16579,
     "patchFilesConfirmed": 17303,
     "published": 17322,
     "manifestRejected": 4091,
@@ -424331,15 +424331,14 @@
     },
     {
       "id": "gulagala001/dsh-extensions",
-      "name": "dsh-extensions",
+      "name": "DSH Extensions",
       "owner": "gulagala001",
       "url": "https://github.com/gulagala001/dsh-extensions",
-      "verifiedCommit": "8da381714035373055f9cb60aacccb15a9b79d4f",
       "description": {
-        "zh": "Manage skills, MCP servers, instructions, commands and hooks in DeepSeek Harness.",
-        "en": "Manage skills, MCP servers, instructions, commands and hooks in DeepSeek Harness."
+        "zh": "管理 Skills、MCP、指令文件、自定义命令和 Hooks；配置变更及 Hook 命令使用宿主权限。仅支持 DSH 0.2.1-rc.2、Node.js 22.19+，固定 0.1.1 Release 包。",
+        "en": "Manage skills, MCP, instruction files, custom commands and hooks; configuration changes and hook commands use host permissions. Requires DSH 0.2.1-rc.2 exactly and Node.js 22.19+; pinned 0.1.1 Release package."
       },
-      "category": "skill",
+      "category": "dev",
       "stars": 0,
       "forks": 0,
       "language": "JavaScript",
@@ -424349,17 +424348,18 @@
         "publishedAt": "2026-10-23T04:44:33Z"
       },
       "pushedAt": "2026-10-23T04:44:26Z",
-      "addedAt": null,
-      "source": "discovered",
-      "trustLevel": "manifest_verified",
+      "addedAt": "2026-10-23",
+      "source": "curated",
+      "trustLevel": "curated",
       "verification": {
         "manifest": "shape_validated",
         "patch": "exists",
         "installation": "not_tested"
       },
-      "install": "dsh plugin --profile web add github:gulagala001/dsh-extensions#8da381714035373055f9cb60aacccb15a9b79d4f",
+      "install": "dsh plugin --profile web add https://github.com/gulagala001/dsh-extensions/releases/download/v0.1.1-dsh.0.2.1-rc.2/dsh-extensions-0.1.1-dsh.0.2.1-rc.2.tgz",
       "profile": "web",
       "packageName": "dsh-extensions",
+      "verifiedCommit": "7fdd403daa817a9f9c574d9497953d0e0bad9870",
       "archived": false,
       "topics": [
         "deepseek-harness",
@@ -424367,19 +424367,19 @@
         "dsh-bundle",
         "dsh-plugin"
       ],
-      "icon": "https://avatars.githubusercontent.com/u/293081919?v=4"
+      "icon": "https://github.com/gulagala001.png?size=96",
+      "origin": "issue"
     },
     {
       "id": "gulagala001/dsh-persona-plugin",
-      "name": "dsh-persona-plugin",
+      "name": "Persona (gulagala001)",
       "owner": "gulagala001",
       "url": "https://github.com/gulagala001/dsh-persona-plugin",
-      "verifiedCommit": "ffac6e4f10f6bc403633d1c56a199404e19384f6",
       "description": {
-        "zh": "Create and share AI personality presets with global and per-conversation choices in DeepSeek Harness.",
-        "en": "Create and share AI personality presets with global and per-conversation choices in DeepSeek Harness."
+        "zh": "创建、导入和管理全局及单会话人格预设；设置保存到本地，选中人格会影响发送给模型的提示。仅支持 DSH 0.2.1-rc.2、Node.js 22.19+，固定 0.1.1 Release 包。",
+        "en": "Create, import and manage global and per-conversation personality presets. Settings are local; selected personalities affect model prompts. Requires DSH 0.2.1-rc.2 exactly and Node.js 22.19+; pinned 0.1.1 Release package."
       },
-      "category": "tools",
+      "category": "session",
       "stars": 0,
       "forks": 0,
       "language": "JavaScript",
@@ -424389,17 +424389,18 @@
         "publishedAt": "2026-10-23T04:44:41Z"
       },
       "pushedAt": "2026-10-23T04:44:35Z",
-      "addedAt": null,
-      "source": "discovered",
-      "trustLevel": "manifest_verified",
+      "addedAt": "2026-10-23",
+      "source": "curated",
+      "trustLevel": "curated",
       "verification": {
         "manifest": "shape_validated",
         "patch": "exists",
         "installation": "not_tested"
       },
-      "install": "dsh plugin --profile web add github:gulagala001/dsh-persona-plugin#ffac6e4f10f6bc403633d1c56a199404e19384f6",
+      "install": "dsh plugin --profile web add https://github.com/gulagala001/dsh-persona-plugin/releases/download/v0.1.1-dsh.0.2.1-rc.2/gulagala001-dsh-persona-plugin-0.1.1-dsh.0.2.1-rc.2.tgz",
       "profile": "web",
       "packageName": "@gulagala001/dsh-persona-plugin",
+      "verifiedCommit": "b7f34767069244c38cfba3f86176b4e939542531",
       "archived": false,
       "topics": [
         "deepseek-harness",
@@ -424407,7 +424408,8 @@
         "dsh-bundle",
         "dsh-plugin"
       ],
-      "icon": "https://avatars.githubusercontent.com/u/293081919?v=4"
+      "icon": "https://github.com/gulagala001.png?size=96",
+      "origin": "issue"
     },
     {
       "id": "gulagala001/dsh-undo-plugin",
