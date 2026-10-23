@@ -20,23 +20,24 @@ function page(repositoryCount, names, hasNextPage = false, endCursor = null) {
 test('repository discovery splits timestamp windows beyond the GitHub 1000-result limit', async () => {
   const queries = []
   const progress = []
+  const names = Array.from({ length: 1_500 }, (_, index) => `acme/plugin-${index}`)
   const repositories = await discoverGitHubRepositories({
     from: new Date('2026-08-14T00:00:00Z'),
     to: new Date('2026-08-14T23:59:59Z'),
     async searchPage({ searchQuery, cursor }) {
       queries.push({ searchQuery, cursor })
       if (searchQuery.includes('00:00:00Z..2026-08-14T23:59:59Z')) return page(1_500, [])
-      if (cursor === 'left-page-2') return page(2, ['acme/two'])
-      if (searchQuery.includes('00:00:00Z..2026-08-14T11:59:59Z')) return page(2, ['acme/one'], true, 'left-page-2')
-      return page(1, ['acme/three'])
+      if (cursor === 'left-page-2') return page(750, names.slice(500, 750))
+      if (searchQuery.includes('00:00:00Z..2026-08-14T11:59:59Z')) return page(750, names.slice(0, 500), true, 'left-page-2')
+      return page(750, names.slice(750))
     },
     onProgress(entry) { progress.push(entry) },
   })
 
-  assert.deepEqual(repositories.map(repository => repository.full_name), ['acme/one', 'acme/two', 'acme/three'])
+  assert.deepEqual(repositories.map(repository => repository.full_name), names)
   assert.equal(queries.length, 4)
   assert.ok(queries.some(entry => entry.searchQuery.includes('2026-08-14T12:00:00Z..2026-08-14T23:59:59Z')))
-  assert.ok(progress.some(entry => entry.type === 'page' && entry.fetched === 2))
+  assert.ok(progress.some(entry => entry.type === 'page' && entry.fetched === 750))
 })
 
 test('repository discovery splits a search window after a recoverable GitHub gateway error', async () => {
@@ -188,13 +189,13 @@ test('repository discovery splits a wide window when unique results fall outside
         return page(200, Array.from({ length: 180 }, (_, index) => `acme/plugin-${index}`))
       }
       if (searchQuery.includes('06:00:00Z..2026-08-16T11:00:00Z')) {
-        return page(90, Array.from({ length: 90 }, (_, index) => `acme/plugin-${index}`))
+        return page(100, Array.from({ length: 100 }, (_, index) => `acme/plugin-${index}`))
       }
-      return page(90, Array.from({ length: 90 }, (_, index) => `acme/plugin-${index + 90}`))
+      return page(100, Array.from({ length: 100 }, (_, index) => `acme/plugin-${index + 100}`))
     },
   })
 
-  assert.equal(repositories.length, 180)
+  assert.equal(repositories.length, 200)
   assert.ok(queries.some(query => query.includes('2026-08-16T06:00:00Z..2026-08-16T11:00:00Z')))
   assert.ok(queries.some(query => query.includes('2026-08-16T11:00:01Z..2026-08-16T16:00:00Z')))
 })
@@ -219,6 +220,174 @@ test('repository discovery tolerates small live-index drift in large windows', a
   })
   assert.equal(repositories.length, 101)
   assert.ok(progress.some(entry => entry.type === 'drift' && entry.allowedDrift === 5))
+})
+
+for (const totalCount of [1_500, 200]) {
+  const path = totalCount > 1_000 ? 'oversized count' : 'incomplete leaf'
+
+  test(`repository discovery retries transient child omissions after ${path} splitting`, async () => {
+    const names = Array.from({ length: totalCount }, (_, index) => `acme/plugin-${index}`)
+    const progress = []
+    let calls = 0
+    const repositories = await discoverGitHubRepositories({
+      from: new Date('2026-08-14T00:00:00Z'),
+      to: new Date('2026-08-14T00:00:03Z'),
+      async searchPage({ searchQuery }) {
+        calls += 1
+        if (calls === 1) return page(totalCount, [])
+        if (calls <= 3) return page(0, [])
+        const half = searchQuery.includes('00:00:00Z..2026-08-14T00:00:01Z')
+          ? names.slice(0, totalCount / 2) : names.slice(totalCount / 2)
+        return page(half.length, half)
+      },
+      onProgress(entry) { progress.push(entry) },
+    })
+    assert.deepEqual(repositories.map(repository => repository.full_name), names)
+    assert.equal(calls, 5)
+    assert.equal(progress.filter(entry => entry.type === 'retry-split').length, 1)
+  })
+
+  test(`repository discovery refuses persistent child omissions after ${path} splitting`, async () => {
+    let calls = 0
+    const progress = []
+    await assert.rejects(discoverGitHubRepositories({
+      from: new Date('2026-08-14T00:00:00Z'),
+      to: new Date('2026-08-14T00:00:03Z'),
+      async searchPage() {
+        calls += 1
+        return calls === 1 ? page(totalCount, []) : page(0, [])
+      },
+      onProgress(entry) { progress.push(entry) },
+    }), new RegExp(`0/${totalCount} unique repositories.*incomplete window`))
+    assert.equal(calls, 7)
+    assert.deepEqual(progress.filter(entry => entry.type === 'retry-split')
+      .map(entry => entry.remainingReconciliationRetries), [1, 0])
+  })
+
+  test(`repository discovery reconciles case-insensitive child identities after ${path} splitting`, async () => {
+    const names = Array.from({ length: totalCount / 2 }, (_, index) => `acme/plugin-${index}`)
+    let calls = 0
+    await assert.rejects(discoverGitHubRepositories({
+      from: new Date('2026-08-14T00:00:00Z'),
+      to: new Date('2026-08-14T00:00:03Z'),
+      async searchPage() {
+        calls += 1
+        if (calls === 1) return page(totalCount, [])
+        return page(names.length, calls % 2 ? names.map(name => name.toUpperCase()) : names)
+      },
+    }), new RegExp(`${names.length}/${totalCount} unique repositories.*incomplete window`))
+    assert.equal(calls, 7)
+  })
+
+  test(`repository discovery accepts tolerable parent drift after ${path} splitting`, async () => {
+    const allowedDrift = Math.max(5, Math.ceil(totalCount * 0.01))
+    const names = Array.from({ length: totalCount - allowedDrift }, (_, index) => `acme/plugin-${index}`)
+    const progress = []
+    let calls = 0
+    const repositories = await discoverGitHubRepositories({
+      from: new Date('2026-08-14T00:00:00Z'),
+      to: new Date('2026-08-14T00:00:03Z'),
+      async searchPage() {
+        calls += 1
+        if (calls === 1) return page(totalCount, [])
+        const half = calls === 2 ? names.slice(0, 750) : names.slice(750)
+        return page(half.length, half)
+      },
+      onProgress(entry) { progress.push(entry) },
+    })
+    assert.equal(repositories.length, totalCount - allowedDrift)
+    assert.equal(calls, 3)
+    assert.ok(progress.some(entry => entry.type === 'drift' && entry.totalCount === totalCount && entry.allowedDrift === allowedDrift))
+  })
+}
+
+test('repository discovery rejects the nested zero-window pattern from the failed scheduled sync', async () => {
+  const names = Array.from({ length: 12 }, (_, index) => `acme/plugin-${index}`)
+  const partialChildren = [page(12, names.slice(0, 1), true, 'twelve'), page(12, names.slice(1)), page(0, [])]
+  const responses = [page(21_778, names.slice(0, 1), true, 'root'), page(0, []),
+    page(21_778, names.slice(0, 1), true, 'right'),
+    ...partialChildren, ...partialChildren, ...partialChildren]
+  const queries = []
+  await assert.rejects(discoverGitHubRepositories({
+    from: new Date('2008-01-01T00:00:00Z'),
+    to: new Date('2026-10-22T17:10:53Z'),
+    async searchPage(args) {
+      queries.push(args)
+      assert.ok(responses.length > 0, 'reconciliation must stay within its retry budget')
+      return responses.shift()
+    },
+  }), /12\/21778 unique repositories.*incomplete window/)
+  assert.equal(queries.length, 12)
+  assert.equal(responses.length, 0)
+  assert.equal(queries[0].cursor, null)
+  assert.equal(queries[4].cursor, 'twelve')
+  assert.equal(queries[3].searchQuery, queries[6].searchQuery)
+  assert.equal(queries[5].searchQuery, queries[8].searchQuery)
+})
+
+test('repository discovery shares reconciliation retries across separate parent windows', async () => {
+  const names = Array.from({ length: 1_500 }, (_, index) => `acme/plugin-${index}`)
+  const responses = [page(3_000, []), page(1_500, []), page(0, []), page(0, []),
+    page(0, []), page(0, []), page(750, names.slice(0, 750)), page(750, names.slice(750)),
+    page(1_500, []), page(0, []), page(0, [])]
+  let calls = 0
+  await assert.rejects(discoverGitHubRepositories({
+    from: new Date('2026-08-14T00:00:00Z'),
+    to: new Date('2026-08-14T00:00:07Z'),
+    async searchPage() {
+      calls += 1
+      assert.ok(responses.length > 0, 'a new parent must not reset the retry budget')
+      return responses.shift()
+    },
+  }), /0\/1500 unique repositories.*incomplete window/)
+  assert.equal(calls, 11)
+  assert.equal(responses.length, 0)
+})
+
+test('repository discovery preserves a known parent count after pagination gateway recovery', async () => {
+  let calls = 0
+  await assert.rejects(discoverGitHubRepositories({
+    from: new Date('2026-08-14T00:00:00Z'),
+    to: new Date('2026-08-14T00:00:03Z'),
+    async searchPage({ cursor }) {
+      calls += 1
+      if (cursor) throw new Error('502 Bad Gateway: https://api.github.com/graphql')
+      return calls === 1 ? page(2, ['acme/one'], true, 'next') : page(0, [])
+    },
+  }), /0\/2 unique repositories.*incomplete window/)
+  assert.equal(calls, 8)
+})
+
+test('repository discovery does not allow small-window deficits after splitting', async () => {
+  let calls = 0
+  await assert.rejects(discoverGitHubRepositories({
+    from: new Date('2026-08-14T00:00:00Z'),
+    to: new Date('2026-08-14T00:00:03Z'),
+    async searchPage() {
+      calls += 1
+      if (calls === 1) return page(2, [])
+      return calls % 2 === 0 ? page(1, ['acme/one']) : page(0, [])
+    },
+  }), /1\/2 unique repositories.*incomplete window/)
+  assert.equal(calls, 7)
+})
+
+test('repository discovery permits excess child results and deduplicates across boundaries', async () => {
+  const names = Array.from({ length: 1_502 }, (_, index) => `acme/plugin-${index}`)
+  let calls = 0
+  const repositories = await discoverGitHubRepositories({
+    from: new Date('2026-08-14T00:00:00Z'),
+    to: new Date('2026-08-14T00:00:03Z'),
+    async searchPage() {
+      calls += 1
+      if (calls === 1) return page(1_500, [])
+      return calls === 2 ? page(751, names.slice(0, 751))
+        : page(752, [...names.slice(751), names[0].toUpperCase()])
+    },
+  })
+  assert.equal(repositories.length, 1_502)
+  assert.equal(new Set(repositories.map(repository => repository.full_name.toLowerCase())).size, 1_502)
+  assert.equal(calls, 3)
 })
 
 test('GraphQL repositories map to the registry normalization contract', () => {

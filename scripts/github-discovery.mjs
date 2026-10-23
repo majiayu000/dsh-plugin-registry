@@ -1,5 +1,6 @@
 const MAX_SEARCH_RESULTS = 1_000
 const MAX_SEARCH_ERROR_SPLITS = 16
+const MAX_RECONCILIATION_RETRIES = 2
 const ONE_SECOND = 1_000
 export const REPOSITORY_METADATA_BATCH_SIZE = 40
 
@@ -155,12 +156,42 @@ export async function discoverGitHubRepositories({
   onProgress = () => {},
 }) {
   let remainingErrorSplits = MAX_SEARCH_ERROR_SPLITS
+  let remainingReconciliationRetries = MAX_RECONCILIATION_RETRIES
 
   async function discoverWindow(windowFrom, windowTo, depth = 0) {
     const range = `${toSearchTimestamp(windowFrom)}..${toSearchTimestamp(windowTo)}`
     const searchQuery = `topic:dsh-plugin created:${range}`
     let first
     let repositories
+
+    async function discoverChildren() {
+      const windows = splitWindow(windowFrom, windowTo)
+      while (true) {
+        const children = [
+          ...(await discoverWindow(windows[0][0], windows[0][1], depth + 1)),
+          ...(await discoverWindow(windows[1][0], windows[1][1], depth + 1)),
+        ]
+        const unique = [...new Map(children.map(repository => [repository.full_name.toLowerCase(), repository])).values()]
+        // A failed first request has no parent count to reconcile. When the first
+        // page succeeded, keep that count even if pagination or child queries fail.
+        if (!first) return unique
+        const totalCount = first.repositoryCount
+        const allowedDrift = totalCount >= 100 ? Math.max(5, Math.ceil(totalCount * 0.01)) : 0
+        if (totalCount - unique.length <= allowedDrift) {
+          if (unique.length !== totalCount) {
+            onProgress({ type: 'drift', range, totalCount, fetched: unique.length, allowedDrift })
+          }
+          return unique
+        }
+        if (remainingReconciliationRetries <= 0) {
+          throw new Error(`GitHub discovery returned ${unique.length}/${totalCount} unique repositories for ${range}. Refusing to publish an incomplete window.`)
+        }
+        // Retry the same children against the original parent count. A shared
+        // budget bounds extra work and cannot be reset by deeper split windows.
+        remainingReconciliationRetries -= 1
+        onProgress({ type: 'retry-split', range, totalCount, fetched: unique.length, allowedDrift, depth, remainingReconciliationRetries })
+      }
+    }
     try {
       first = await searchPage({ searchQuery, cursor: null })
       const totalCount = first.repositoryCount
@@ -179,20 +210,12 @@ export async function discoverGitHubRepositories({
       if (!canRecoverBySplitting(error) || remainingErrorSplits <= 0 || !canSplitWindow(windowFrom, windowTo)) throw error
       remainingErrorSplits -= 1
       onProgress({ type: 'error-split', range, depth, error: error.message, remainingErrorSplits })
-      const windows = splitWindow(windowFrom, windowTo)
-      return [
-        ...(await discoverWindow(windows[0][0], windows[0][1], depth + 1)),
-        ...(await discoverWindow(windows[1][0], windows[1][1], depth + 1)),
-      ]
+      return discoverChildren()
     }
     const totalCount = first.repositoryCount
 
     if (totalCount > MAX_SEARCH_RESULTS) {
-      const windows = splitWindow(windowFrom, windowTo)
-      return [
-        ...(await discoverWindow(windows[0][0], windows[0][1], depth + 1)),
-        ...(await discoverWindow(windows[1][0], windows[1][1], depth + 1)),
-      ]
+      return discoverChildren()
     }
 
     const uniqueRepositories = [...new Map(repositories.map(repository => [repository.full_name.toLowerCase(), repository])).values()]
@@ -201,11 +224,7 @@ export async function discoverGitHubRepositories({
     if (missing > allowedDrift) {
       if (canSplitWindow(windowFrom, windowTo)) {
         onProgress({ type: 'resplit', range, totalCount, fetched: uniqueRepositories.length, allowedDrift, depth, rateLimit: first.rateLimit })
-        const windows = splitWindow(windowFrom, windowTo)
-        return [
-          ...(await discoverWindow(windows[0][0], windows[0][1], depth + 1)),
-          ...(await discoverWindow(windows[1][0], windows[1][1], depth + 1)),
-        ]
+        return discoverChildren()
       }
       throw new Error(`GitHub discovery returned ${uniqueRepositories.length}/${totalCount} unique repositories for ${range}. Refusing to publish an incomplete window.`)
     }
