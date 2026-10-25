@@ -13,6 +13,18 @@ import {
 
 export { pluginRoute } from '../assets/plugin-route.js'
 
+// Cloudflare Pages applies its limit to each uncompressed uploaded file.
+export const PAGES_MAX_FILE_BYTES = 25 * 1024 * 1024
+
+export function serializeRegistrySnapshot(registry) {
+  const text = JSON.stringify(registry)
+  const bytes = Buffer.byteLength(text, 'utf8')
+  if (bytes > PAGES_MAX_FILE_BYTES) {
+    throw new Error(`data/plugins.json is ${bytes} bytes after minification; Cloudflare Pages allows at most ${PAGES_MAX_FILE_BYTES} bytes per file.`)
+  }
+  return text
+}
+
 function xmlEscape(value) {
   return escapeHtml(value).replace(/&#39;/g, '&apos;')
 }
@@ -90,9 +102,13 @@ export async function generateSeoFiles({
   ])
   homepage ||= packageDocument.homepage
   if (!homepage) throw new Error('package.json homepage is required to generate canonical plugin URLs.')
+  // Keep the canonical snapshot readable; only compact the deployment copy.
+  // Validate before writing any generated files or the final build marker.
+  const registryText = serializeRegistrySnapshot(registry)
   const urls = STATIC_PAGES.map(({ path }) => ({ loc: new URL(path, homepage).href, lastmod: registry.generatedAt }))
   const browseSnapshot = createBrowseSnapshot(registry)
   await mkdir(join(distDir, 'data'), { recursive: true })
+  await writeFile(join(distDir, 'data', 'plugins.json'), registryText)
   await writeFile(join(distDir, 'data', browseSnapshot.filename), browseSnapshot.text)
 
   const peersByCategory = new Map()
