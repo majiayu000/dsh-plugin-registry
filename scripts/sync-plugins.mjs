@@ -171,8 +171,7 @@ async function loadCurated() {
   return curated
 }
 
-// Metadata successes must not dilute the partial Manifest/Patch evidence ratio.
-const validationRequests = { total: 0, partial: 0 }
+const graphqlRequests = { total: 0, partial: 0 }
 
 async function githubGraphql(query, variables, options = {}) {
   for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -182,13 +181,13 @@ async function githubGraphql(query, variables, options = {}) {
       body: JSON.stringify({ query, variables }),
     })
     if (!response.errors?.length) {
-      if (options.allowPartial) validationRequests.total += 1
+      graphqlRequests.total += 1
       return response
     }
     const message = response.errors.map(error => error.message).join('; ')
     if (options.allowPartial && response.data) {
-      validationRequests.total += 1
-      validationRequests.partial += 1
+      graphqlRequests.total += 1
+      graphqlRequests.partial += 1
       console.warn(`GitHub GraphQL returned partial data: ${message}`)
       return response
     }
@@ -225,7 +224,7 @@ async function loadRepositoryMetadata(repositoryKeys) {
       const batch = batches[nextBatch]
       nextBatch += 1
       try {
-        const { data } = await githubGraphql(buildRepositoryMetadataQuery(batch), {})
+        const { data } = await githubGraphql(buildRepositoryMetadataQuery(batch), {}, { allowPartial: true })
         for (const [key, value] of mapGraphqlRepositoryMetadataBatch(data, batch)) metadata.set(key, value)
       } catch (error) {
         nextBatch = batches.length
@@ -488,10 +487,10 @@ async function main() {
   const bundlePatches = await loadBundlePatches(bundleCandidates)
   const bundleMeta = new Map(bundleCandidates.map(candidate => [candidate.key, candidate]))
 
-  const partialRatio = validationRequests.total ? validationRequests.partial / validationRequests.total : 0
+  const partialRatio = graphqlRequests.total ? graphqlRequests.partial / graphqlRequests.total : 0
   const maxPartialRatio = Number(process.env.DSH_MAX_PARTIAL_RATIO ?? 0.05)
   if (partialRatio > maxPartialRatio) {
-    throw new Error(`GitHub GraphQL returned partial data for ${validationRequests.partial}/${validationRequests.total} requests (limit ${maxPartialRatio}); refusing to publish a partially validated snapshot.`)
+    throw new Error(`GitHub GraphQL returned partial data for ${graphqlRequests.partial}/${graphqlRequests.total} requests (limit ${maxPartialRatio}); refusing to publish a partially validated snapshot.`)
   }
 
   function targetVerification(fullName, directory = '', id = '') {
@@ -532,7 +531,9 @@ async function main() {
     const evidence = TOKEN
       ? targetVerification(githubFullName(plugin), directory, plugin.id)
       : { checked: false }
-    return normalizeCurated(plugin, metadata.get(key), evidence)
+    const normalized = normalizeCurated(plugin, metadata.get(key), evidence)
+    if (TOKEN && !hydratedRepositories.has(key)) normalized.listingEligible = false
+    return normalized
   })
   const discoveredRoots = newCandidates.flatMap(repo => {
     const evidence = targetVerification(repo.full_name, '', repo.full_name)
@@ -590,6 +591,9 @@ async function main() {
   })
   const discovered = eligibleCandidates.filter(plugin => plugin.listingEligible)
   function pendingReason(plugin) {
+    if (TOKEN && plugin.source === 'curated' && !hydratedRepositories.has(repositoryKey(plugin))) {
+      return 'Repository metadata could not be resolved from GitHub'
+    }
     if (plugin.verification.patch === 'missing') return 'dsh.bundle.patch does not resolve to a file at repository HEAD'
     if (plugin.verification.patch === 'invalid') return 'dsh.bundle.patch is not a top-level YAML array'
     return 'package.json does not declare a valid dsh.bundle object'
