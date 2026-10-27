@@ -393,7 +393,7 @@ async function main() {
   const curatedKeys = new Set(curatedRegistry.plugins.map(repositoryKey))
   const newCandidates = uniqueRepositories.filter(repo => !curatedKeys.has(repo.full_name.toLowerCase()))
   const repositoryByKey = new Map(uniqueRepositories.map(repo => [repo.full_name.toLowerCase(), repo]))
-  const metadata = new Map([...hydratedRepositories.values()].map(repo => [repo.full_name.toLowerCase(), {
+  const metadata = new Map([...hydratedRepositories].map(([key, repo]) => [key, {
       stargazerCount: repo.stargazers_count,
       forkCount: repo.forks_count,
       language: repo.language || '',

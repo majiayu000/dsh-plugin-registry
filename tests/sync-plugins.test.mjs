@@ -86,7 +86,11 @@ async function syncFixture(t, { count = 400, bundle = false, curatedDirectory = 
         }) }
         const data = {}
         for (const [, index, owner, name] of query.matchAll(/r(\d+): repository\(owner: "([^"]+)", name: "([^"]+)"\)/g)) {
-          data['r' + index] = repositories.find(repository => repository.nameWithOwner === owner + '/' + name) || null
+          const repository = repositories.find(repository => repository.nameWithOwner === owner + '/' + name)
+          data['r' + index] = repository && scenario.renamedCurated && name === 'dsh-plugin-0'
+            ? { ...repository, nameWithOwner: 'new-owner/moved', url: 'https://github.com/new-owner/moved',
+              stargazerCount: 41, isArchived: Boolean(scenario.archivedCurated) }
+            : repository || null
         }
         return { ok: true, json: async () => ({ data }) }
       }
@@ -149,6 +153,20 @@ test('repository metadata failures cannot replace an accepted snapshot with inco
   const baseline = await readFile(fixture.output, 'utf8')
   await assert.rejects(fixture.sync({ metadataFailure: true }), /Repository metadata unavailable/)
   assert.equal(await readFile(fixture.output, 'utf8'), baseline)
+})
+
+test('curated metadata retains its requested key when GitHub resolves a renamed repository', async t => {
+  const fixture = await syncFixture(t, { count: 3 })
+  const result = await fixture.sync({ renamedCurated: true })
+  const curated = result.document.plugins.find(plugin => plugin.id === 'acme/dsh-plugin-0')
+  assert.equal(curated.stars, 41)
+  assert.equal(curated.pushedAt, '2026-09-01T00:00:00Z')
+})
+
+test('a renamed archived curated repository cannot remain published under its old slug', async t => {
+  const fixture = await syncFixture(t, { count: 3 })
+  const result = await fixture.sync({ renamedCurated: true, archivedCurated: true })
+  assert.equal(result.document.plugins.some(plugin => plugin.id === 'acme/dsh-plugin-0'), false)
 })
 
 test('sync requires every patch and keeps partial second-patch evidence unknown', async t => {
