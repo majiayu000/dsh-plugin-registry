@@ -85,14 +85,20 @@ async function syncFixture(t, { count = 400, bundle = false, curatedDirectory = 
           data: {}, errors: [{ message: 'Repository metadata unavailable' }],
         }) }
         const data = {}
+        const errors = []
         for (const [, index, owner, name] of query.matchAll(/r(\d+): repository\(owner: "([^"]+)", name: "([^"]+)"\)/g)) {
           const repository = repositories.find(repository => repository.nameWithOwner === owner + '/' + name)
+          if (scenario.partialmetadata?.includes(owner + '/' + name)) {
+            data['r' + index] = null
+            errors.push({ message: 'Repository metadata unavailable', path: ['r' + index] })
+            continue
+          }
           data['r' + index] = repository && scenario.renamedCurated && name === 'dsh-plugin-0'
             ? { ...repository, nameWithOwner: 'new-owner/moved', url: 'https://github.com/new-owner/moved',
               stargazerCount: 41, isArchived: Boolean(scenario.archivedCurated) }
             : repository || null
         }
-        return { ok: true, json: async () => ({ data }) }
+        return { ok: true, json: async () => ({ data, ...(errors.length ? { errors } : {}) }) }
       }
       const kind = query.includes('defaultBranchRef') ? 'manifest' : 'patch'
       const data = {}
@@ -153,6 +159,17 @@ test('repository metadata failures cannot replace an accepted snapshot with inco
   const baseline = await readFile(fixture.output, 'utf8')
   await assert.rejects(fixture.sync({ metadataFailure: true }), /Repository metadata unavailable/)
   assert.equal(await readFile(fixture.output, 'utf8'), baseline)
+})
+
+test('partial repository metadata preserves resolved plugins and keeps an unresolved curated root pending', async t => {
+  const fixture = await syncFixture(t)
+  await fixture.sync()
+  const result = await fixture.sync({ partialmetadata: ['acme/dsh-plugin-0'] })
+  assert.equal(result.document.plugins.length, 399)
+  assert.ok(result.document.plugins.some(plugin => plugin.id === 'acme/dsh-plugin-1'))
+  assert.equal(result.document.plugins.some(plugin => plugin.id === 'acme/dsh-plugin-0'), false)
+  assert.match(result.audit.pendingReview.find(plugin => plugin.id === 'acme/dsh-plugin-0').reason, /Repository metadata could not be resolved/)
+  assert.equal(result.document.stats.curatedSource, 1)
 })
 
 test('curated metadata retains its requested key when GitHub resolves a renamed repository', async t => {
