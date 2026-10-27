@@ -39,7 +39,7 @@ for (const count of [1_000, 1_002]) {
         const { query, variables } = JSON.parse(options.body)
         if (query.includes('RegistryRepositoryDiscovery')) {
           const size = /first: (\d+), after:/.exec(query)?.[1] || variables.pageSize
-          const range = variables.searchQuery.split('created:')[1].split('..').map(Date.parse)
+          const range = /created:(\S+)/.exec(variables.searchQuery)[1].split('..').map(Date.parse)
           const matches = repositories.filter((_, index) => created + index * 1000 >= range[0] && created + index * 1000 <= range[1])
           const offset = Number(variables.cursor || 0)
           const end = Math.min(offset + Number(size), matches.length, 1000)
