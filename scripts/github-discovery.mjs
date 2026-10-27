@@ -160,9 +160,11 @@ export async function discoverGitHubRepositories({
 
   async function discoverWindow(windowFrom, windowTo, depth = 0) {
     const range = `${toSearchTimestamp(windowFrom)}..${toSearchTimestamp(windowTo)}`
-    const searchQuery = `topic:dsh-plugin created:${range}`
+    // Relevance ranking can move repositories between cursor pages while crawling.
+    const searchQuery = `topic:dsh-plugin created:${range} sort:updated-asc`
     let first
     let repositories
+    let totalCount
 
     async function discoverChildren() {
       const windows = splitWindow(windowFrom, windowTo)
@@ -175,7 +177,6 @@ export async function discoverGitHubRepositories({
         // A failed first request has no parent count to reconcile. When the first
         // page succeeded, keep that count even if pagination or child queries fail.
         if (!first) return unique
-        const totalCount = first.repositoryCount
         const allowedDrift = totalCount >= 100 ? Math.max(5, Math.ceil(totalCount * 0.01)) : 0
         if (totalCount - unique.length <= allowedDrift) {
           if (unique.length !== totalCount) {
@@ -194,7 +195,7 @@ export async function discoverGitHubRepositories({
     }
     try {
       first = await searchPage({ searchQuery, cursor: null })
-      const totalCount = first.repositoryCount
+      totalCount = first.repositoryCount
       onProgress({ type: 'window', range, totalCount, depth, rateLimit: first.rateLimit })
       repositories = [...first.repositories]
       let pageInfo = first.pageInfo
@@ -202,6 +203,8 @@ export async function discoverGitHubRepositories({
       while (totalCount <= MAX_SEARCH_RESULTS && pageInfo.hasNextPage) {
         page += 1
         const next = await searchPage({ searchQuery, cursor: pageInfo.endCursor })
+        // Later pages can report different counts; a decrease must not hide omissions.
+        totalCount = Math.max(totalCount, next.repositoryCount)
         repositories.push(...next.repositories)
         pageInfo = next.pageInfo
         onProgress({ type: 'page', range, totalCount, fetched: repositories.length, page, rateLimit: next.rateLimit })
@@ -212,8 +215,6 @@ export async function discoverGitHubRepositories({
       onProgress({ type: 'error-split', range, depth, error: error.message, remainingErrorSplits })
       return discoverChildren()
     }
-    const totalCount = first.repositoryCount
-
     if (totalCount > MAX_SEARCH_RESULTS) {
       return discoverChildren()
     }

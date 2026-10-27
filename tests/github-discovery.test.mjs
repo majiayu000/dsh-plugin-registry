@@ -17,6 +17,33 @@ function page(repositoryCount, names, hasNextPage = false, endCursor = null) {
   }
 }
 
+test('repository discovery keeps a stable ordering across pages of a live search index', async () => {
+  const names = Array.from({ length: 200 }, (_, index) => `acme/plugin-${index}`)
+  const repositories = await discoverGitHubRepositories({
+    from: new Date('2026-08-14T00:00:00Z'),
+    to: new Date('2026-08-14T00:00:01Z'),
+    async searchPage({ searchQuery, cursor }) {
+      if (!cursor) return page(200, names.slice(0, 1), true, 'first')
+      if (cursor === 'first') return page(200, names.slice(1, 101), true, 'second')
+      // Relevance ranking can move earlier results into a later page and omit others.
+      return page(200, searchQuery.includes('sort:updated-asc') ? names.slice(101) : names.slice(91, 190))
+    },
+  })
+  assert.deepEqual(repositories.map(repository => repository.full_name), names)
+})
+
+test('repository discovery retains the largest count observed before a premature final page', async () => {
+  await assert.rejects(discoverGitHubRepositories({
+    from: new Date('2026-08-14T00:00:00Z'),
+    to: new Date('2026-08-14T00:00:01Z'),
+    async searchPage({ cursor }) {
+      if (!cursor) return page(2, ['acme/one'], true, 'next')
+      if (cursor === 'next') return page(4, ['acme/two'], true, 'last')
+      return page(2, ['acme/three'])
+    },
+  }), /3\/4 unique repositories.*incomplete window/)
+})
+
 test('repository discovery splits timestamp windows beyond the GitHub 1000-result limit', async () => {
   const queries = []
   const progress = []
