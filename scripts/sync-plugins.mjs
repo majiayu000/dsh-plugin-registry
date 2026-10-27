@@ -4,7 +4,6 @@ import { pathToFileURL } from 'node:url'
 import {
   buildRepositoryMetadataQuery,
   discoverGitHubRepositories,
-  mapGraphqlRepository,
   mapGraphqlRepositoryMetadataBatch,
   mapRestRepository,
   REPOSITORY_DISCOVERY_QUERY,
@@ -172,7 +171,8 @@ async function loadCurated() {
   return curated
 }
 
-const graphqlRequests = { total: 0, partial: 0 }
+// Metadata successes must not dilute the partial Manifest/Patch evidence ratio.
+const validationRequests = { total: 0, partial: 0 }
 
 async function githubGraphql(query, variables, options = {}) {
   for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -182,13 +182,13 @@ async function githubGraphql(query, variables, options = {}) {
       body: JSON.stringify({ query, variables }),
     })
     if (!response.errors?.length) {
-      graphqlRequests.total += 1
+      if (options.allowPartial) validationRequests.total += 1
       return response
     }
     const message = response.errors.map(error => error.message).join('; ')
     if (options.allowPartial && response.data) {
-      graphqlRequests.total += 1
-      graphqlRequests.partial += 1
+      validationRequests.total += 1
+      validationRequests.partial += 1
       console.warn(`GitHub GraphQL returned partial data: ${message}`)
       return response
     }
@@ -200,22 +200,19 @@ async function githubGraphql(query, variables, options = {}) {
 }
 
 async function githubSearchPage({ searchQuery, cursor }) {
-  // Wide ranges need the count before splitting; hydrating 100 repositories here
-  // can time out before GitHub returns it. Retain the first result, then paginate.
+  // Search only identities; hydrate metadata in direct repository batches afterward.
   const { data } = await githubGraphql(REPOSITORY_DISCOVERY_QUERY, {
     searchQuery, cursor, pageSize: cursor === null ? 1 : 100,
   })
   return {
     repositoryCount: data.search.repositoryCount,
-    repositories: data.search.nodes.filter(Boolean).map(mapGraphqlRepository),
+    repositories: data.search.nodes.filter(Boolean).map(repository => ({ full_name: repository.nameWithOwner })),
     pageInfo: data.search.pageInfo,
     rateLimit: data.rateLimit,
   }
 }
 
-async function loadCuratedRepositoryMetadata(repositoryKeys) {
-  if (!TOKEN || repositoryKeys.length === 0) return new Map()
-
+async function loadRepositoryMetadata(repositoryKeys) {
   const batches = []
   for (let offset = 0; offset < repositoryKeys.length; offset += REPOSITORY_METADATA_BATCH_SIZE) {
     batches.push(repositoryKeys.slice(offset, offset + REPOSITORY_METADATA_BATCH_SIZE))
@@ -228,10 +225,11 @@ async function loadCuratedRepositoryMetadata(repositoryKeys) {
       const batch = batches[nextBatch]
       nextBatch += 1
       try {
-        const { data } = await githubGraphql(buildRepositoryMetadataQuery(batch), {}, { allowPartial: true })
+        const { data } = await githubGraphql(buildRepositoryMetadataQuery(batch), {})
         for (const [key, value] of mapGraphqlRepositoryMetadataBatch(data, batch)) metadata.set(key, value)
       } catch (error) {
-        console.warn(`Curated repository metadata unavailable for batch; keeping curated fallbacks: ${error.message}`)
+        nextBatch = batches.length
+        throw error
       }
     }
   }
@@ -375,22 +373,27 @@ async function main() {
   const [previous, previousAudit] = await Promise.all([loadPrevious(), loadPreviousAudit()])
   const [blocklist, overrides] = await Promise.all([loadConfig(BLOCKLIST), loadConfig(OVERRIDES)])
   const curatedRegistry = await loadCurated()
-  const repositories = await discoverRepositories()
-  console.log(`Discovery complete: ${repositories.length} topic candidates.`)
+  const identities = await discoverRepositories()
+  console.log(`Discovery complete: ${identities.length} topic candidates.`)
+  const repositoryKeys = [...new Set([
+    ...identities.map(repo => repo.full_name.toLowerCase()),
+    ...curatedRegistry.plugins.map(repositoryKey),
+  ])]
+  const hydratedRepositories = TOKEN
+    ? await loadRepositoryMetadata(repositoryKeys)
+    : new Map(identities.map(repo => [repo.full_name.toLowerCase(), repo]))
+  const repositories = identities.flatMap(repo => {
+    const hydrated = hydratedRepositories.get(repo.full_name.toLowerCase())
+    return hydrated ? [hydrated] : []
+  })
+  console.log(`Repository metadata: ${hydratedRepositories.size}/${repositoryKeys.length} roots resolved.`)
   const uniqueRepositories = [...new Map(repositories.map(repo => [repo.full_name.toLowerCase(), repo])).values()]
     .filter(repo => !repo.archived && !repo.fork)
 
   const curatedKeys = new Set(curatedRegistry.plugins.map(repositoryKey))
   const newCandidates = uniqueRepositories.filter(repo => !curatedKeys.has(repo.full_name.toLowerCase()))
   const repositoryByKey = new Map(uniqueRepositories.map(repo => [repo.full_name.toLowerCase(), repo]))
-  const curatedRepositoryKeys = [...new Set(curatedRegistry.plugins.map(repositoryKey))]
-  const missingCuratedRepositoryKeys = curatedRepositoryKeys.filter(key => !repositoryByKey.has(key))
-  const curatedRepositoryMetadata = await loadCuratedRepositoryMetadata(missingCuratedRepositoryKeys)
-  if (missingCuratedRepositoryKeys.length > 0) {
-    console.log(`Curated metadata: ${curatedRepositoryMetadata.size}/${missingCuratedRepositoryKeys.length} repository roots resolved.`)
-  }
-  const metadata = new Map([
-    ...uniqueRepositories.map(repo => [repo.full_name.toLowerCase(), {
+  const metadata = new Map([...hydratedRepositories.values()].map(repo => [repo.full_name.toLowerCase(), {
       stargazerCount: repo.stargazers_count,
       forkCount: repo.forks_count,
       language: repo.language || '',
@@ -403,9 +406,7 @@ async function main() {
       isArchived: repo.archived,
       repositoryTopics: { nodes: (repo.topics || []).map(name => ({ topic: { name } })) },
       avatarUrl: repo.owner?.avatar_url,
-    }]),
-    ...curatedRepositoryMetadata,
-  ])
+    }]))
   const manifestCache = new Map()
   for (const plugin of previous?.plugins || []) {
     const cached = {
@@ -487,10 +488,10 @@ async function main() {
   const bundlePatches = await loadBundlePatches(bundleCandidates)
   const bundleMeta = new Map(bundleCandidates.map(candidate => [candidate.key, candidate]))
 
-  const partialRatio = graphqlRequests.total ? graphqlRequests.partial / graphqlRequests.total : 0
+  const partialRatio = validationRequests.total ? validationRequests.partial / validationRequests.total : 0
   const maxPartialRatio = Number(process.env.DSH_MAX_PARTIAL_RATIO ?? 0.05)
   if (partialRatio > maxPartialRatio) {
-    throw new Error(`GitHub GraphQL returned partial data for ${graphqlRequests.partial}/${graphqlRequests.total} requests (limit ${maxPartialRatio}); refusing to publish a partially validated snapshot.`)
+    throw new Error(`GitHub GraphQL returned partial data for ${validationRequests.partial}/${validationRequests.total} requests (limit ${maxPartialRatio}); refusing to publish a partially validated snapshot.`)
   }
 
   function targetVerification(fullName, directory = '', id = '') {

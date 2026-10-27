@@ -449,7 +449,7 @@ test('GraphQL repositories map to the registry normalization contract', () => {
   })
 })
 
-test('curated repository metadata is queried in one GraphQL batch and skips missing roots', () => {
+test('repository metadata is queried in one GraphQL batch and skips missing roots', () => {
   const repositoryKeys = ['vectorize-io/hindsight', 'missing/private-repository']
   const query = buildRepositoryMetadataQuery(repositoryKeys)
   assert.equal((query.match(/repository\(owner:/g) || []).length, 2)
@@ -459,6 +459,7 @@ test('curated repository metadata is queried in one GraphQL batch and skips miss
 
   const metadata = mapGraphqlRepositoryMetadataBatch({
     r0: {
+      nameWithOwner: 'vectorize-io/hindsight', url: 'https://github.com/vectorize-io/hindsight',
       stargazerCount: 20_005,
       forkCount: 1_413,
       primaryLanguage: { name: 'Python' },
@@ -473,15 +474,14 @@ test('curated repository metadata is queried in one GraphQL batch and skips miss
   }, repositoryKeys)
 
   assert.deepEqual(metadata.get('vectorize-io/hindsight'), {
-    stargazerCount: 20_005,
-    forkCount: 1_413,
+    full_name: 'vectorize-io/hindsight', html_url: 'https://github.com/vectorize-io/hindsight',
+    description: '', stargazers_count: 20_005,
+    forks_count: 1_413,
     language: 'Python',
     license: 'MIT',
-    latestRelease: { tag: 'v1.0.0', publishedAt: '2026-08-15T00:00:00Z' },
-    pushedAt: '2026-08-16T00:00:00Z',
-    isArchived: false,
-    repositoryTopics: { nodes: [{ topic: { name: 'memory' } }] },
-    avatarUrl: 'https://avatars.example/vectorize-io',
+    latest_release: { tag: 'v1.0.0', published_at: '2026-08-15T00:00:00Z' },
+    pushed_at: '2026-08-16T00:00:00Z', archived: false, fork: false,
+    topics: ['memory'], owner: { avatar_url: 'https://avatars.example/vectorize-io' },
   })
   assert.equal(metadata.has('missing/private-repository'), false)
 })

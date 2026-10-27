@@ -28,18 +28,6 @@ export const REPOSITORY_DISCOVERY_QUERY = `
       nodes {
         ... on Repository {
           nameWithOwner
-          url
-          description
-          stargazerCount
-          forkCount
-          pushedAt
-          isArchived
-          isFork
-          primaryLanguage { name }
-          licenseInfo { spdxId }
-          latestRelease { tagName publishedAt }
-          owner { avatarUrl }
-          repositoryTopics(first: 20) { nodes { topic { name } } }
         }
       }
     }
@@ -126,26 +114,13 @@ export function buildRepositoryMetadataQuery(repositoryKeys) {
     const [owner, name] = String(key).split('/')
     return `r${index}: repository(owner: ${JSON.stringify(owner)}, name: ${JSON.stringify(name)}) {${REPOSITORY_METADATA_FIELDS}}`
   }).join('\n')
-  return `query CuratedRepositoryMetadata { ${fields} }`
+  return `query RegistryRepositoryMetadata { ${fields} }`
 }
 
 export function mapGraphqlRepositoryMetadataBatch(data, repositoryKeys) {
   return new Map(repositoryKeys.flatMap((key, index) => {
     const repository = data?.[`r${index}`]
-    return repository ? [[String(key).toLowerCase(), {
-      stargazerCount: repository.stargazerCount ?? 0,
-      forkCount: repository.forkCount ?? 0,
-      language: repository.primaryLanguage?.name || '',
-      license: repository.licenseInfo?.spdxId || '',
-      latestRelease: repository.latestRelease ? {
-        tag: repository.latestRelease.tagName,
-        publishedAt: repository.latestRelease.publishedAt,
-      } : null,
-      pushedAt: repository.pushedAt || null,
-      isArchived: Boolean(repository.isArchived),
-      repositoryTopics: { nodes: repository.repositoryTopics?.nodes || [] },
-      avatarUrl: repository.owner?.avatarUrl || '',
-    }]] : []
+    return repository ? [[String(key).toLowerCase(), mapGraphqlRepository(repository)]] : []
   }))
 }
 

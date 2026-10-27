@@ -80,6 +80,16 @@ async function syncFixture(t, { count = 400, bundle = false, curatedDirectory = 
           pageInfo: { hasNextPage: end < repositories.length, endCursor: String(end) },
         } } }) }
       }
+      if (query.includes('RegistryRepositoryMetadata')) {
+        if (scenario.metadataFailure) return { ok: true, json: async () => ({
+          data: {}, errors: [{ message: 'Repository metadata unavailable' }],
+        }) }
+        const data = {}
+        for (const [, index, owner, name] of query.matchAll(/r(\d+): repository\(owner: "([^"]+)", name: "([^"]+)"\)/g)) {
+          data['r' + index] = repositories.find(repository => repository.nameWithOwner === owner + '/' + name) || null
+        }
+        return { ok: true, json: async () => ({ data }) }
+      }
       const kind = query.includes('defaultBranchRef') ? 'manifest' : 'patch'
       const data = {}
       const errors = []
@@ -132,6 +142,14 @@ async function syncFixture(t, { count = 400, bundle = false, curatedDirectory = 
     },
   }
 }
+
+test('repository metadata failures cannot replace an accepted snapshot with incomplete fields', async t => {
+  const fixture = await syncFixture(t, { count: 3 })
+  await fixture.sync()
+  const baseline = await readFile(fixture.output, 'utf8')
+  await assert.rejects(fixture.sync({ metadataFailure: true }), /Repository metadata unavailable/)
+  assert.equal(await readFile(fixture.output, 'utf8'), baseline)
+})
 
 test('sync requires every patch and keeps partial second-patch evidence unknown', async t => {
   const fixture = await syncFixture(t)

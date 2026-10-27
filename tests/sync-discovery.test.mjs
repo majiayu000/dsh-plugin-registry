@@ -10,7 +10,7 @@ const run = promisify(execFile)
 const syncScript = resolve(import.meta.dirname, '../scripts/sync-plugins.mjs')
 
 for (const count of [1_000, 1_002]) {
-  test(`complete sync discovers ${count} repositories without hydrating oversized first pages`, async t => {
+  test(`complete sync discovers ${count} identities before hydrating complete repository metadata`, async t => {
     const root = await mkdtemp(join(tmpdir(), 'hr-sync-discovery-'))
     t.after(() => rm(root, { recursive: true, force: true }))
     await mkdir(join(root, 'sources'))
@@ -31,6 +31,10 @@ for (const count of [1_000, 1_002]) {
         nameWithOwner: 'acme/dsh-plugin-' + index,
         url: 'https://github.com/acme/dsh-plugin-' + index,
         description: 'DeepSeek Harness plugin',
+        stargazerCount: 17, forkCount: 3, isArchived: false, isFork: false,
+        primaryLanguage: { name: 'TypeScript' }, licenseInfo: { spdxId: 'MIT' },
+        latestRelease: { tagName: 'v1.2.3', publishedAt: '2026-09-01T00:00:00Z' },
+        owner: { avatarUrl: 'https://avatars.githubusercontent.com/u/123' },
         pushedAt: '2026-09-01T00:00:00Z',
         repositoryTopics: { nodes: [{ topic: { name: 'dsh-plugin' } }] },
       }))
@@ -44,13 +48,21 @@ for (const count of [1_000, 1_002]) {
           const offset = Number(variables.cursor || 0)
           const end = Math.min(offset + Number(size), matches.length, 1000)
           appendFileSync('requests.jsonl', JSON.stringify({ size: Number(size), cursor: variables.cursor, count: matches.length }) + '\n')
-          if (matches.length > 1000 && Number(size) > 1) {
+          // Reproduce expensive search hydration timing out independently of result count.
+          if (/latestRelease|repositoryTopics/.test(query)) {
             return { ok: false, status: 502, statusText: 'Bad Gateway' }
           }
           return { ok: true, json: async () => ({ data: { search: {
-            repositoryCount: matches.length, nodes: matches.slice(offset, end),
+            repositoryCount: matches.length, nodes: matches.slice(offset, end).map(({ nameWithOwner }) => ({ nameWithOwner })),
             pageInfo: { hasNextPage: end < Math.min(matches.length, 1000), endCursor: String(end) },
           } } }) }
+        }
+        if (query.includes('RegistryRepositoryMetadata')) {
+          const data = {}
+          for (const [, index, owner, name] of query.matchAll(/r(\d+): repository\(owner: "([^"]+)", name: "([^"]+)"\)/g)) {
+            data['r' + index] = repositories.find(repository => repository.nameWithOwner === owner + '/' + name) || null
+          }
+          return { ok: true, json: async () => ({ data }) }
         }
         const data = {}
         for (const match of query.matchAll(/r(\d+): repository\(owner: "([^"]+)", name: "([^"]+)"\) \{ object\(expression: "([^"]+)"/g)) {
@@ -77,6 +89,10 @@ for (const count of [1_000, 1_002]) {
     assert.equal(document.plugins.length, count)
     assert.equal(new Set(document.plugins.map(plugin => plugin.id)).size, count)
     assert.ok(document.plugins.every(plugin => plugin.verifiedCommit === 'a'.repeat(40) && plugin.verification.patch === 'exists'))
+    assert.ok(document.plugins.every(plugin => plugin.stars === 17 && plugin.forks === 3
+      && plugin.language === 'TypeScript' && plugin.license === 'MIT'
+      && plugin.latestRelease.tag === 'v1.2.3' && plugin.topics.includes('dsh-plugin')
+      && plugin.description.en === 'DeepSeek Harness plugin' && plugin.icon === 'https://avatars.githubusercontent.com/u/123'))
     assert.ok(requests.filter(request => request.cursor === null).every(request => request.size === 1))
     assert.ok(requests.some(request => request.cursor === '1' && request.size === 100))
     assert.ok(requests.filter(request => request.cursor !== null).every(request => request.size === 100 && request.count <= 1000))
