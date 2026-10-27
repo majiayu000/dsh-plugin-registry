@@ -5,6 +5,8 @@ Registry 的公开列表只包含两种可信等级：
 - `curated`：来自仓库内精选目录 [`sources/curated.json`](../sources/curated.json)，并在能够检查时满足与自动发现相同的可安装契约。精选目录 vendor 进本仓库（可用 `npm run export:curated` 从快照再生），同步不再依赖外部域名。
 - `manifest_verified`：由 GitHub Topic 自动发现，`package.json` 声明了有效的 `dsh.bundle`。`patch` 可为单个安全相对路径或非空路径列表，每个引用的 Patch 文件都必须存在且是顶层 YAML 数组（允许空数组，与 DSH loader 一致）。任一文件缺失、无效或未能验证，都不能据此获得新的验证通过状态。
 
+元数据批量查询保留成功解析的仓库。无法从 GitHub 解析元数据的精选条目保留在待确认记录中，说明原因并停止提供安装条目；原始 `sources/curated.json` 记录不删除，后续同步可重新确认。部分响应仍受下述 GraphQL 比例门禁和快照健康门禁约束。
+
 另外两种状态保存在 `public/data/registry-audit.json`，不会进入可安装插件列表：
 
 - `pending_review`：候选仓库存在，但尚未通过 manifest 契约；仓库名称、简介或额外 Topic 还需提供至少一个 DSH 关联信号，网页才会在「缺少有效 dsh.bundle」筛选中展示仓库并链接 GitHub，且不会提供安装命令。默认浏览列表只包含可安装插件。
