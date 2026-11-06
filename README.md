@@ -23,7 +23,7 @@ Open <http://localhost:5173> to browse, search, filter, and inspect the registry
 
 - A searchable web directory with categories, trust labels, Stars, Forks, and install commands.
 - Curated entries vendored from the community catalog into [`sources/curated.json`](sources/curated.json).
-- Automatic discovery from the GitHub `dsh-plugin` topic.
+- Automatic discovery from the GitHub `dsh-plugin` topic and the community catalog at `https://awesome-dsh-plugin.com/plugins.json`.
 - Manifest verification: discovered repositories must declare a valid `dsh.bundle` object in `package.json`, and its referenced patch file must exist.
 - Supply-chain pinning: each verified plugin records the exact `verifiedCommit` HEAD its manifest was checked against.
 - A public JSON snapshot with schema validation, health gates, and a separate audit queue.
@@ -76,10 +76,12 @@ This is the upstream `format: 1` index, distinct from the website's `schemaVersi
 ```text
 Vendored curated catalog (sources/curated.json) ─┐
                                                  ├─ normalize ─ verify ─ governance ─ public registry
-GitHub topic ────────────────────────────────────┘                              └──── audit queue
+GitHub topic + community catalog candidates ──────┘                              └──── audit queue
 ```
 
 Curated repositories receive the `curated` trust level. Automatically discovered repositories are installable only when their root `package.json` contains a valid `dsh.bundle`; these receive `manifest_verified`. Pending repositories remain visible as GitHub candidates without an install command, while blocked and quarantined repositories stay hidden. The full policy is documented in [registry governance](docs/registry-governance.md).
+
+The live community catalog supplies repository identities only, so plugins without the topic can enter the same GitHub metadata, manifest, patch, and governance checks. Its descriptions, install commands, and trust assertions are not imported; manually curated entries remain in `sources/curated.json`. Private repositories and repositories whose visibility is unknown do not enter public output. An incomplete or unavailable community response aborts the authenticated refresh and preserves the previous snapshot. Limited unauthenticated runs do not fetch this source. GitHub credentials are sent only to the GitHub API.
 
 The scheduled GitHub Actions workflow refreshes the snapshot every two hours. When the registry changes, the same workflow commits the snapshot and deploys its verified build artifact to Cloudflare Pages, so sync commits created with `GITHUB_TOKEN` do not depend on a second `push` event. A health gate prevents an unauthenticated partial discovery run, an unexpectedly smaller complete snapshot, or a partially answered GitHub GraphQL batch from replacing healthy data. If a scheduled sync fails, the workflow opens a titled tracking issue and closes it after a subsequent sync successfully deploys.
 

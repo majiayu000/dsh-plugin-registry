@@ -20,6 +20,7 @@ import {
   mergePlugins,
   normalizeCurated,
   normalizeDiscovered,
+  parseGithubRepositoryUrl,
   repoKey,
   repositoryKey,
   toPublicPlugin,
@@ -29,6 +30,7 @@ import {
 import { validateRegistry } from './validate-registry.mjs'
 
 const CURATED_SOURCE = resolve('sources/curated.json')
+const COMMUNITY_SOURCE = 'https://awesome-dsh-plugin.com/plugins.json'
 const GITHUB_API = 'https://api.github.com'
 const OUTPUT = resolve(process.env.DSH_REGISTRY_OUTPUT || 'public/data/plugins.json')
 const AUDIT_OUTPUT = resolve(process.env.DSH_REGISTRY_AUDIT_OUTPUT || 'public/data/registry-audit.json')
@@ -103,7 +105,11 @@ export async function fetchJson(url, options = {}) {
     try {
       const response = await fetch(url, {
         ...options,
-        headers: { ...headers, ...options.headers },
+        // Community discovery uses the same retry policy, never GitHub credentials.
+        headers: {
+          ...(new URL(url).origin === GITHUB_API ? headers : { accept: 'application/json', 'user-agent': USER_AGENT }),
+          ...options.headers,
+        },
         signal: options.signal || AbortSignal.timeout(30_000),
       })
       if (response.ok) {
@@ -171,6 +177,26 @@ async function loadCurated() {
   return curated
 }
 
+export function communityRepositoryCandidates(document) {
+  if (!document || !Array.isArray(document.plugins)
+    || !Number.isInteger(document.count) || document.count !== document.plugins.length
+    || typeof document.updated !== 'string' || !Number.isFinite(Date.parse(document.updated))
+    || document.plugins.some(plugin => !plugin || typeof plugin !== 'object' || Array.isArray(plugin) || typeof plugin.url !== 'string')) {
+    throw new Error('Community discovery response is incomplete or unknown; refusing to publish a partial snapshot.')
+  }
+  const repositories = new Map()
+  for (const plugin of document.plugins) {
+    if (plugin.private === true || plugin.isPrivate === true) continue
+    const repo = parseGithubRepositoryUrl(plugin.url)
+    if (!repo) continue
+    // The URL supplies identity only. No upstream description, trust, install
+    // command, or manifest assertion bypasses the ordinary GitHub validation.
+    const fullName = `${repo.owner}/${repo.repository}`
+    repositories.set(fullName.toLowerCase(), { full_name: fullName })
+  }
+  return [...repositories.values()]
+}
+
 const graphqlRequests = { total: 0, partial: 0 }
 
 async function githubGraphql(query, variables, options = {}) {
@@ -224,6 +250,8 @@ async function loadRepositoryMetadata(repositoryKeys) {
       const batch = batches[nextBatch]
       nextBatch += 1
       try {
+        // Topic search and a public community list are not proof of repository
+        // visibility when the token can also read private repositories.
         const { data } = await githubGraphql(buildRepositoryMetadataQuery(batch), {}, { allowPartial: true })
         for (const [key, value] of mapGraphqlRepositoryMetadataBatch(data, batch)) metadata.set(key, value)
       } catch (error) {
@@ -372,15 +400,24 @@ async function main() {
   const [previous, previousAudit] = await Promise.all([loadPrevious(), loadPreviousAudit()])
   const [blocklist, overrides] = await Promise.all([loadConfig(BLOCKLIST), loadConfig(OVERRIDES)])
   const curatedRegistry = await loadCurated()
-  const identities = await discoverRepositories()
-  console.log(`Discovery complete: ${identities.length} topic candidates.`)
+  // Bare community identities require authenticated hydration; the limited
+  // unauthenticated mode continues to use only hydrated REST topic results.
+  const communityIdentities = TOKEN ? communityRepositoryCandidates(await fetchJson(COMMUNITY_SOURCE)) : []
+  const topicIdentities = await discoverRepositories()
+  const topicKeys = new Set(topicIdentities.map(repo => repo.full_name.toLowerCase()))
+  const communityKeys = new Set(communityIdentities.map(repo => repo.full_name.toLowerCase()))
+  const identities = [...new Map([...communityIdentities, ...topicIdentities].map(repo => [repo.full_name.toLowerCase(), repo])).values()]
+  console.log(`Discovery complete: ${topicIdentities.length} topic candidates, ${communityIdentities.length} community candidates, ${identities.length} unique roots.`)
   const repositoryKeys = [...new Set([
     ...identities.map(repo => repo.full_name.toLowerCase()),
     ...curatedRegistry.plugins.map(repositoryKey),
   ])]
-  const hydratedRepositories = TOKEN
+  const resolvedRepositories = TOKEN
     ? await loadRepositoryMetadata(repositoryKeys)
     : new Map(identities.map(repo => [repo.full_name.toLowerCase(), repo]))
+  const nonPublicKeys = new Set((TOKEN ? repositoryKeys : [...resolvedRepositories.keys()])
+    .filter(key => resolvedRepositories.get(key)?.private !== false))
+  const hydratedRepositories = new Map([...resolvedRepositories].filter(([, repo]) => repo.private === false))
   const repositories = identities.flatMap(repo => {
     const hydrated = hydratedRepositories.get(repo.full_name.toLowerCase())
     return hydrated ? [hydrated] : []
@@ -436,7 +473,7 @@ async function main() {
   }
 
   const rootTargets = uniqueRepositories.map(repo => ({ full_name: repo.full_name, directory: '' }))
-  const curatedTargets = curatedRegistry.plugins.map(plugin => ({
+  const curatedTargets = curatedRegistry.plugins.filter(plugin => !nonPublicKeys.has(repositoryKey(plugin))).map(plugin => ({
     full_name: githubFullName(plugin),
     directory: bundleDirectoryFromUrl(plugin.url),
     id: plugin.id,
@@ -525,7 +562,9 @@ async function main() {
     }
   }
 
-  const curated = curatedRegistry.plugins.map(plugin => {
+  // Private/unknown-visibility curated rows must not leak through the public
+  // pending audit either. Keep their manually maintained source entries intact.
+  const curated = curatedRegistry.plugins.filter(plugin => !nonPublicKeys.has(repositoryKey(plugin))).map(plugin => {
     const key = repositoryKey(plugin)
     const directory = bundleDirectoryFromUrl(plugin.url)
     const evidence = TOKEN
@@ -636,7 +675,8 @@ async function main() {
     generatedAt: new Date().toISOString(),
     categories: mergeRegistryCategories(curatedRegistry.categories),
     stats: {
-      topicCandidates: uniqueRepositories.length,
+      topicCandidates: uniqueRepositories.filter(repo => topicKeys.has(repo.full_name.toLowerCase())).length,
+      communityCandidates: uniqueRepositories.filter(repo => communityKeys.has(repo.full_name.toLowerCase())).length,
       curated: publishedCurated,
       curatedSource,
       automaticallyDiscovered: publishedDiscovered,
@@ -653,6 +693,7 @@ async function main() {
     sources: {
       curated: 'sources/curated.json',
       discovery: 'https://github.com/topics/dsh-plugin',
+      ...(TOKEN ? { community: COMMUNITY_SOURCE } : {}),
     },
     plugins,
   }

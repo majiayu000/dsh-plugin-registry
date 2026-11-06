@@ -7,7 +7,9 @@ test('the curated catalog is vendored into the repository as the sync source', a
   assert.ok(Array.isArray(curated.plugins) && curated.plugins.length > 0)
   const sync = await readFile('scripts/sync-plugins.mjs', 'utf8')
   assert.match(sync, /sources\/curated\.json/)
-  assert.doesNotMatch(sync, /awesome-dsh-plugin\.com/)
+  const loadCurated = sync.slice(sync.indexOf('async function loadCurated()'), sync.indexOf('export function communityRepositoryCandidates'))
+  assert.match(loadCurated, /readFile\(CURATED_SOURCE/)
+  assert.doesNotMatch(loadCurated, /fetch/)
 })
 
 test('every vendored curated entry resolves to a GitHub repository with install data', async () => {

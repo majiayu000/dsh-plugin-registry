@@ -31,7 +31,7 @@ for (const count of [1_000, 1_002]) {
         nameWithOwner: 'acme/dsh-plugin-' + index,
         url: 'https://github.com/acme/dsh-plugin-' + index,
         description: 'DeepSeek Harness plugin',
-        stargazerCount: 17, forkCount: 3, isArchived: false, isFork: false,
+        stargazerCount: 17, forkCount: 3, isArchived: false, isFork: false, isPrivate: false,
         primaryLanguage: { name: 'TypeScript' }, licenseInfo: { spdxId: 'MIT' },
         latestRelease: { tagName: 'v1.2.3', publishedAt: '2026-09-01T00:00:00Z' },
         owner: { avatarUrl: 'https://avatars.githubusercontent.com/u/123' },
@@ -39,6 +39,7 @@ for (const count of [1_000, 1_002]) {
         repositoryTopics: { nodes: [{ topic: { name: 'dsh-plugin' } }] },
       }))
       globalThis.fetch = async (url, options) => {
+        if (url === 'https://awesome-dsh-plugin.com/plugins.json') return { ok: true, json: async () => ({ updated: '2026-11-07', count: 0, plugins: [] }) }
         if (url !== 'https://api.github.com/graphql') throw new Error('Unexpected network request: ' + url)
         const { query, variables } = JSON.parse(options.body)
         if (query.includes('RegistryRepositoryDiscovery')) {

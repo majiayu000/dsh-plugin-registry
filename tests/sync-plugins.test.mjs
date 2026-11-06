@@ -59,14 +59,16 @@ async function syncFixture(t, { count = 400, bundle = false, curatedDirectory = 
       nameWithOwner: 'acme/' + (scenario.unrelated.includes(index) ? 'generic-' : 'dsh-plugin-') + index,
       url: 'https://github.com/acme/' + (scenario.unrelated.includes(index) ? 'generic-' : 'dsh-plugin-') + index,
       description: scenario.unrelated.includes(index) ? 'Other tool' : 'DeepSeek Harness plugin',
+      isPrivate: false,
       pushedAt: scenario.pushedAt || '2026-09-01T00:00:00Z',
       repositoryTopics: { nodes: [{ topic: { name: 'dsh-plugin' } }, ...(scenario.unrelated.includes(index) ? [] : [{ topic: { name: 'dsh' } }])] },
     }))
     globalThis.fetch = async (url, options) => {
+        if (url === 'https://awesome-dsh-plugin.com/plugins.json') return { ok: true, json: async () => ({ updated: '2026-11-07', count: 0, plugins: [] }) }
       if (url.startsWith('https://api.github.com/search/repositories?')) {
         appendFileSync('requests.jsonl', JSON.stringify({ kind: 'rest', key: 'search' }) + '\n')
         return { ok: true, json: async () => ({ items: repositories.map(repository => ({
-          full_name: repository.nameWithOwner, html_url: repository.url, description: repository.description,
+          full_name: repository.nameWithOwner, html_url: repository.url, description: repository.description, private: false,
           pushed_at: repository.pushedAt, topics: repository.repositoryTopics.nodes.map(node => node.topic.name),
         })) }) }
       }
@@ -161,14 +163,15 @@ test('repository metadata failures cannot replace an accepted snapshot with inco
   assert.equal(await readFile(fixture.output, 'utf8'), baseline)
 })
 
-test('partial repository metadata preserves resolved plugins and keeps an unresolved curated root pending', async t => {
+test('partial repository metadata preserves resolved plugins and hides an unresolved curated root', async t => {
   const fixture = await syncFixture(t)
   await fixture.sync()
   const result = await fixture.sync({ partialmetadata: ['acme/dsh-plugin-0'] })
   assert.equal(result.document.plugins.length, 399)
   assert.ok(result.document.plugins.some(plugin => plugin.id === 'acme/dsh-plugin-1'))
   assert.equal(result.document.plugins.some(plugin => plugin.id === 'acme/dsh-plugin-0'), false)
-  assert.match(result.audit.pendingReview.find(plugin => plugin.id === 'acme/dsh-plugin-0').reason, /Repository metadata could not be resolved/)
+  assert.equal(result.audit.pendingReview.some(plugin => plugin.id === 'acme/dsh-plugin-0'), false)
+  assert.equal(result.audit.quarantined.some(plugin => plugin.id === 'acme/dsh-plugin-0'), false)
   assert.equal(result.document.stats.curatedSource, 1)
 })
 
