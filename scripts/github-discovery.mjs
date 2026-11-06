@@ -13,6 +13,7 @@ const REPOSITORY_METADATA_FIELDS = `
   pushedAt
   isArchived
   isFork
+  isPrivate
   primaryLanguage { name }
   licenseInfo { spdxId }
   latestRelease { tagName publishedAt }
@@ -67,6 +68,7 @@ export function mapRestRepository(item) {
     pushed_at: item.pushed_at || null,
     archived: Boolean(item.archived),
     fork: Boolean(item.fork),
+    private: item.private,
     topics: item.topics || [],
     owner: { avatar_url: item.owner?.avatar_url || '' },
   }
@@ -104,6 +106,7 @@ export function mapGraphqlRepository(repository) {
     pushed_at: repository.pushedAt || null,
     archived: Boolean(repository.isArchived),
     fork: Boolean(repository.isFork),
+    private: repository.isPrivate,
     topics: repository.repositoryTopics?.nodes?.map(node => node.topic.name) || [],
     owner: { avatar_url: repository.owner?.avatarUrl || '' },
   }
