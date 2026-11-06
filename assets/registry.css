@@ -843,3 +843,8 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
 .pill-rank { color: var(--success); background: rgba(22, 163, 74, 0.08); box-shadow: 0 0 0 1px rgba(22, 163, 74, 0.2); }
 .pill-new { color: #6d28d9; background: rgba(124, 58, 237, 0.08); box-shadow: 0 0 0 1px rgba(124, 58, 237, 0.2); }
 .rank-pills { display: inline-flex; align-items: center; gap: 4px; cursor: help; }
+
+.native-index { margin-top: 20px; color: var(--muted); font-size: 13px; line-height: 1.7; }
+.native-index summary { cursor: pointer; }
+.native-index p { margin: 8px 0; }
+.native-index a { overflow-wrap: anywhere; }

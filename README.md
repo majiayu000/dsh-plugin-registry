@@ -59,6 +59,18 @@ Backfill GitHub primary-language metadata without rerunning full discovery:
 GH_TOKEN=... npm run backfill:languages
 ```
 
+## Browse inside Harness
+
+Enable **Custom plugin indexes** under Plugins, open **Discover**, choose **Add index source**, and paste:
+
+```text
+https://plugin.dshdesk.com/data/plugin-index.json
+```
+
+This is the upstream `format: 1` index, distinct from the website's `schemaVersion: 2` snapshot. It initially covers published Web plugins whose existing GitHub install source is pinned to the checked commit. npm sources and ambiguous or conflicting package identities remain available on the website; they are not silently converted to a different install source. Manifest verification does not establish installation or runtime safety.
+
+`npm run export:plugin-index` reads package metadata and committer timestamps at those exact commits, validates the output with the official parser, and writes the index atomically. It reuses unchanged commit metadata from the previous index. The scheduled sync exports and deploys it alongside the website data; build remains offline. Installation, compatibility checks and confirmation stay in Harness.
+
 ## How discovery works
 
 ```text
