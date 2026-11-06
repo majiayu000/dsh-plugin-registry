@@ -20,10 +20,19 @@ test('a changed registry deploys the verified build without relying on a bot pus
 
 test('pushes to main deploy straight to Cloudflare Pages', async () => {
   const workflow = await readFile('.github/workflows/deploy-pages.yml', 'utf8')
+  assert.ok(workflow.indexOf('npm run export:plugin-index') < workflow.indexOf('npm run build'))
+  assert.match(workflow, /run: npm run export:plugin-index\s+env:\s+GITHUB_TOKEN: \$\{\{ secrets\.GITHUB_TOKEN \}\}/)
   assert.match(workflow, /npx wrangler pages deploy dist --project-name dsh-plugin-registry --branch main/)
   assert.match(workflow, /CLOUDFLARE_API_TOKEN: \$\{\{ secrets\.CLOUDFLARE_API_TOKEN \}\}/)
   assert.match(workflow, /CLOUDFLARE_ACCOUNT_ID: \$\{\{ secrets\.CLOUDFLARE_ACCOUNT_ID \}\}/)
   assert.doesNotMatch(workflow, /deploy-pages@v4|upload-pages-artifact|configure-pages|pages: write/)
+})
+
+test('scheduled sync commits the native index with the website snapshot', async () => {
+  const workflow = await readFile('.github/workflows/sync-plugins.yml', 'utf8')
+  assert.ok(workflow.indexOf('npm run sync:plugins') < workflow.indexOf('npm run export:plugin-index'))
+  assert.match(workflow, /git diff --quiet --[^\n]*public\/data\/plugin-index\.json/)
+  assert.match(workflow, /git add[^\n]*public\/data\/plugin-index\.json/)
 })
 
 test('registry sync imports the shared bundle parser before checking referenced patch files', async () => {

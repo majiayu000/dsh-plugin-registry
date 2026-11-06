@@ -1,5 +1,27 @@
 import { expect, test } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
+import { marketInstallTarget, parseMarketIndex } from '@deepseek-ai/dsh-plugin-market-index'
+
+test('native discovery instructions link to an official-format index', async ({ page, request }) => {
+  await page.addInitScript(() => {
+    if (!sessionStorage.getItem('native-index-locale-set')) {
+      localStorage.setItem('harness-registry-locale', 'zh-CN')
+      sessionStorage.setItem('native-index-locale-set', '1')
+    }
+  })
+  await page.goto('/')
+  const panel = page.locator('.native-index')
+  await panel.locator('summary').click()
+  await expect(panel.locator('a')).toHaveAttribute('href', 'data/plugin-index.json')
+  await expect(panel).toContainText('自定义插件索引')
+  await page.locator('.locale-switch').click()
+  await expect(panel).toContainText('Custom plugin indexes')
+  const response = await request.get('/data/plugin-index.json')
+  expect(response.status()).toBe(200)
+  const index = parseMarketIndex(await response.json(), response.url())
+  expect(index.plugins.length).toBeGreaterThan(0)
+  expect(index.plugins.every(plugin => /#[a-f0-9]{40}(?:&path:.*)?$/.test(marketInstallTarget(plugin.name, plugin.versions[0]).spec))).toBe(true)
+})
 
 test('a nested not-found page localizes for English visitors', async ({ page }) => {
   const notFoundPage = await readFile(new URL('../../404.html', import.meta.url), 'utf8')

@@ -13,6 +13,9 @@
 /data/detail-build.json
   Cache-Control: no-cache
 
+/data/plugin-index.json
+  Cache-Control: no-cache
+
 /data/plugin-shards/*
   Cache-Control: no-cache
 
