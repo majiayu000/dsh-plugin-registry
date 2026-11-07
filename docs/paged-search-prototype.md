@@ -4,8 +4,8 @@ Decision date: 2026-11-07. Related: #106. Target: Workers Free.
 
 This branch is an experiment, not a production search migration. The browser
 still uses its existing on-demand directory download. Do not merge or switch
-the browser until the Free request CPU budget and production memory headroom
-are established. Local wall-clock timing is not billed CPU time.
+the browser: observed cloud CPU samples exceed the Free request budget.
+Local wall-clock timing is not billed CPU time.
 
 ## Implementation
 
@@ -84,8 +84,27 @@ Worker size; gzip size is no longer a limit. Pages Functions share Workers
 Free request quotas. See [Workers limits](https://developers.cloudflare.com/workers/platform/limits/)
 and [Pages Functions pricing](https://developers.cloudflare.com/pages/functions/pricing/).
 
-Keep this as a draft while cloud CPU and peak/concurrent memory remain
-unverified. Do not assume response-cache hits cover new queries or cold
-isolates. If the in-memory query cannot meet Free limits, reject this execution
-approach and evaluate a read-only query projection separately. No database,
-plan upgrade or production frontend switch is part of this prototype.
+### Cloud preview result: reject this execution approach for Free
+
+An isolated preview on 2026-11-07 received 31 sequential requests from the
+development machine through its existing network path; observed edge was LAX.
+All returned HTTP 200. A temporary Pages tail supplied 17 trace events with
+`cpuTime` and `outcome=ok`: 13 exceeded 10 ms, ranging from 7 to 87 ms overall.
+The first `memory` request used 87 ms CPU; representative later requests used
+24 ms (`memory`, English), 33 ms (`agent`) and 38 ms (unfiltered relevance).
+The 17 traces are incomplete coverage, not a population CPU percentile.
+HTTP 200 does not prove Free-budget compliance: the account subscription was
+not readable and the platform permits limited overages.
+
+Client-observed first response was 1,985 ms and warm p95 700 ms on that network
+path. These do not establish latency from other user locations. The measured
+preview was `10754b74.dsh-plugin-registry.pages.dev`; subsequent changes only
+corrected build-version identity and bounded build-time file writes.
+
+Decision: retain the API/semantic prototype as a draft; do not adopt its
+full-index scan for production under the requested Free budget. Further work
+must reduce request-time query computation or separately evaluate a read-only
+query projection. Peak/concurrent memory also remains unverified. Do not
+assume response-cache hits cover new queries or cold isolates. No database,
+plan upgrade or production frontend switch is part of this prototype. The
+temporary tail session was removed after measurement.
