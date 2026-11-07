@@ -161,3 +161,11 @@ approach. A later read-only database projection evaluation must preserve
 substring/localization and ranking semantics and verify its own Free quotas;
 it is not automatically approved by these results. No database or plan changes
 were made. Sustained load and cloud peak memory remain unverified.
+
+## Follow-up: isolated D1 experiment
+
+The separate [D1 experiment](d1-search-experiment.md) preserved tested result
+semantics and captured 12 Worker CPU traces at 1–6 ms, but full substring scans
+read up to 141,679 rows per request. Free read capacity and the two-hour refresh
+write budget are not acceptable adoption evidence. Keep this PR draft; neither
+execution approach is connected to production browser search.
