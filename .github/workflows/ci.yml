@@ -27,4 +27,5 @@ jobs:
       - run: npm run validate:registry
       - run: npm run check:ranking
       - run: npm run build
+      - run: npm run check:performance
       - run: npm run test:e2e

@@ -179,13 +179,9 @@ const { rankPlugins } = await import('/assets/registry-ranking.js');
   });
 
   document.getElementById('typer').textContent = 'dsh plugin --profile web add github:owner/plugin';
+  HR.updateFreshness({ generatedAt: document.documentElement.dataset.generatedAt });
   var needsImmediateResults = state.q || state.cat !== 'all' || state.source !== 'all' || state.manifest !== 'all' || state.language !== 'all' || state.sort !== 'relevance';
   if (needsImmediateResults || document.documentElement.dataset.registryPrerendered !== 'true') refresh();
-  else {
-    var warm = function () { hydrate(false).catch(function () { document.documentElement.dataset.registryHydration = 'failed'; }); };
-    if ('requestIdleCallback' in window) requestIdleCallback(warm, { timeout: 2000 });
-    else setTimeout(warm, 1000);
-  }
 })();
 }
 
