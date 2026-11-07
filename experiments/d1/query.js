@@ -13,12 +13,28 @@ export function requestOptions(url) {
   return options
 }
 
-const textScore = `(SELECT COALESCE(SUM(CASE WHEN p.id_lower=t.value OR p.name_lower=t.value THEN 120 ELSE
-  CASE WHEN instr(p.name_lower,t.value)=1 THEN 70 WHEN instr(p.name_lower,t.value)>0 THEN 45 ELSE 0 END +
-  CASE WHEN instr(p.id_lower,t.value)=1 THEN 35 WHEN instr(p.id_lower,t.value)>0 THEN 24 ELSE 0 END +
-  CASE WHEN instr(p.topic_words,' '||t.value||' ')>0 THEN 20 WHEN instr(p.topics,t.value)>0 THEN 12 ELSE 0 END +
-  CASE WHEN instr(p.owner_lower,t.value)>0 THEN 10 ELSE 0 END +
-  CASE WHEN instr(p.description_all,t.value)>0 THEN 8 ELSE 0 END END),0) FROM terms t) * p.quality`
+// FTS5 detail=none accepts three-codepoint tokens. ANDing grams can admit
+// false positives, which instr removes below. Short terms still use instr.
+function matchExpression(terms) {
+  const grams = new Set()
+  for (const term of terms) {
+    const chars = Array.from(term)
+    for (let i = 0; i + 2 < chars.length; i++) {
+      const gram = chars.slice(i, i + 3).join('')
+      if (!gram.includes('\0')) grams.add('"' + gram.replaceAll('"', '""') + '"')
+    }
+  }
+  return grams.size ? [...grams].join(' AND ') : null
+}
+
+function textScore(term) {
+  return `(CASE WHEN p.id_lower=${term} OR p.name_lower=${term} THEN 120 ELSE
+    CASE WHEN instr(p.name_lower,${term})=1 THEN 70 WHEN instr(p.name_lower,${term})>0 THEN 45 ELSE 0 END +
+    CASE WHEN instr(p.id_lower,${term})=1 THEN 35 WHEN instr(p.id_lower,${term})>0 THEN 24 ELSE 0 END +
+    CASE WHEN instr(p.topic_words,' '||${term}||' ')>0 THEN 20 WHEN instr(p.topics,${term})>0 THEN 12 ELSE 0 END +
+    CASE WHEN instr(p.owner_lower,${term})>0 THEN 10 ELSE 0 END +
+    CASE WHEN instr(p.description_all,${term})>0 THEN 8 ELSE 0 END END)`
+}
 
 export async function search(db, options) {
   const metrics = { rowsRead: 0, rowsWritten: 0, sqlMs: 0, queries: 0 }
@@ -37,7 +53,7 @@ export async function search(db, options) {
   const conditions = [], parameters = []
   if (options.manifest !== 'not_validated') conditions.push('p.candidate=0')
   for (const field of ['category', 'source', 'manifest', 'language']) {
-    if (options[field] !== 'all') { conditions.push(`p.${field}=?`); parameters.push(options[field]) }
+    if (options[field] !== 'all') { parameters.push(options[field]); conditions.push(`p.${field}=?${parameters.length}`) }
   }
   const unfiltered = ['category', 'source', 'manifest', 'language'].every(field => options[field] === 'all')
   const offset = (options.page - 1) * 30
@@ -55,17 +71,35 @@ export async function search(db, options) {
     const sort = { relevance: '', stars: 'stars DESC,', forks: 'forks DESC,', new: 'pushed_rank,', added: 'added_rank,', manifest: 'CASE WHEN manifest=\'shape_validated\' THEN 1 ELSE 0 END DESC,stars DESC,' }[options.sort]
     const order = terms.length ? `${sort}relevance DESC,stars DESC,id_rank,original_order`
       : `${sort}original_order`
-    if (terms.length) conditions.push(`NOT EXISTS (SELECT 1 FROM terms t WHERE instr(p.text_${options.locale},t.value)=0)`)
-    const sql = `WITH terms AS (SELECT value FROM json_each(?)), matched AS MATERIALIZED (
-      SELECT pos,original_order,stars,forks,manifest,pushed_rank,added_rank,id_rank,${terms.length ? textScore : '0'} AS relevance
-      FROM plugins p WHERE ${conditions.join(' AND ') || '1'})
+    // One bound JSON value avoids D1's 100-variable ceiling. Constant JSON
+    // extraction avoids a correlated json_each table scan for every plugin.
+    parameters.push(JSON.stringify(terms))
+    const termParameter = `?${parameters.length}`
+    if (!terms.length) conditions.push(`json_array_length(${termParameter})=0`)
+    const scores = terms.map((_, i) => {
+      const term = `json_extract(${termParameter}, '$[${i}]')`
+      conditions.push(`instr(p.text_${options.locale},${term})>0`)
+      return textScore(term)
+    })
+    const match = matchExpression(terms)
+    let from = 'plugins p'
+    if (match) {
+      parameters.push(match)
+      from = 'search_terms JOIN plugins p ON p.pos=search_terms.rowid'
+      conditions.push(`search_terms MATCH ?${parameters.length}`)
+    }
+    const sql = `WITH matched AS MATERIALIZED (
+      SELECT pos,original_order,stars,forks,manifest,pushed_rank,added_rank,id_rank,${scores.length ? '(' + scores.join('+') + ')*p.quality' : '0'} AS relevance
+      FROM ${from} WHERE ${conditions.join(' AND ') || '1'})
       SELECT count(*) AS total,(SELECT json_group_array(pos) FROM
-        (SELECT pos FROM matched ORDER BY ${order} LIMIT 30 OFFSET ?)) AS positions FROM matched`
-    const [result] = await read(sql, [JSON.stringify(terms), ...parameters, offset])
+        (SELECT pos FROM matched ORDER BY ${order} LIMIT 30 OFFSET ?${parameters.length + 1})) AS positions FROM matched`
+    const [result] = await read(sql, [...parameters, offset])
     total = result.total
     positions = JSON.parse(result.positions)
   }
   const cards = positions.length ? await read(`SELECT p.card FROM json_each(?) j JOIN plugins p ON p.pos=j.value ORDER BY j.key`, [JSON.stringify(positions)]) : []
+  const [current] = await read("SELECT json_extract(document,'$.version') AS version FROM build WHERE id=1")
+  if (current.version !== meta.version) return { status: 409, error: 'Directory updated; restart pagination', version: current.version, metrics }
   if (cards.length !== positions.length) throw new Error('Missing result cards')
   return { version: meta.version, generatedAt: meta.generatedAt, total, page: options.page, pageSize: 30,
     items: cards.map(row => JSON.parse(row.card)), categories: meta.categories, metrics }

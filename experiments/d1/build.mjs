@@ -7,7 +7,7 @@ import { buildSearchDocument } from '../../scripts/build-search-index.mjs'
 import { QUERY_COLUMN as C } from '../../functions/lib/query-index.js'
 import { blendSearchQuality } from '../../assets/registry-ranking.js'
 
-const columns = {
+export const columns = {
   pos: 'INTEGER PRIMARY KEY', original_order: 'INTEGER', id: 'TEXT', owner: 'TEXT', category: 'TEXT', source: 'TEXT',
   manifest: 'TEXT', language: 'TEXT', candidate: 'INTEGER', stars: 'REAL', forks: 'REAL',
   default_rank: 'INTEGER', pushed_rank: 'INTEGER', added_rank: 'INTEGER', id_rank: 'INTEGER',
@@ -26,13 +26,34 @@ function ranks(entries, compare) {
   return result
 }
 
-function literal(value) {
+export function literal(value) {
   if (value == null) return 'NULL'
   if (typeof value === 'number') return String(value)
   if (!value.isWellFormed()) throw new Error('D1 projection cannot preserve unpaired UTF-16 surrogates')
   if (value.includes('\0')) return `CAST(X'${Buffer.from(value).toString('hex')}' AS TEXT)`
   return `'${value.replaceAll("'", "''")}'`
 }
+
+// The index is only a candidate filter. Exact locale/substring predicates remain
+// in query.js. Replacing NUL preserves candidates after embedded NUL characters.
+export const indexSQL = `CREATE VIEW search_content AS SELECT pos,replace(text_zh,char(0),' ') AS text_zh,replace(text_en,char(0),' ') AS text_en FROM plugins;
+CREATE VIRTUAL TABLE search_terms USING fts5(text_zh,text_en,
+  content='search_content',content_rowid='pos',tokenize='trigram case_sensitive 1',detail=none,columnsize=0);
+INSERT INTO search_terms(rowid,text_zh,text_en)
+  SELECT pos,replace(text_zh,char(0),' '),replace(text_en,char(0),' ') FROM plugins;
+CREATE TRIGGER plugins_insert AFTER INSERT ON plugins BEGIN
+  INSERT INTO search_terms(rowid,text_zh,text_en) VALUES(new.pos,replace(new.text_zh,char(0),' '),replace(new.text_en,char(0),' '));
+END;
+CREATE TRIGGER plugins_delete AFTER DELETE ON plugins BEGIN
+  INSERT INTO search_terms(search_terms,rowid,text_zh,text_en)
+    VALUES('delete',old.pos,replace(old.text_zh,char(0),' '),replace(old.text_en,char(0),' '));
+END;
+CREATE TRIGGER plugins_text_update AFTER UPDATE ON plugins
+WHEN old.text_zh IS NOT new.text_zh OR old.text_en IS NOT new.text_en BEGIN
+  INSERT INTO search_terms(search_terms,rowid,text_zh,text_en)
+    VALUES('delete',old.pos,replace(old.text_zh,char(0),' '),replace(old.text_en,char(0),' '));
+  INSERT INTO search_terms(rowid,text_zh,text_en) VALUES(new.pos,replace(new.text_zh,char(0),' '),replace(new.text_en,char(0),' '));
+END;`
 
 export function buildProjection(registry, audit) {
   const { index, cards } = buildSearchDocument(registry, audit)
@@ -73,8 +94,8 @@ export function buildProjection(registry, audit) {
     values.push(value); bytes += size + 1
   }
   if (values.length) statements.push('INSERT INTO plugins VALUES ' + values.join(',') + ';')
-  statements.push('PRAGMA optimize;')
-  return { sql: statements.join('\n'), meta, index, rowCount: rows.length }
+  statements.push(indexSQL, 'PRAGMA optimize;')
+  return { sql: statements.join('\n'), meta, index, rows, rowCount: rows.length }
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

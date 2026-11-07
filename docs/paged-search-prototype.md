@@ -165,7 +165,8 @@ were made. Sustained load and cloud peak memory remain unverified.
 ## Follow-up: isolated D1 experiment
 
 The separate [D1 experiment](d1-search-experiment.md) preserved tested result
-semantics and captured 12 Worker CPU traces at 1–6 ms, but full substring scans
-read up to 141,679 rows per request. Free read capacity and the two-hour refresh
+semantics. Its latest trigram candidate JOIN reduced memory reads to 5,416,
+but broad dsh queries still read 123,530 rows and time-dependent ranking can
+rewrite the full projection during incremental refresh. Free read capacity and the two-hour refresh
 write budget are not acceptable adoption evidence. Keep this PR draft; neither
 execution approach is connected to production browser search.
