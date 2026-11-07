@@ -19,17 +19,17 @@ Sources: [pricing](https://developers.cloudflare.com/d1/platform/pricing/),
 [limits](https://developers.cloudflare.com/d1/platform/limits/),
 [result metadata](https://developers.cloudflare.com/d1/worker-api/return-object/).
 
-## Minimal implementation
+## Implementation
 
 The offline builder projects the same 22,831 published and 4,687 eligible
-pending records into a single SQLite table. Text is normalized with the
+pending records into a plugin table and an FTS5 trigram candidate index. Text is normalized with the
 existing JavaScript rules before import. Precomputed date/ID ordering avoids
 differences between SQLite binary ordering and JavaScript `localeCompare`.
 Source order remains available for stable ties. Published rows occupy the
 primary-key range in default recommendation order; no secondary index is
-required for that common browse path. Initial import therefore writes roughly
-27,518 plugin rows plus metadata/schema overhead, rather than about 78,000
-rows with two extra indexes.
+required for that common browse path. The original base-table import wrote 27,523 rows. Adding the trigram index
+later wrote another 27,525 rows in the isolated database; these are actual D1
+metrics, not SQLite internal change counts.
 
 Search uses bound terms and `instr`, preserving literal substring behavior for
 Chinese, English, punctuation and repeated terms. Default FTS5 tokenization
@@ -64,7 +64,7 @@ workflow and browser are unchanged. Do not point this experiment at an
 existing application database or import repeatedly without checking shared
 daily quota.
 
-## Local evidence
+## Original local evidence (before trigram indexing)
 
 - Current full projection: 27,518 records, 75,972,608-byte local SQLite file;
   SQL import file 55,534,828 bytes.
@@ -79,7 +79,7 @@ daily quota.
   substring matching and general filtered queries still scan the table.
   Local SQLite timing is not cloud Worker CPU or D1 billed rows.
 
-## Cloud evidence and decision
+## Original cloud scan experiment
 
 The isolated database imported 27,518 plugin rows and one build document.
 Cloudflare reported 27,522 rows read, 27,523 rows written and 76,075,008 bytes
@@ -138,3 +138,95 @@ subscription was changed. The named experiment database and Worker are retained.
 Any next proposal must reduce scanned rows (or use static client-side query
 artifacts) and establish an update strategy within the same quota before
 production integration. Caching alone does not establish a safe uncached path.
+
+
+## Indexed queries and incremental-update validation (latest)
+
+The candidate index uses FTS5's **trigram** tokenizer, not its default whole-word
+matching. It stores only index entries, with normalized content supplied by a
+view of the plugin table. Query terms become quoted three-Unicode-codepoint
+fragments, including escaped quotes. An indexed JOIN produces candidates;
+`instr` still verifies the full term and locale before the unchanged ranking.
+False-positive candidates cannot become false matches. Two-codepoint terms,
+including `记忆` and `😀a`, still scan. NUL-containing fragments are skipped;
+NULs in indexed text become spaces so later characters remain searchable.
+See [SQLite's trigram semantics](https://www.sqlite.org/fts5.html#the_trigram_tokenizer).
+
+Constant term extraction replaces per-row correlated `json_each` scans. A
+response-time version check rejects publication between metadata and card reads
+with 409 rather than returning mixed data. This requires publishers to update
+content and version atomically; the experiment does not provide a cloud publisher.
+
+On the existing isolated database, creating the index read 27,520 rows and wrote
+27,525 rows. Storage became 85,045,248 bytes. Local SQLite reported 47,996
+internal changes for the same operation: **SQLite total_changes is not D1 billed
+rows_written**. Before index creation the valid account-wide UTC-day analytics
+reported 872,333 reads and 27,523 writes. An initial 401 was resolved by Wrangler's
+existing-session refresh, without changing subscriptions or application keys.
+
+The intermediate IN-list implementation (Worker `2d9cb365-aa00-4505-aa16-d4c066fdf8eb`)
+received 16 successful requests, spending 648,626 reads and zero writes. Fourteen
+CPU traces were 1–5 ms. It exposed a broad-query regression for `dsh`; replacing
+the intermediate list with a JOIN removed it. These 16 measurements must not be
+attributed to the final Worker version.
+
+Final Worker `77bf9576-bdd8-4a8f-9e47-b118619f7407`, still using data snapshot
+`8ef43e06-d7da-4c92-8b70-e6674b5096fd`:
+
+| Query | Original reads | Final JOIN reads | Final CPU |
+| --- | ---: | ---: | ---: |
+| `memory` | 32,039 | 5,416 | 4 ms |
+| `dsh` | 141,679 | 123,530 | 5 ms |
+| `terminal tool` | 28,147 | 505 | not sampled |
+| No match | 27,522 | 5 | not sampled |
+
+The final two traced requests consumed 128,946 reads and zero writes. Additional
+readback matched all IDs and totals for memory (886), terminal tool (49), and
+no-match (0), consuming another 5,926 reads. Combined with the intermediate run,
+this round's search validation spent 783,498 reads. All temporary tails were
+deleted. Concurrency was not run. Two final-version CPU samples do not establish
+cold-isolate or sustained-load acceptance. Final Worker upload was about 10 KiB.
+
+The unchanged short-term scan path measured 95,731 reads for `a` in the
+intermediate run; stars used 96,103 and UI-category default used 29,697. Those
+paths were not remeasured after the JOIN-only change. Broad/short terms and
+non-default browse remain capacity constraints even when selective queries improve.
+
+### Incremental-update experiment
+
+`sync.mjs` plans INSERT/UPDATE/DELETE from actual projection differences by
+primary-key slot, and validates application in one **local SQLite transaction**.
+No-op plans retain the current version and perform zero writes. Metadata advances
+only with effective changes. A stale base is rejected before mutation; injected
+failure rolls back cards, FTS changes and version together. FTS triggers update
+only for text changes, not card/quality-only updates. BLOB reads preserve embedded
+NUL strings when comparing rows because node:sqlite TEXT reads truncate them.
+
+Full 27,518-row local snapshot results:
+
+| Input change | Plugin inserts / updates / deletes | Text-changing slots | SQLite total_changes |
+| --- | --- | ---: | ---: |
+| Same input | 0 / 0 / 0 | 0 | 0 |
+| One existing icon changed | 0 / 1 / 0 | 0 | 2 |
+| Only generatedAt +2 hours | 0 / 27,518 / 0 | 21,172 | 349,543 |
+| New plugin inserted first | 1 / 27,518 / 0 | 27,504 | 428,302 |
+
+The last column includes SQLite internal FTS operations, **not cloud billing**.
+The updated plugin-row counts alone demonstrate the remaining issue: `pos` is
+home rank, not stable identity, and quality/order fields depend on snapshot time
+and dense rankings. Two-hour refreshes can still update all 27,518 rows, requiring
+at least 330,216 plugin-row writes/day at 12 refreshes before additional overhead.
+Do not freeze ranking time or change search semantics to hide this fan-out.
+
+Focused checks: 1,026 fixture result comparisons and 213 full-snapshot query/page
+comparisons; no-op/card-only updates; insert/delete/reorder; NUL/quotes/emoji;
+FTS integrity after edits; rollback after a text mutation; stale-base rejection;
+409 with no items when publication interrupts a search. These pass locally.
+
+**Decision:** retain the indexed candidate query and local delta prototype, but
+keep #107 draft and do not wire a cloud writer or production browser to it.
+Selective-query reads improve substantially; Free capacity for broad searches and
+scheduled updates remains unproven/insufficient. A production-capable next step
+would separate stable plugin identity from derived display order and time-based
+ranking. D1 atomic delta publication, concurrency, cloud peak memory and actual
+traffic requirements are not validated. Production stayed on its original build.
