@@ -1,0 +1,7 @@
+{
+  "name": "dsh-search-d1-experiment",
+  "main": "worker.js",
+  "compatibility_date": "2026-11-07",
+  "workers_dev": true,
+  "d1_databases": [{ "binding": "DB", "database_name": "dsh-search-experiment-20261107", "database_id": "e6113f2b-e714-482e-af94-c889175d03fd" }]
+}
