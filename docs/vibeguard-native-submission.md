@@ -1,8 +1,8 @@
 # VibeGuard native DSH submission
 
 `@vibeguard-ai/dsh@0.1.0` is available on npm. This source entry and the separate
-upstream YAML draft describe the released package; remem remains in its own
-draft pending npm availability. No generated public snapshot is changed here.
+upstream YAML draft describe the released package; remem is tracked in its own
+submission. No generated public snapshot is changed here.
 
 ## Published-package acceptance (2026-10-22)
 
