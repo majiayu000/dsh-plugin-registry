@@ -153,3 +153,38 @@ test('JSON round-trip and later wall clocks do not change ranking or mutate shar
   assert.equal(JSON.stringify(index), serialized)
   assert.equal(JSON.stringify(decoded), serialized)
 })
+
+test('fragment candidates retain substring, Unicode, locale and multiple-term semantics', () => {
+  const registry = fixture()
+  registry.plugins.push(plugin('emoji/工具', { description: { en: '😀 café __proto__', zh: '😀你好工具' } }))
+  const { index } = buildSearchDocument(registry, audit)
+  for (const locale of ['en', 'zh']) {
+    for (const q of ['a', '记', 'em', '忆工', '😀', '\ud83d', 'café', '__proto__', 'tools memory', '记忆 JavaScript', 'zzneverfound', '  MeMoRy  ']) {
+      assert.deepEqual(all(index, { q, locale }), reference(registry, audit, { q, locale }), `${locale}: ${q}`)
+    }
+  }
+  let reads = 0
+  index.entries = new Proxy(index.entries, { get(target, key) {
+    if (/^\d+$/.test(String(key))) reads++
+    return Reflect.get(target, key)
+  } })
+  assert.equal(queryIndex(index, { q: '😀' }).total, 1)
+  assert.equal(reads, 1, 'rare fragments do not scan unrelated records')
+})
+
+test('bounded ranking preserves every page of broad matches and stable explicit-sort ties', () => {
+  const registry = fixture()
+  registry.plugins = Array.from({ length: 173 }, (_, i) => plugin(`owner${i % 7}/dsh-${i}`, {
+    stars: i % 9, forks: i % 3, description: { en: i % 2 ? 'agent tool' : 'agent memory', zh: '工具记忆' },
+  }))
+  const { index } = buildSearchDocument(registry)
+  for (const q of ['a', 'dsh', 'agent', '记']) {
+    for (const sort of ['relevance', 'stars', 'forks', 'new', 'added', 'manifest']) {
+      const options = { q, sort, locale: 'en' }
+      const expected = reference(registry, {}, options)
+      const pages = Array.from({ length: 7 }, (_, i) => queryIndex(index, { ...options, page: i + 1 }))
+      assert.ok(pages.every(page => page.total === expected.length))
+      assert.deepEqual(pages.flatMap(page => page.ids), expected, JSON.stringify(options))
+    }
+  }
+})

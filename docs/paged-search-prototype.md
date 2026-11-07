@@ -16,6 +16,15 @@ from the existing registry and audit snapshots. Ranking scores are fixed at
 Cards are divided into 4,096 static buckets, written in batches of 64 to avoid
 exhausting file descriptors. A page reads only its selected card buckets.
 
+The second iteration precomputes six base sort orders and the unfiltered home
+recommendation order. One- and two-code-unit fragments map to candidate row
+positions, encoded as base64 delta-varints. A request decodes the smallest
+encoded posting list and then applies the exact existing locale/field filter.
+Search ranking uses a bounded max-heap for the requested prefix; broad queries
+no longer sort every match for the first page. Ties retain source order, and
+out-of-range pages skip ranking entirely. No query cache is required for these
+optimizations to be correct.
+
 `GET /api/search` accepts `q`, `category`, `source`, `manifest`, `language`,
 `sort`, `locale`, `page`, and optional `version`. It returns at most 30 cards,
 the full match count, global facets, summary and build version. Matching,
@@ -28,7 +37,7 @@ pages from an earlier build. A stale pagination version returns 409. Missing
 cards return 503 rather than a partial or empty successful result. HEAD misses
 cannot populate the response cache with an empty GET representation.
 
-## Observed local results
+## Initial prototype: observed local results
 
 Snapshot: 22,831 published plugins and 4,687 eligible pending candidates.
 Runtime: Wrangler 4.123.0 local workerd; Node 25.9.0 drives the measurement.
@@ -108,3 +117,47 @@ query projection. Peak/concurrent memory also remains unverified. Do not
 assume response-cache hits cover new queries or cold isolates. No database,
 plan upgrade or production frontend switch is part of this prototype. The
 temporary tail session was removed after measurement.
+
+## Indexed iteration: measured and rejected for Free
+
+The next iteration was deployed only to preview
+`c70a5fe3.dsh-plugin-registry.pages.dev` on 2026-11-07. It uses the same directory
+snapshot and returns exactly the same results: 432 whole-result comparisons
+and 1,728 page comparisons against the previous query implementation matched.
+Tests additionally cover rare fragments avoiding unrelated rows, Unicode and
+lone surrogates, all sort ties, broad-query pages and large offsets. Independent
+bounded fuzz comparisons also matched the existing browser ordering.
+
+The generated query document is 20,456,143 bytes, including 91,429 fragment
+postings. The Worker bundle is 22,603.65 KiB raw. A fresh local runtime measured
+warm wall p95 24.1 ms over the same 30-request workload; used heap after the run
+was 78.9 MiB, allocated heap 86.7 MiB. A prior run overlapped the full test suite
+and is excluded from latency comparisons. Neither run measured memory peaks.
+
+Cloud measurement sent 45 requests through the existing network path to LAX:
+one first request, 36 sequential queries/pages, six concurrent queries, one
+repeat and one 199-character repeated-term query. All returned HTTP 200. Tail
+captured 24 CPU traces, not a complete distribution:
+
+| Phase | CPU trace coverage | CPU range | Samples over 10 ms |
+| --- | ---: | ---: | ---: |
+| First `memory` request | 1/1 | 94 ms | 1 |
+| Sequential queries | 18/36 | 2–80 ms | 7 |
+| Six concurrent requests | 4/6 | 25–98 ms | 4 |
+| Repeat `memory` | 1/1 | 1 ms | 0 |
+| Repeated `a` terms | 0/1 | Unknown | Unknown |
+
+Unfiltered recommendation now had 5/6 ms samples and star sorting 7/8 ms.
+English `agent` still used 27/20 ms, single-letter `a` 80 ms, and `dsh` 40 ms
+on sequential requests. The repeat may have hit cache, but this was not
+independently established. The first request is the first sent by this run;
+isolate coldness was not independently observable. The long repeated query
+took 1,895 ms client wall time, with no captured CPU trace, so no CPU conclusion
+is drawn for that case. Tail was deleted successfully after measurement.
+
+Decision: the agreed stopping condition is met. Keep this experiment in the
+draft PR, do not switch production, and stop refining the in-memory execution
+approach. A later read-only database projection evaluation must preserve
+substring/localization and ranking semantics and verify its own Free quotas;
+it is not automatically approved by these results. No database or plan changes
+were made. Sustained load and cloud peak memory remain unverified.
