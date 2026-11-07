@@ -3,15 +3,14 @@ import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { randomUUID } from 'node:crypto'
 import { DatabaseSync } from 'node:sqlite'
-import { buildSearchDocument } from '../../scripts/build-search-index.mjs'
-import { QUERY_COLUMN as C } from '../../functions/lib/query-index.js'
+import { buildSearchDocument } from '../shared/build-search-index.mjs'
+import { QUERY_COLUMN as C } from '../shared/query-index.js'
 import { blendSearchQuality } from '../../assets/registry-ranking.js'
 
 export const columns = {
-  pos: 'INTEGER PRIMARY KEY', original_order: 'INTEGER', id: 'TEXT', owner: 'TEXT', category: 'TEXT', source: 'TEXT',
+  pos: 'INTEGER PRIMARY KEY', id: 'TEXT', owner: 'TEXT', category: 'TEXT', source: 'TEXT',
   manifest: 'TEXT', language: 'TEXT', candidate: 'INTEGER', stars: 'REAL', forks: 'REAL',
-  default_rank: 'INTEGER', pushed_rank: 'INTEGER', added_rank: 'INTEGER', id_rank: 'INTEGER',
-  quality: 'REAL', id_lower: 'TEXT', name_lower: 'TEXT', owner_lower: 'TEXT',
+  id_lower: 'TEXT', name_lower: 'TEXT', owner_lower: 'TEXT',
   description_all: 'TEXT', topics: 'TEXT', topic_words: 'TEXT', text_zh: 'TEXT', text_en: 'TEXT', card: 'TEXT',
 }
 
@@ -55,15 +54,37 @@ WHEN old.text_zh IS NOT new.text_zh OR old.text_en IS NOT new.text_en BEGIN
   INSERT INTO search_terms(rowid,text_zh,text_en) VALUES(new.pos,replace(new.text_zh,char(0),' '),replace(new.text_en,char(0),' '));
 END;`
 
-export function buildProjection(registry, audit) {
+// Rank tuple: [snapshot order, default rank, pushed rank, added rank, id rank, quality].
+// Exactly 256 slots per block; missing/deleted identities occupy null slots.
+export const RANK_BLOCK_SIZE = 256
+
+export function readIdentities(db) {
+  return new Map(db.prepare('SELECT id,pos FROM plugins').all().map(row => [row.id.toLowerCase(), row.pos]))
+}
+
+export function buildProjection(registry, audit, previousIdentities = new Map()) {
   const { index, cards } = buildSearchDocument(registry, audit)
   const defaults = new Map(index.orders.relevance.map((pos, rank) => [pos, rank]))
-  const home = new Map(index.home.map((pos, rank) => [pos, rank]))
   const idRanks = ranks(index.entries, (a, b) => a[C.id].localeCompare(b[C.id]))
   const pushed = ranks(index.entries, (a, b) => b[C.pushedAt].localeCompare(a[C.pushedAt]))
   const added = ranks(index.entries, (a, b) => b[C.addedAt].localeCompare(a[C.addedAt]))
   const meta = { version: randomUUID(), generatedAt: index.generatedAt, count: registry.plugins.length, categories: registry.categories }
-  const rows = index.entries.map((entry, pos) => {
+  let nextPos = 0
+  for (const pos of previousIdentities.values()) nextPos = Math.max(nextPos, pos + 1)
+  const identities = new Map()
+  const positions = index.entries.map(entry => {
+    const id = entry[C.id].toLowerCase()
+    if (identities.has(id)) throw new Error(`Duplicate plugin identity: ${id}`)
+    const pos = previousIdentities.get(id) ?? nextPos++
+    identities.set(id, pos)
+    return pos
+  })
+  const blocks = new Map()
+  const rows = index.entries.map((entry, order) => {
+    const pos = positions[order]
+    const block = Math.floor(pos / RANK_BLOCK_SIZE)
+    if (!blocks.has(block)) blocks.set(block, Array(RANK_BLOCK_SIZE).fill(null))
+    blocks.get(block)[pos % RANK_BLOCK_SIZE] = [order, defaults.get(order), pushed[order], added[order], idRanks[order], blendSearchQuality(1, entry[C.score])]
     const text = locale => {
       const offset = locale === 'zh' ? 0 : 2
       const [start, length] = entry[C.descriptionRanges].slice(offset, offset + 2)
@@ -72,30 +93,37 @@ export function buildProjection(registry, audit) {
         entry[C.ownerLower] ?? entry[C.owner], category ? category[locale] || category.zh || category.en || entry[C.category] : entry[C.category],
         entry[C.extra], entry[C.topics]].join(' ').toLowerCase()
     }
-    // Store published rows in home order using SQLite's existing rowid index.
-    // Retain snapshot order separately for stable query-sort ties.
-    return [home.get(pos) ?? pos, pos, entry[C.id], entry[C.owner], entry[C.category], entry[C.source], entry[C.manifest], entry[C.language],
-      Number(entry[C.candidate]), entry[C.stars], entry[C.forks] || 0, defaults.get(pos), pushed[pos], added[pos], idRanks[pos],
-      blendSearchQuality(1, entry[C.score]), entry[C.idLower] ?? entry[C.id], entry[C.name], entry[C.ownerLower] ?? entry[C.owner],
+    return [pos, entry[C.id], entry[C.owner], entry[C.category], entry[C.source], entry[C.manifest], entry[C.language],
+      Number(entry[C.candidate]), entry[C.stars], entry[C.forks] || 0,
+      entry[C.idLower] ?? entry[C.id], entry[C.name], entry[C.ownerLower] ?? entry[C.owner],
       entry[C.description], entry[C.topics], ' ' + entry[C.topics].split(/\s+/).join(' ') + ' ', text('zh'), text('en'),
       JSON.stringify(cards[entry[C.id].toLowerCase()])]
   })
+  const rankBlocks = [...blocks].sort((a, b) => a[0] - b[0]).map(([block, values]) => [block, JSON.stringify(values)])
+  const homePages = []
+  for (let start = 0; start < index.home.length; start += 30) {
+    homePages.push([start / 30, JSON.stringify(index.home.slice(start, start + 30).map(order => positions[order]))])
+  }
   const statements = [
     `CREATE TABLE plugins (${Object.entries(columns).map(([name, type]) => `${name} ${type}`).join(',')});`,
     'CREATE TABLE build (id INTEGER PRIMARY KEY, document TEXT);',
+    'CREATE TABLE rank_blocks (block INTEGER PRIMARY KEY, document TEXT NOT NULL);',
+    'CREATE TABLE home_pages (page INTEGER PRIMARY KEY, document TEXT NOT NULL);',
     `INSERT INTO build VALUES (1,${literal(JSON.stringify(meta))});`,
   ]
-  let values = [], bytes = 0
-  for (const row of rows) {
-    const value = '(' + row.map(literal).join(',') + ')'
-    const size = Buffer.byteLength(value)
-    if (size > 90000) throw new Error('A projection row exceeds the D1 SQL statement budget')
-    if (bytes + size > 90000) { statements.push('INSERT INTO plugins VALUES ' + values.join(',') + ';'); values = []; bytes = 0 }
-    values.push(value); bytes += size + 1
+  for (const [table, tableRows] of [['plugins', rows], ['rank_blocks', rankBlocks], ['home_pages', homePages]]) {
+      let values = [], bytes = 0
+      for (const row of tableRows) {
+        const value = '(' + row.map(literal).join(',') + ')'
+        const size = Buffer.byteLength(value)
+        if (size > 90000) throw new Error('A projection row exceeds the D1 SQL statement budget')
+        if (bytes + size > 90000) { statements.push(`INSERT INTO ${table} VALUES ` + values.join(',') + ';'); values = []; bytes = 0 }
+        values.push(value); bytes += size + 1
+      }
+      if (values.length) statements.push(`INSERT INTO ${table} VALUES ` + values.join(',') + ';')
   }
-  if (values.length) statements.push('INSERT INTO plugins VALUES ' + values.join(',') + ';')
   statements.push(indexSQL, 'PRAGMA optimize;')
-  return { sql: statements.join('\n'), meta, index, rows, rowCount: rows.length }
+  return { sql: statements.join('\n'), meta, index, rows, rankBlocks, homePages, identities, rowCount: rows.length }
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
