@@ -1,6 +1,7 @@
 import { BROWSE_PLUGIN_FIELDS } from '../assets/browse-snapshot.js'
 import { hasDshCandidateContext, normalizePendingPlugin } from '../assets/candidate-relevance.js'
-import { computeRankingScore } from '../assets/registry-ranking.js'
+import { applyDiversity, computeRankingScore } from '../assets/registry-ranking.js'
+import { compareQueryRows, QUERY_COLUMN as C } from '../functions/lib/query-index.js'
 
 function descriptionRange(plugin, locale, text) {
   const description = String(plugin.description && (plugin.description[locale] || plugin.description.zh || plugin.description.en) || '').toLowerCase()
@@ -41,5 +42,41 @@ export function buildSearchDocument(registry, audit = {}) {
       `${plugin.language || ''} ${plugin.packageName || ''} ${plugin.profile || ''}`.toLowerCase(),
     ]
   })
-  return { index: { generatedAt: registry.generatedAt, rankingAt, categories: registry.categories || {}, entries }, cards }
+  const orders = Object.fromEntries(['relevance', 'stars', 'forks', 'new', 'added', 'manifest'].map(sort => [sort,
+    entries.map((_, position) => position).sort((a, b) => compareQueryRows(entries[a], entries[b], sort)),
+  ]))
+  const home = applyDiversity(orders.relevance.filter(position => !entries[position][C.candidate])
+    .map(position => ({ owner: entries[position][C.owner], position }))).map(row => row.position)
+  const postings = new Map()
+  for (let position = 0; position < entries.length; position++) {
+    const entry = entries[position]
+    const category = registry.categories?.[entry[C.category]]
+    const text = [entry[C.idLower] ?? entry[C.id], entry[C.ownerLower] ?? entry[C.owner],
+      entry[C.description], entry[C.topics], entry[C.extra], entry[C.category], ...Object.values(category || {})].join(' ').toLowerCase()
+    const grams = new Set()
+    for (let start = 0; start < text.length; start++) {
+      for (let width = 1; width <= 2 && start + width <= text.length; width++) {
+        const gram = text.slice(start, start + width)
+        if (!/\s/.test(gram)) grams.add(gram)
+      }
+    }
+    for (const gram of grams) {
+      if (!postings.has(gram)) postings.set(gram, [])
+      postings.get(gram).push(position)
+    }
+  }
+  // Delta-varint positions avoid a large array of JS numbers per fragment.
+  // Decode just the selected list, not every list at startup.
+  const grams = Object.fromEntries([...postings].map(([gram, positions]) => {
+    const bytes = []
+    let previous = 0
+    for (const position of positions) {
+      let delta = position - previous
+      while (delta >= 128) { bytes.push((delta & 127) | 128); delta >>>= 7 }
+      bytes.push(delta)
+      previous = position
+    }
+    return [gram, Buffer.from(bytes).toString('base64')]
+  }))
+  return { index: { generatedAt: registry.generatedAt, rankingAt, categories: registry.categories || {}, entries, orders, home, grams }, cards }
 }

@@ -23,6 +23,72 @@ function descriptionIncludes(entry, term, locale) {
   return match >= start && match >= 0 && match + term.length <= start + length
 }
 
+export function compareQueryRows(a, b, sort) {
+  if (sort === 'relevance') return Number(a[C.pending]) - Number(b[C.pending]) || b[C.score] - a[C.score] || a[C.id].localeCompare(b[C.id])
+  if (sort === 'forks') return b[C.forks] - a[C.forks]
+  if (sort === 'new') return b[C.pushedAt].localeCompare(a[C.pushedAt])
+  if (sort === 'added') return b[C.addedAt].localeCompare(a[C.addedAt])
+  if (sort === 'manifest') {
+    const delta = Number(b[C.manifest] === 'shape_validated') - Number(a[C.manifest] === 'shape_validated')
+    if (delta) return delta
+  }
+  return b[C.stars] - a[C.stars]
+}
+
+function candidates(index, terms) {
+  // Every matching row must contain every fragment. Start with the smallest
+  // posting list, then retain the exact field/locale predicate below.
+  let shortest
+  for (const term of terms) {
+    const width = Math.min(2, term.length)
+    for (let start = 0; start <= term.length - width; start++) {
+      const posting = index.grams[term.slice(start, start + width)]
+      if (!posting) return []
+      if (!shortest || posting.length < shortest.length) shortest = posting
+    }
+  }
+  const bytes = atob(shortest)
+  const positions = []
+  let position = 0, delta = 0, shift = 0
+  for (let offset = 0; offset < bytes.length; offset++) {
+    const byte = bytes.charCodeAt(offset)
+    delta |= (byte & 127) << shift
+    if (byte & 128) shift += 7
+    else { position += delta >>> 0; positions.push(position); delta = 0; shift = 0 }
+  }
+  return positions
+}
+
+// Keep only the requested prefix in a max-heap; a broad one-letter query
+// need not sort every matching row merely to return its first 30 results.
+function firstRows(rows, limit, compare) {
+  if (limit >= rows.length) return rows.sort(compare)
+  const heap = []
+  function sink() {
+    let parent = 0
+    while (parent * 2 + 1 < heap.length) {
+      let child = parent * 2 + 1
+      if (child + 1 < heap.length && compare(heap[child + 1], heap[child]) > 0) child++
+      if (compare(heap[parent], heap[child]) >= 0) break
+      ;[heap[parent], heap[child]] = [heap[child], heap[parent]]
+      parent = child
+    }
+  }
+  for (const row of rows) {
+    if (heap.length < limit) {
+      heap.push(row)
+      let child = heap.length - 1
+      while (child > 0) {
+        const parent = (child - 1) >> 1
+        if (compare(heap[parent], heap[child]) >= 0) break
+        ;[heap[parent], heap[child]] = [heap[child], heap[parent]]
+        child = parent
+      }
+    } else if (compare(row, heap[0]) < 0) { heap[0] = row; sink() }
+  }
+  return heap.sort(compare)
+}
+
 /** Preserve the browser's full filter/sort order, then return one page of ids. */
 export function queryIndex(index, options = {}) {
   const query = String(options.q || '')
@@ -33,8 +99,16 @@ export function queryIndex(index, options = {}) {
   const manifest = options.manifest || 'all'
   const language = options.language || 'all'
   const sort = options.sort || 'relevance'
+  const page = Math.max(1, Math.floor(Number(options.page) || 1))
+  const pageSize = Math.max(1, Math.floor(Number(options.pageSize) || 30))
+  const offset = (page - 1) * pageSize
+  if (!query && sort === 'relevance' && [category, source, manifest, language].every(value => value === 'all')) {
+    return { total: index.home.length, ids: index.home.slice(offset, offset + pageSize).map(position => index.entries[position][C.id]) }
+  }
   const categories = new Map()
-  let rows = index.entries.filter(entry => {
+  const positions = terms.length ? candidates(index, terms)
+    : query && sort === 'relevance' ? Array.from(index.entries.keys()) : index.orders[sort]
+  let rows = positions.map(position => index.entries[position]).filter(entry => {
     if (entry[C.candidate] && manifest !== 'not_validated') return false
     if (category !== 'all' && entry[C.category] !== category) return false
     if (source !== 'all' && entry[C.source] !== source) return false
@@ -51,32 +125,21 @@ export function queryIndex(index, options = {}) {
       || categoryText.includes(term)
       || descriptionIncludes(entry, term, locale))
   })
-  // The browser ranks matches first even for an explicit sort; stable ties in
-  // that later sort must retain relevance order rather than snapshot order.
+  const total = rows.length
+  if (offset >= total) return { total, ids: [] }
+  // Explicit sort is primary, relevance breaks its ties. Combining these
+  // comparators preserves the browser's two stable sorts without sorting twice.
   if (terms.length) {
-    const relevance = new Map(rows.map(entry => [entry, blendSearchQuality(relevanceScore({
+    const scored = rows.map((entry, order) => ({ entry, order, score: blendSearchQuality(relevanceScore({
       id: entry[C.idLower] ?? entry[C.id], name: entry[C.name],
       owner: entry[C.ownerLower] ?? entry[C.owner], description: entry[C.description], topics: entry[C.topics],
-    }, terms), entry[C.score])]))
-    rows.sort((a, b) => relevance.get(b) - relevance.get(a) || b[C.stars] - a[C.stars] || a[C.id].localeCompare(b[C.id]))
+    }, terms), entry[C.score]) }))
+    rows = firstRows(scored, offset + pageSize, (a, b) => (sort === 'relevance' ? 0 : compareQueryRows(a.entry, b.entry, sort))
+      || b.score - a.score || b.entry[C.stars] - a.entry[C.stars]
+      || a.entry[C.id].localeCompare(b.entry[C.id]) || a.order - b.order).map(row => row.entry)
   }
   if (!query && sort === 'relevance') {
-    rows.sort((a, b) => Number(a[C.pending]) - Number(b[C.pending]) || b[C.score] - a[C.score] || String(a[C.id] || '').localeCompare(String(b[C.id] || '')))
     rows = applyDiversity(rows.map(entry => ({ owner: entry[C.owner], entry }))).map(item => item.entry)
-  } else if (sort !== 'relevance' || !query) {
-    rows.sort((a, b) => {
-      if (sort === 'forks') return b[C.forks] - a[C.forks]
-      if (sort === 'new') return String(b[C.pushedAt] || '').localeCompare(String(a[C.pushedAt] || ''))
-      if (sort === 'added') return String(b[C.addedAt] || '').localeCompare(String(a[C.addedAt] || ''))
-      if (sort === 'manifest') {
-        const delta = Number(b[C.manifest] === 'shape_validated') - Number(a[C.manifest] === 'shape_validated')
-        if (delta) return delta
-      }
-      return b[C.stars] - a[C.stars]
-    })
   }
-  const page = Math.max(1, Math.floor(Number(options.page) || 1))
-  const pageSize = Math.max(1, Math.floor(Number(options.pageSize) || 30))
-  const offset = (page - 1) * pageSize
-  return { total: rows.length, ids: rows.slice(offset, offset + pageSize).map(entry => entry[C.id]) }
+  return { total, ids: rows.slice(offset, offset + pageSize).map(entry => entry[C.id]) }
 }
