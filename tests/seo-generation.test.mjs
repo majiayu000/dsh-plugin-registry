@@ -4,13 +4,14 @@ import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import test from 'node:test'
 import { renderPluginPage } from '../scripts/render-plugin-page.mjs'
-import { pluginShardFilename } from '../assets/plugin-route.js'
+import { pluginShardFilename, searchCardShardFilename } from '../assets/plugin-route.js'
 import { generateSeoFiles, pluginRoute, renderStaticPage } from '../scripts/generate-seo.mjs'
 
 test('SEO generation creates bounded detail shards and a complete sitemap', async () => {
   const root = await mkdtemp(join(tmpdir(), 'harness-registry-seo-'))
   const distDir = join(root, 'dist')
   const registryPath = join(root, 'plugins.json')
+  await writeFile(join(root, 'registry-audit.json'), JSON.stringify({ pendingReview: [] }))
   await mkdir(distDir)
   await writeFile(join(distDir, 'plugin-detail.html'), '<html><head><title>Plugin</title><meta name="description" content="Generic" /></head><body></body></html>')
   await writeFile(join(distDir, 'index.html'), '<html><head><title>Registry</title><meta name="description" content="Browse plugins" /><link rel="icon" href="/assets/logo.png" type="image/png" /></head><body></body></html>')
@@ -85,6 +86,14 @@ test('SEO generation creates bounded detail shards and a complete sitemap', asyn
 
   const build = JSON.parse(await readFile(join(distDir, 'data/detail-build.json'), 'utf8'))
   assert.ok(build.version)
+  const searchBuild = JSON.parse(await readFile(join(distDir, 'data/search-build.json'), 'utf8'))
+  assert.equal(searchBuild.version, build.version)
+  assert.equal(searchBuild.summary.count, 4)
+  assert.equal(searchBuild.facets.categories.tools, 2)
+  const searchIndex = JSON.parse(await readFile(join(root, '.generated/search.json'), 'utf8')).index
+  assert.equal(searchIndex.entries.length, 4)
+  const cardShard = JSON.parse(await readFile(join(distDir, 'data', searchBuild.cards, searchCardShardFilename('acme/tools#terminal') + '.json'), 'utf8'))
+  assert.equal(cardShard.plugins['acme/tools#terminal'].name, 'Terminal')
 
   const home = await readFile(join(distDir, 'index.html'), 'utf8')
   assert.match(home, /rel="canonical" href="https:\/\/example.com\/registry\/"/)
@@ -97,6 +106,9 @@ test('SEO generation creates bounded detail shards and a complete sitemap', asyn
   await generateSeoFiles({ distDir, registryPath, homepage: 'https://example.com/registry/' })
   const nextBuild = JSON.parse(await readFile(join(distDir, 'data/detail-build.json'), 'utf8'))
   assert.notEqual(nextBuild.version, build.version)
+  const nextSearchBuild = JSON.parse(await readFile(join(distDir, 'data/search-build.json'), 'utf8'))
+  assert.equal(nextSearchBuild.version, nextBuild.version)
+  assert.notEqual(nextSearchBuild.cards, searchBuild.cards, 'code-only builds isolate cached pages and card paths')
 })
 
 test('renderStaticPage rejects pages without a title', () => {

@@ -10,3 +10,5 @@ test-results/
 !.env.example
 .dev.vars
 .dev.vars.*
+
+.generated/
