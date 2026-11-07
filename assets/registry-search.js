@@ -15,7 +15,7 @@ export function createPluginSearchIndex(plugins, searchableText) {
   })
 }
 
-function relevanceScore(entry, terms) {
+export function relevanceScore(entry, terms) {
   return terms.reduce(function (score, term) {
     if (entry.id === term || entry.name === term) return score + 120
     if (entry.name.startsWith(term)) score += 70

@@ -2,8 +2,9 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { createHash, randomUUID } from 'node:crypto'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { pluginRoute, pluginShardFilename } from '../assets/plugin-route.js'
+import { pluginRoute, pluginShardFilename, searchCardShardFilename } from '../assets/plugin-route.js'
 import { computeRankingScore } from '../assets/registry-ranking.js'
+import { buildSearchDocument } from './build-search-index.mjs'
 import {
   createBrowseSnapshot,
   escapeHtml,
@@ -111,6 +112,36 @@ export async function generateSeoFiles({
   await writeFile(join(distDir, 'data', 'plugins.json'), registryText)
   await writeFile(join(distDir, 'data', browseSnapshot.filename), browseSnapshot.text)
 
+  const audit = JSON.parse(await readFile(join(resolve(registryPath, '..'), 'registry-audit.json'), 'utf8'))
+  const search = buildSearchDocument(registry, audit)
+  // Code-only ranking changes must also invalidate cached pages. Share the
+  // existing detail build identity instead of hashing directory data alone.
+  const searchVersion = randomUUID()
+  const searchDirectory = `search-cards/${searchVersion}/`
+  await mkdir(join(distDir, 'data', searchDirectory), { recursive: true })
+  const searchShards = new Map(Array.from({ length: 4096 }, (_, i) => [i.toString(16).padStart(3, '0'), {}]))
+  for (const [id, card] of Object.entries(search.cards)) searchShards.get(searchCardShardFilename(id))[id] = card
+  const cardShards = [...searchShards]
+  for (let offset = 0; offset < cardShards.length; offset += 64) {
+    await Promise.all(cardShards.slice(offset, offset + 64).map(([shard, plugins]) =>
+      writeFile(join(distDir, 'data', searchDirectory, `${shard}.json`), JSON.stringify({ plugins }))))
+  }
+  const counts = field => registry.plugins.reduce((result, plugin) => {
+    if (plugin[field]) result[plugin[field]] = (result[plugin[field]] || 0) + 1
+    return result
+  }, {})
+  const searchBuild = {
+    version: searchVersion, cards: searchDirectory,
+    generatedAt: registry.generatedAt, categories: registry.categories,
+    summary: {
+      count: registry.plugins.length,
+      authors: new Set(registry.plugins.map(plugin => plugin.owner)).size,
+      stars: registry.plugins.reduce((sum, plugin) => sum + (plugin.stars || 0), 0),
+      manifests: registry.plugins.filter(plugin => plugin.verification?.manifest === 'shape_validated').length,
+    },
+    facets: { categories: counts('category'), languages: counts('language') },
+  }
+
   const peersByCategory = new Map()
   for (const plugin of registry.plugins) {
     const peers = peersByCategory.get(plugin.category) || []
@@ -172,7 +203,11 @@ export async function generateSeoFiles({
     writeFile(join(distDir, 'robots.txt'), `User-agent: *\nAllow: /\nSitemap: ${new URL('sitemap.xml', homepage).href}\n`),
   ])
   // Publish the cache version only after all files for this build are ready.
-  await writeFile(join(distDir, 'data', 'detail-build.json'), JSON.stringify({ version: randomUUID() }))
+  const generatedDir = resolve(distDir, '..', '.generated')
+  await mkdir(generatedDir, { recursive: true })
+  await writeFile(join(generatedDir, 'search.json'), JSON.stringify({ build: searchBuild, index: search.index }))
+  await writeFile(join(distDir, 'data', 'search-build.json'), JSON.stringify(searchBuild))
+  await writeFile(join(distDir, 'data', 'detail-build.json'), JSON.stringify({ version: searchVersion }))
   console.log(`SEO pages generated: ${registry.plugins.length} plugin URLs, 256 detail shards, ${staticPageCount} static pages, ${browseSnapshot.filename}, and sitemap.xml.`)
 }
 

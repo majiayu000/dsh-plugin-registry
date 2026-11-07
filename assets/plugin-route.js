@@ -32,9 +32,18 @@ export function pluginRoute(plugin) {
 
 // FNV-1a selects one of 256 build-time detail buckets; casing follows ID lookup.
 export function pluginShardFilename(pluginId) {
+  return (pluginIdHash(pluginId) & 255).toString(16).padStart(2, '0')
+}
+
+// Search reads only a page of cards, so use smaller buckets than full details.
+export function searchCardShardFilename(pluginId) {
+  return (pluginIdHash(pluginId) & 4095).toString(16).padStart(3, '0')
+}
+
+function pluginIdHash(pluginId) {
   let hash = 2166136261
   for (const character of String(pluginId).trim().toLowerCase()) {
     hash = Math.imul(hash ^ character.codePointAt(0), 16777619)
   }
-  return (hash & 255).toString(16).padStart(2, '0')
+  return hash
 }
