@@ -1,5 +1,5 @@
-import { queryIndex } from './query-index.js'
-import { searchCardShardFilename } from '../../assets/plugin-route.js'
+import { queryIndex } from '../shared/query-index.js'
+import { searchCardShardFilename } from './card-shard.js'
 
 function optionsFrom(url) {
   const value = key => (url.searchParams.get(key) || '').trim()

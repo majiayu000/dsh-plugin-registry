@@ -1,7 +1,7 @@
-import { BROWSE_PLUGIN_FIELDS } from '../assets/browse-snapshot.js'
-import { hasDshCandidateContext, normalizePendingPlugin } from '../assets/candidate-relevance.js'
-import { applyDiversity, computeRankingScore } from '../assets/registry-ranking.js'
-import { compareQueryRows, QUERY_COLUMN as C } from '../functions/lib/query-index.js'
+import { BROWSE_PLUGIN_FIELDS } from '../../assets/browse-snapshot.js'
+import { hasDshCandidateContext, normalizePendingPlugin } from '../../assets/candidate-relevance.js'
+import { applyDiversity, computeRankingScore } from '../../assets/registry-ranking.js'
+import { compareQueryRows, QUERY_COLUMN as C } from './query-index.js'
 
 function descriptionRange(plugin, locale, text) {
   const description = String(plugin.description && (plugin.description[locale] || plugin.description.zh || plugin.description.en) || '').toLowerCase()

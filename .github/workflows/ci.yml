@@ -24,6 +24,10 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm test
+      - name: Verify isolated D1 projection and delta semantics
+        run: |
+          node experiments/d1/build.mjs
+          node experiments/d1/verify.mjs
       - run: npm run validate:registry
       - run: npm run check:ranking
       - run: npm run build

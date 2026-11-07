@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { buildSearchDocument } from '../scripts/build-search-index.mjs'
-import { handleSearch } from '../functions/lib/search.js'
-import { searchCardShardFilename } from '../assets/plugin-route.js'
+import { buildSearchDocument } from '../experiments/shared/build-search-index.mjs'
+import { handleSearch } from '../experiments/in-memory/search.js'
+import { searchCardShardFilename } from '../experiments/in-memory/card-shard.js'
 
 let sequence = 0
 function fixture(count = 65) {

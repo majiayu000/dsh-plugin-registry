@@ -2,40 +2,24 @@
 
 Decision date: 2026-11-07. Related: #106. Target: Workers Free.
 
-This branch is an experiment, not a production search migration. The browser
-still uses its existing on-demand directory download. Do not merge or switch
-the browser: observed cloud CPU samples exceed the Free request budget.
-Local wall-clock timing is not billed CPU time.
+This document archives the in-memory prototype's measurements. That runtime
+exceeded Workers Free CPU limits and is not enabled in production. Its handler
+now lives in `experiments/in-memory`, with reusable indexing/query code in
+`experiments/shared`. The production browser and SEO build keep their original
+on-demand browse behavior; there is no production `/api/search` route.
 
-## Implementation
+The current isolated implementation and acceptance boundaries are described in
+[d1-search-experiment.md](d1-search-experiment.md). Merging these experiments does
+not enable production search or a D1 publisher.
 
-`npm run build` derives a compact query index and install-free display cards
-from the existing registry and audit snapshots. Ranking scores are fixed at
-`registry.generatedAt`. The index is compiled into the Pages Function through
-`.generated/search.json`; it is not fetched and parsed on the first request.
-Cards are divided into 4,096 static buckets, written in batches of 64 to avoid
-exhausting file descriptors. A page reads only its selected card buckets.
+## Historical implementation
 
-The second iteration precomputes six base sort orders and the unfiltered home
-recommendation order. One- and two-code-unit fragments map to candidate row
-positions, encoded as base64 delta-varints. A request decodes the smallest
-encoded posting list and then applies the exact existing locale/field filter.
-Search ranking uses a bounded max-heap for the requested prefix; broad queries
-no longer sort every match for the first page. Ties retain source order, and
-out-of-range pages skip ranking entirely. No query cache is required for these
-optimizations to be correct.
-
-`GET /api/search` accepts `q`, `category`, `source`, `manifest`, `language`,
-`sort`, `locale`, `page`, and optional `version`. It returns at most 30 cards,
-the full match count, global facets, summary and build version. Matching,
-sorting and default owner diversity happen before pagination. Pending
-candidates remain opt-in through `manifest=not_validated`.
-
-Search and existing detail responses share one build UUID. This changes even
-for code-only builds, so a changed ranking implementation cannot reuse cached
-pages from an earlier build. A stale pagination version returns 409. Missing
-cards return 503 rather than a partial or empty successful result. HEAD misses
-cannot populate the response cache with an empty GET representation.
+The earlier prototype compiled a query index into a Pages Function and emitted
+4,096 card buckets. It precomputed six sort orders, diversified default order,
+and one/two-code-unit fragment candidates. Its handler paginated 30 cards,
+rejected stale versions, and failed on missing cards. That deployment integration
+was removed after runtime measurement failed. The pure query and handler tests
+remain reproducible with `node --test tests/query-index.test.mjs tests/search-api.test.mjs`.
 
 ## Initial prototype: observed local results
 
@@ -65,18 +49,18 @@ heap observations do not measure peak memory or concurrent isolate pressure.
 
 ## Verification and reproduction
 
+Current isolated checks:
+
 ```sh
 npm ci
-npm test
-npm run validate:registry
-npm run check:ranking
-npm run build
-npm run check:performance
-npm run test:e2e
-bash -c 'ulimit -n 1024; node --test tests/seo-generation.test.mjs'
-node node_modules/wrangler/bin/wrangler.js check startup --pages --outfile /tmp/search-startup.cpuprofile
-node node_modules/wrangler/bin/wrangler.js pages dev dist --port 5570 --inspector-port 5571 --persist-to /tmp/search-fresh-runtime
+node --test tests/query-index.test.mjs tests/search-api.test.mjs
+node experiments/d1/build.mjs
+node experiments/d1/verify.mjs
 ```
+
+The former deployment commands are historical: the Pages-integrated source can
+be inspected at commit `3fc280c0a60c2e0bb6a538cefdd2ca4ede20f0e9`. Running the
+normal build on the current revision does not generate that prototype.
 
 Unit coverage compares query ordering with existing browser functions at a
 fixed clock, including locale fallbacks, explicit sort ties, pending filters,
@@ -168,5 +152,5 @@ The separate [D1 experiment](d1-search-experiment.md) preserved tested result
 semantics. Its latest trigram candidate JOIN reduced memory reads to 5,416,
 but broad dsh queries still read 123,530 rows and time-dependent ranking can
 rewrite the full projection during incremental refresh. Free read capacity and the two-hour refresh
-write budget are not acceptable adoption evidence. Keep this PR draft; neither
+write budget are not acceptable adoption evidence. Do not enable this execution path in production; neither
 execution approach is connected to production browser search.

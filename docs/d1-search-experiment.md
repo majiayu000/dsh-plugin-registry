@@ -3,6 +3,12 @@
 Decision date: 2026-11-07. Related: #106 / draft #107. This is a standalone
 experiment under `experiments/d1`, not a production binding or browser change.
 
+Current merge scope: isolated experiment code, tests and evidence. Production
+SEO generation, browser behavior, Pages routes and bindings do not enable this
+API. Stable identities and compact derived ranks now prevent time-only content
+rewrites; see the final section. Historical cloud results below used the earlier
+schema and are not acceptance measurements for the current implementation.
+
 ## Decision and stopping conditions
 
 Determine whether moving substring matching and relevance ranking into D1 can
@@ -123,8 +129,7 @@ Sample responses were at most 40,753 bytes. A separate cloud readback matched
 all 30 `memory` IDs and total 886 to the local oracle; invalid page and stale
 version responses were 400 and 409 respectively.
 
-**Decision: retain the experiment, do not adopt this scan-based D1 query for
-production, and keep #107 draft.** Moving work into D1 substantially reduced
+**Historical decision: do not adopt the original scan-based query in production.** Moving work into D1 substantially reduced
 observed Worker CPU, but did not establish adequate Free read capacity. Real
 traffic demand, first-request CPU, concurrency and peak memory remain unverified.
 
@@ -223,10 +228,58 @@ comparisons; no-op/card-only updates; insert/delete/reorder; NUL/quotes/emoji;
 FTS integrity after edits; rollback after a text mutation; stale-base rejection;
 409 with no items when publication interrupts a search. These pass locally.
 
-**Decision:** retain the indexed candidate query and local delta prototype, but
-keep #107 draft and do not wire a cloud writer or production browser to it.
+**Historical decision:** retain the indexed candidate query and local delta prototype,
+but do not wire a cloud writer or production browser to it.
 Selective-query reads improve substantially; Free capacity for broad searches and
 scheduled updates remains unproven/insufficient. A production-capable next step
 would separate stable plugin identity from derived display order and time-based
 ranking. D1 atomic delta publication, concurrency, cloud peak memory and actual
 traffic requirements are not validated. Production stayed on its original build.
+
+
+## Stable identities and merge boundary (current)
+
+Plugin `pos` now identifies a plugin independently of its rank. Incremental builds
+pass `readIdentities(db)` into `buildProjection(registry, audit, identities)` to
+reuse existing allocations; new identities receive new positions. The delta
+planner rejects reassignment of an existing identity. A fresh build needs no
+previous map. There is no legacy-schema migration or fallback.
+
+Time-dependent quality, source order and dense ranking fields live in
+`rank_blocks`: one JSON tuple per identity, grouped into 256-position blocks.
+`home_pages` stores the actual 30-position default pages. The database reads
+rank tuples while sorting, so changes in rank no longer move plugin text or cards.
+The delta transaction updates changed plugin rows, changed rank blocks, changed
+home pages and metadata together. It preserves rollback and stale-base checks;
+missing expected home pages fail instead of returning a false empty success.
+
+Full 27,518-row snapshot, advancing only generatedAt by two hours:
+
+- Plugin insert/update/delete: **0 / 0 / 0**; text changes: **0**.
+- Changed rank blocks: **108**; changed home pages: **735**; metadata: **1**.
+- This plan contains **844 table writes**, versus 27,518 plugin updates plus FTS
+  churn in the previous layout. Twelve identical-sized refresh plans would mean
+  10,128 table writes, but real upstream changes can differ. These are local
+  plan counts, not observed D1 billing.
+- Unchanged input performs zero writes; an existing icon change performs two.
+- Adding/removing/promoting a plugin preserves positions of remaining identities.
+- Local file including FTS: 83,464,192 bytes.
+
+Focused verification compares 1,031 fixture results and 213 whole-snapshot
+queries/pages against the existing search oracle. Tests cover text edits,
+identity stability, no-op refresh, time-only refresh, missing home pages,
+rollback after both FTS and derived-data changes, stale bases, and publication
+interrupting a query. CI explicitly builds and verifies the experiment on Node 22.
+
+**Merge decision:** this revision is suitable to merge as an isolated experiment
+once its current-head checks pass. It is not production search enablement. The
+failed in-memory route and SEO artifact generation have been removed from the
+production path; reusable query code lives in `experiments/shared`, historical
+handler code in `experiments/in-memory`. Normal Pages compilation has no
+`/api/search` route or generated search index/card artifacts.
+
+The retained cloud experiment still runs the preceding schema/version. Do not
+deploy the current Worker onto that older database. New-schema cloud CPU/read
+accounting, atomic D1 delta publication, concurrent load and peak memory still
+need acceptance before any production switch. Broad-query read capacity also
+remains an open concern; no subscription or production binding was changed.

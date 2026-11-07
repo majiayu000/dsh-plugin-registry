@@ -1,5 +1,9 @@
 import { applyDiversity } from '../../assets/registry-ranking.js'
 
+// Keep aligned with the fixed 256-slot tuples emitted by build.mjs.
+const rank = field => `json_extract(r.document,'$['||(p.pos%256)||'][${field}]')`
+const rankJoin = ' JOIN rank_blocks r ON r.block=CAST(p.pos/256 AS INTEGER)'
+
 export function requestOptions(url) {
   const value = key => (url.searchParams.get(key) || '').trim()
   const options = { q: value('q'), locale: value('locale') || 'zh', category: value('category') || 'all',
@@ -57,14 +61,16 @@ export async function search(db, options) {
   }
   const unfiltered = ['category', 'source', 'manifest', 'language'].every(field => options[field] === 'all')
   const offset = (options.page - 1) * 30
-  let total, positions
+  let total, positions, missingHome = false
   if (!terms.length && options.sort === 'relevance' && unfiltered) {
-    positions = (await read('SELECT pos FROM plugins WHERE pos<? ORDER BY pos LIMIT 30 OFFSET ?', [meta.count, offset])).map(row => row.pos)
+    const [home] = await read('SELECT document FROM home_pages WHERE page=?', [options.page - 1])
+    positions = home ? JSON.parse(home.document) : []
+    missingHome = !home && offset < meta.count
     total = meta.count
   } else if (!terms.length && options.sort === 'relevance') {
     // Diversity depends on the filtered set. Filtering a globally diversified
     // list is not equivalent, so this experiment measures the small-row pass.
-    const rows = await read(`SELECT pos,owner FROM plugins p WHERE ${conditions.join(' AND ') || '1'} ORDER BY default_rank`, parameters)
+    const rows = await read(`SELECT p.pos,p.owner FROM plugins p${rankJoin} WHERE ${conditions.join(' AND ') || '1'} ORDER BY ${rank(1)}`, parameters)
     total = rows.length
     positions = applyDiversity(rows).slice(offset, offset + 30).map(row => row.pos)
   } else {
@@ -89,8 +95,8 @@ export async function search(db, options) {
       conditions.push(`search_terms MATCH ?${parameters.length}`)
     }
     const sql = `WITH matched AS MATERIALIZED (
-      SELECT pos,original_order,stars,forks,manifest,pushed_rank,added_rank,id_rank,${scores.length ? '(' + scores.join('+') + ')*p.quality' : '0'} AS relevance
-      FROM ${from} WHERE ${conditions.join(' AND ') || '1'})
+      SELECT p.pos,${rank(0)} AS original_order,stars,forks,manifest,${rank(2)} AS pushed_rank,${rank(3)} AS added_rank,${rank(4)} AS id_rank,${scores.length ? '(' + scores.join('+') + ')*' + rank(5) : '0'} AS relevance
+      FROM ${from}${rankJoin} WHERE ${conditions.join(' AND ') || '1'})
       SELECT count(*) AS total,(SELECT json_group_array(pos) FROM
         (SELECT pos FROM matched ORDER BY ${order} LIMIT 30 OFFSET ?${parameters.length + 1})) AS positions FROM matched`
     const [result] = await read(sql, [...parameters, offset])
@@ -100,6 +106,7 @@ export async function search(db, options) {
   const cards = positions.length ? await read(`SELECT p.card FROM json_each(?) j JOIN plugins p ON p.pos=j.value ORDER BY j.key`, [JSON.stringify(positions)]) : []
   const [current] = await read("SELECT json_extract(document,'$.version') AS version FROM build WHERE id=1")
   if (current.version !== meta.version) return { status: 409, error: 'Directory updated; restart pagination', version: current.version, metrics }
+  if (missingHome) throw new Error('Missing home page')
   if (cards.length !== positions.length) throw new Error('Missing result cards')
   return { version: meta.version, generatedAt: meta.generatedAt, total, page: options.page, pageSize: 30,
     items: cards.map(row => JSON.parse(row.card)), categories: meta.categories, metrics }

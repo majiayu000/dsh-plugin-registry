@@ -12,7 +12,6 @@ async function fixture(t, source) {
   const registryPath = join(root, 'plugins.json')
   await mkdir(join(distDir, 'data'), { recursive: true })
   await writeFile(registryPath, source)
-  await writeFile(join(root, 'registry-audit.json'), JSON.stringify({ pendingReview: [] }))
   // Model Vite's public-directory copy, not just an empty output directory.
   await writeFile(join(distDir, 'data/plugins.json'), source)
   return { distDir, registryPath, homepage: 'https://example.com/' }
