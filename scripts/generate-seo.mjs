@@ -1,4 +1,5 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { readFileSync } from 'node:fs'
 import { createHash, randomUUID } from 'node:crypto'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -23,6 +24,28 @@ export function serializeRegistrySnapshot(registry) {
     throw new Error(`data/plugins.json is ${bytes} bytes after minification; Cloudflare Pages allows at most ${PAGES_MAX_FILE_BYTES} bytes per file.`)
   }
   return text
+}
+
+// The published schema contract is the minimum every consumer of the deployed
+// data/plugins.json relies on: the legacy redirect and the repository checker
+// read id/source, and the public JSON API is validated against these required
+// fields. Richer browse and detail data ship separately in the content-addressed
+// browse snapshot and the 256 detail shards, both derived from the complete
+// canonical registry. Deriving the projection from the schema keeps it from
+// drifting away from the published contract.
+const CONTRACT_PLUGIN_FIELDS = JSON.parse(
+  readFileSync(new URL('../schema/registry.schema.json', import.meta.url), 'utf8'),
+).properties.plugins.items.required
+
+export function createDeploymentRegistry(registry) {
+  return {
+    ...registry,
+    plugins: (registry.plugins || []).map(plugin => Object.fromEntries(
+      CONTRACT_PLUGIN_FIELDS
+        .filter(field => plugin[field] !== undefined)
+        .map(field => [field, plugin[field]]),
+    )),
+  }
 }
 
 function xmlEscape(value) {
@@ -104,7 +127,20 @@ export async function generateSeoFiles({
   if (!homepage) throw new Error('package.json homepage is required to generate canonical plugin URLs.')
   // Keep the canonical snapshot readable; only compact the deployment copy.
   // Validate before writing any generated files or the final build marker.
-  const registryText = serializeRegistrySnapshot(registry)
+  let registryText
+  try {
+    registryText = serializeRegistrySnapshot(registry)
+  } catch {
+    // The complete snapshot can outgrow Cloudflare Pages' per-file ceiling as the
+    // registry grows. Fall back to the published schema contract so the build and
+    // every runtime consumer keep working instead of failing the scheduled sync.
+    // The complete registry still ships in the canonical git snapshot, the browse
+    // snapshot, and the detail shards derived from `registry` below. If even the
+    // contract projection cannot fit, serializeRegistrySnapshot throws again and
+    // no output or build marker is written (structural follow-up: paged search).
+    registryText = serializeRegistrySnapshot(createDeploymentRegistry(registry))
+    console.warn(`data/plugins.json exceeded ${PAGES_MAX_FILE_BYTES} bytes; deployed the ${Buffer.byteLength(registryText, 'utf8')}-byte schema-contract projection. Complete data remains in the canonical snapshot, browse snapshot, and detail shards.`)
+  }
   const urls = STATIC_PAGES.map(({ path }) => ({ loc: new URL(path, homepage).href, lastmod: registry.generatedAt }))
   const browseSnapshot = createBrowseSnapshot(registry)
   await mkdir(join(distDir, 'data'), { recursive: true })
