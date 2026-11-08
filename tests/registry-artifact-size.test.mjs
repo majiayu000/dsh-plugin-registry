@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
@@ -105,13 +105,16 @@ test('postbuild projects an oversized registry to the schema contract instead of
     verification: { manifest: 'shape_validated', patch: 'exists', installation: 'not_tested' },
     install: 'dsh plugin --profile web add github:acme/tool', icon: 'https://github.com/acme.png',
   }
-  // An optional detail field pushes the complete compact copy past the Pages
-  // ceiling, mirroring the scheduled-sync failure, while the contract fits.
-  const heavyTopics = ['x'.repeat(PAGES_MAX_FILE_BYTES)]
+  // Mirror catalog growth with ordinary-sized rows. A single oversized topic
+  // would also overflow the untouched browse snapshot and detail shard.
+  const topics = Array.from({ length: 20 }, (_, i) => `deepseek-harness-plugin-topic-${i}`)
+  const plugin = { ...contract, topics }
+  const count = Math.ceil(PAGES_MAX_FILE_BYTES / Buffer.byteLength(JSON.stringify(plugin))) + 1
+  const plugins = Array.from({ length: count }, (_, i) => ({ ...plugin, id: `acme/tool-${i}` }))
   const registry = {
     schemaVersion: 2, generatedAt: '2026-11-08T00:00:00.000Z',
-    categories: { tools: { zh: '工具', en: 'Tools' } }, stats: { published: 1 }, sources: {},
-    plugins: [{ ...contract, topics: heavyTopics }],
+    categories: { tools: { zh: '工具', en: 'Tools' } }, stats: { published: count }, sources: {},
+    plugins,
   }
   const source = JSON.stringify(registry)
   assert.ok(Buffer.byteLength(source) > PAGES_MAX_FILE_BYTES)
@@ -124,7 +127,9 @@ test('postbuild projects an oversized registry to the schema contract instead of
   const outputText = await readFile(join(options.distDir, 'data/plugins.json'), 'utf8')
   assert.ok(Buffer.byteLength(outputText) < PAGES_MAX_FILE_BYTES)
   const output = JSON.parse(outputText)
-  assert.deepEqual(output.plugins, [contract])
+  assert.equal(output.plugins.length, count)
+  assert.deepEqual(output.plugins[0], { ...contract, id: plugins[0].id })
+  assert.deepEqual(output.plugins.at(-1), { ...contract, id: plugins.at(-1).id })
   assert.deepEqual(output.categories, registry.categories)
   assert.deepEqual(output.stats, registry.stats)
   // The canonical source snapshot is left complete and untouched.
@@ -133,13 +138,24 @@ test('postbuild projects an oversized registry to the schema contract instead of
   assert.ok(JSON.parse(await readFile(join(options.distDir, 'data/detail-build.json'), 'utf8')).version)
 
   // No regression: detail shards still carry the complete plugin record.
-  const shard = JSON.parse(await readFile(join(options.distDir, 'data/plugin-shards', pluginShardFilename('acme/tool') + '.json'), 'utf8'))
-  assert.equal(shard.documents['acme/tool'].plugin.id, 'acme/tool')
-  assert.deepEqual(shard.documents['acme/tool'].plugin.topics, heavyTopics)
+  const first = plugins[0]
+  const shard = JSON.parse(await readFile(join(options.distDir, 'data/plugin-shards', pluginShardFilename(first.id) + '.json'), 'utf8'))
+  assert.deepEqual(shard.documents[first.id].plugin, first)
 
   // No regression: the browse snapshot still carries the complete browse fields.
   const browseFilename = (await readdir(join(options.distDir, 'data'))).find(name => name.startsWith('browse-'))
   assert.ok(browseFilename)
   const browse = JSON.parse(await readFile(join(options.distDir, 'data', browseFilename), 'utf8'))
-  assert.deepEqual(browse.plugins[0][browse.fields.indexOf('topics')], heavyTopics)
+  assert.equal(browse.plugins.length, count)
+  assert.deepEqual(browse.plugins[0][browse.fields.indexOf('topics')], topics)
+
+  // Pages uploads every generated asset, not just data/plugins.json.
+  async function assertUploadSizes(directory) {
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      const path = join(directory, entry.name)
+      if (entry.isDirectory()) await assertUploadSizes(path)
+      else assert.ok((await stat(path)).size <= PAGES_MAX_FILE_BYTES, `${path} exceeds the Pages file limit`)
+    }
+  }
+  await assertUploadSizes(options.distDir)
 })
