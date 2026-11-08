@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
-import { generateSeoFiles, PAGES_MAX_FILE_BYTES, serializeRegistrySnapshot } from '../scripts/generate-seo.mjs'
+import { pluginShardFilename } from '../assets/plugin-route.js'
+import { createDeploymentRegistry, generateSeoFiles, PAGES_MAX_FILE_BYTES, serializeRegistrySnapshot } from '../scripts/generate-seo.mjs'
 
 async function fixture(t, source) {
   const root = await mkdtemp(join(tmpdir(), 'registry-artifact-'))
@@ -68,4 +69,77 @@ test('postbuild counts UTF-8 bytes and rejects oversize before replacing outputs
   assert.equal(await readFile(markerPath, 'utf8'), '{"version":"previous"}')
   assert.equal(await readFile(join(options.distDir, 'data/plugins.json'), 'utf8'), source)
   assert.equal(await readFile(options.registryPath, 'utf8'), source)
+})
+
+test('the deployment projection keeps the published schema contract and drops optional detail fields', () => {
+  const contract = {
+    id: 'acme/tool', name: 'Tool', owner: 'acme', url: 'https://github.com/acme/tool',
+    description: { zh: '工具', en: 'Tool' }, category: 'tools', stars: 3, forks: 1,
+    source: 'discovered', trustLevel: 'manifest_verified',
+    verification: { manifest: 'shape_validated', patch: 'exists', installation: 'not_tested' },
+    install: 'dsh plugin --profile web add github:acme/tool', icon: 'https://github.com/acme.png',
+  }
+  const registry = {
+    schemaVersion: 2, generatedAt: '2026-11-08T00:00:00.000Z',
+    categories: { tools: { zh: '工具', en: 'Tools' } }, stats: { published: 1 }, sources: { community: 'x' },
+    plugins: [{ ...contract, topics: ['deepseek-harness'], verifiedCommit: 'a'.repeat(40), packageName: '@acme/tool', archived: false }],
+  }
+  const projected = createDeploymentRegistry(registry)
+  // Top-level metadata is preserved verbatim; only plugin rows are projected.
+  assert.equal(projected.schemaVersion, 2)
+  assert.equal(projected.generatedAt, registry.generatedAt)
+  assert.deepEqual(projected.categories, registry.categories)
+  assert.deepEqual(projected.stats, registry.stats)
+  assert.deepEqual(projected.sources, registry.sources)
+  assert.deepEqual(projected.plugins, [contract])
+  // The complete registry is never mutated.
+  assert.deepEqual(registry.plugins[0].topics, ['deepseek-harness'])
+  assert.equal(registry.plugins[0].verifiedCommit, 'a'.repeat(40))
+})
+
+test('postbuild projects an oversized registry to the schema contract instead of failing the sync', async t => {
+  const contract = {
+    id: 'acme/tool', name: 'Tool', owner: 'acme', url: 'https://github.com/acme/tool',
+    description: { zh: '工具', en: 'Tool' }, category: 'tools', stars: 3, forks: 1,
+    source: 'discovered', trustLevel: 'manifest_verified',
+    verification: { manifest: 'shape_validated', patch: 'exists', installation: 'not_tested' },
+    install: 'dsh plugin --profile web add github:acme/tool', icon: 'https://github.com/acme.png',
+  }
+  // An optional detail field pushes the complete compact copy past the Pages
+  // ceiling, mirroring the scheduled-sync failure, while the contract fits.
+  const heavyTopics = ['x'.repeat(PAGES_MAX_FILE_BYTES)]
+  const registry = {
+    schemaVersion: 2, generatedAt: '2026-11-08T00:00:00.000Z',
+    categories: { tools: { zh: '工具', en: 'Tools' } }, stats: { published: 1 }, sources: {},
+    plugins: [{ ...contract, topics: heavyTopics }],
+  }
+  const source = JSON.stringify(registry)
+  assert.ok(Buffer.byteLength(source) > PAGES_MAX_FILE_BYTES)
+  assert.ok(Buffer.byteLength(JSON.stringify(createDeploymentRegistry(registry))) < PAGES_MAX_FILE_BYTES)
+  const options = await fixture(t, source)
+
+  // The build must complete rather than throw.
+  await generateSeoFiles(options)
+
+  const outputText = await readFile(join(options.distDir, 'data/plugins.json'), 'utf8')
+  assert.ok(Buffer.byteLength(outputText) < PAGES_MAX_FILE_BYTES)
+  const output = JSON.parse(outputText)
+  assert.deepEqual(output.plugins, [contract])
+  assert.deepEqual(output.categories, registry.categories)
+  assert.deepEqual(output.stats, registry.stats)
+  // The canonical source snapshot is left complete and untouched.
+  assert.equal(await readFile(options.registryPath, 'utf8'), source)
+  // The build marker is published only after the projected outputs are ready.
+  assert.ok(JSON.parse(await readFile(join(options.distDir, 'data/detail-build.json'), 'utf8')).version)
+
+  // No regression: detail shards still carry the complete plugin record.
+  const shard = JSON.parse(await readFile(join(options.distDir, 'data/plugin-shards', pluginShardFilename('acme/tool') + '.json'), 'utf8'))
+  assert.equal(shard.documents['acme/tool'].plugin.id, 'acme/tool')
+  assert.deepEqual(shard.documents['acme/tool'].plugin.topics, heavyTopics)
+
+  // No regression: the browse snapshot still carries the complete browse fields.
+  const browseFilename = (await readdir(join(options.distDir, 'data'))).find(name => name.startsWith('browse-'))
+  assert.ok(browseFilename)
+  const browse = JSON.parse(await readFile(join(options.distDir, 'data', browseFilename), 'utf8'))
+  assert.deepEqual(browse.plugins[0][browse.fields.indexOf('topics')], heavyTopics)
 })
