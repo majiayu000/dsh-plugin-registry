@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto'
 import { pluginRoute } from '../assets/plugin-route.js'
 import { rankPlugins } from '../assets/registry-ranking.js'
 import { toBrowseDocument } from '../assets/browse-snapshot.js'
+import { partitionListing } from '../assets/listing-quality.js'
 
 const STAR = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 17.2 5.9 20.6l1.4-6.8L2.2 9.1l6.9-.8z"/></svg>'
 const FORK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="6" cy="5" r="2"/><circle cx="18" cy="5" r="2"/><circle cx="12" cy="19" r="2"/><path d="M6 7v2c0 3 2 4 6 4s6-1 6-4V7M12 13v4"/></svg>'
@@ -108,8 +109,7 @@ function staticRow(plugin, index, categories) {
   </div>`
 }
 
-function registrySummary(registry) {
-  const plugins = registry.plugins || []
+function registrySummary(registry, plugins = registry.plugins || []) {
   return {
     count: plugins.length,
     stars: plugins.reduce((sum, plugin) => sum + (Number(plugin.stars) || 0), 0),
@@ -146,12 +146,14 @@ export function createBrowseSnapshot(registry) {
 }
 
 export function prerenderRegistryHome(template, registry, browseUrl, homepage) {
-  const summary = registrySummary(registry)
-  const ranked = rankPlugins(registry.plugins || [])
+  // 首页默认列表与浏览端一致：隐藏低信号条目，统计只计默认列表。
+  const listing = partitionListing(registry.plugins || [])
+  const summary = registrySummary(registry, listing.standard)
+  const ranked = rankPlugins(listing.standard)
   const visible = ranked.slice(0, 8)
   const categoryCounts = new Map()
   const languageCounts = new Map()
-  for (const plugin of registry.plugins || []) {
+  for (const plugin of listing.standard) {
     categoryCounts.set(plugin.category, (categoryCounts.get(plugin.category) || 0) + 1)
     if (plugin.language) languageCounts.set(plugin.language, (languageCounts.get(plugin.language) || 0) + 1)
   }
@@ -186,6 +188,7 @@ export function prerenderRegistryHome(template, registry, browseUrl, homepage) {
   page = replaceContents(page, 'st-stars', summary.stars.toLocaleString())
   page = replaceContents(page, 'st-author', summary.authors.toLocaleString())
   page = replaceContents(page, 'st-auto', summary.manifests.toLocaleString())
+  page = replaceContents(page, 'st-scope', `默认列表：共 ${(registry.plugins || []).length.toLocaleString()} 个可安装条目，隐藏 ${listing.lowSignal.length.toLocaleString()} 个低信号条目`)
   page = replaceContents(page, 'chips', chips.join(''))
   page = replaceContents(page, 'language', languages.join(''))
   page = replaceContents(page, 'list-note', `${summary.count.toLocaleString()} 个结果`)
