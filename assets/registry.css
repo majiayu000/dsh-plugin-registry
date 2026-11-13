@@ -331,6 +331,8 @@ html.modal-open, html.modal-open body { overflow: hidden; }
 .ss b { display: block; font: 300 30px/1.15 var(--font-display); letter-spacing: var(--tracking-display); font-variant-numeric: tabular-nums; color: var(--fg); }
 .ss b::before { content: ''; }
 .ss span { font-size: var(--text-xs); color: var(--muted); letter-spacing: 0.06em; }
+.st-scope { margin: 8px 0 0; font-size: var(--text-xs); color: var(--muted); }
+.fb-link { padding: 0; border: 0; background: none; font: inherit; color: var(--fg); text-decoration: underline; cursor: pointer; }
 
 /* ---------- 工具条（分类 chips 单行横滚 + 独立筛选条） ---------- */
 .toolbar { margin: 24px 0 0; }

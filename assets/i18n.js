@@ -47,7 +47,7 @@
     '它能做什么': 'What it does', '维护者': 'Maintainer', '本周': 'This week', '信息': 'Information', '最近更新': 'Last updated', '仓库': 'Repository', '当前': 'Current', '运行时': 'Runtime', '协议': 'Protocol',
     '冲突': 'Conflicts',
     '需确认': 'Confirmation required', '敏感': 'Sensitive',
-    '提交审核': 'Submit for review', '分类': 'Category', '文件读取': 'File read', '插件作者': 'Plugin authors', '自动发现': 'Auto-discovered', 'Manifest 检查通过': 'Manifest checks passed', '全部来源': 'All sources', '插件来源': 'Plugin source', '社区目录': 'Community catalog', 'GitHub 自动发现': 'GitHub discovery',
+    '提交审核': 'Submit for review', '分类': 'Category', '文件读取': 'File read', '插件作者': 'Plugin authors', '自动发现': 'Auto-discovered', 'Manifest 检查通过': 'Manifest checks passed', '全部来源': 'All sources', '默认列表插件': 'Plugins in default list', '列表范围': 'Listing scope', '默认列表（隐藏低信号）': 'Default list (low-signal hidden)', '全部条目（含低信号）': 'All entries (incl. low-signal)', '仅低信号条目': 'Low-signal entries only', '低信号条目': 'Low-signal entry', '可安装，但来自批量发布且自身没有 Star、Fork 或 Release，或与另一条目是同一提交 / 同名同简介的副本。默认列表隐藏，选择「全部条目」即可浏览，详情页与安装命令不变；获得 Star、Fork 或 Release 后自动回到默认列表。': 'Installable, but either published in bulk with no stars, forks, or release of its own, or a copy of another entry at the same commit or with the same name and description. Hidden from the default list; choose All entries to browse it. Its detail page and install command are unchanged, and a star, fork, or release returns it to the default list.', '默认列表隐藏低信号条目，统计只计默认列表。': 'The default list hides low-signal entries; these stats count the default list only.', '插件来源': 'Plugin source', '社区目录': 'Community catalog', 'GitHub 自动发现': 'GitHub discovery',
     'Manifest 状态': 'Manifest status', '全部 Manifest 状态': 'All Manifest statuses', '格式检查通过': 'Format checked', '未检查': 'Not checked',
     '排序方式': 'Sort order', 'Manifest 检查通过优先': 'Manifest checks passed first', '按最近收录': 'Recently listed',
     '按 Stars（已收录优先）': 'By Stars (listed first)', '按 Stars（含候选仓库）': 'By Stars (including candidates)', '按 Stars': 'By Stars', '按 Forks': 'By Forks',
@@ -121,6 +121,7 @@
     if (en[text]) return lead + en[text] + tail;
     text = text
       .replace(/^(\d+) 个结果$/, '$1 results')
+      .replace(/^默认列表：共 ([\d,]+) 个可安装条目，隐藏 ([\d,]+) 个低信号条目$/, 'Default list: $1 installable entries, $2 low-signal entries hidden')
       .replace(/^(\d+) 天前$/, '$1 days ago')
       .replace(/^(\d+) 周前$/, '$1 weeks ago')
       .replace(/^(\d+) 个月前$/, '$1 months ago')

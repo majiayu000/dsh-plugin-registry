@@ -14,6 +14,19 @@ Registry 的公开列表只包含两种可信等级：
 
 仅有用于发现的 `dsh-plugin` Topic、没有有效 bundle，也没有其他 DSH 关联信号的仓库会被排除。有效 `dsh.bundle` 不受这条候选相关性规则影响。
 
+## 默认列表与低信号条目
+
+可安装列表中的所有条目都保留在快照、详情页和公开 API 中。网站默认浏览列表与首页统计只计「默认列表」，隐藏下列低信号条目；筛选「全部条目（含低信号）」或「仅低信号条目」可随时查看，首页统计下方写明总数与隐藏数。判定在浏览端和构建端由 [`assets/listing-quality.js`](../assets/listing-quality.js) 用快照已有字段计算，不改变快照结构，也不增加部署文件体积。
+
+- `bulk_publisher`：同一 owner（不区分大小写）在可安装列表中有至少 `bulkPublisherMinListings` 个条目，且该条目自身 Stars、Forks 均为 0、没有 Release。获得任一信号即回到默认列表。
+- `duplicate`：与另一条目的 `verifiedCommit` 相同（同一仓库改名或镜像），或仓库名与非空简介都相同（副本）。组内保留豁免条目优先、Stars、Release、Forks 依次更高的一条，其余标记。
+
+社区目录、issue 申请通过（`origin: issue`）和特别收录（`special` / `recommendationSource`）条目不参与自动降级。低信号不是隔离：不写入 `sources/blocklist.json`，也不影响安装命令。屏蔽整个账号仍需要具体的恶意、误收录或重复理由。
+
+阈值只在 `LISTING_QUALITY_CONFIG` 中维护。`bulkPublisherMinListings = 50` 的依据（2026-11-12 快照，24,926 个可安装条目、15,346 个 owner）：owner 条目数 P99 = 8、P99.9 = 27，达到 50 的只有 7 个 owner，却占 1,918 个条目（7.7%）；取 P99.9 的约两倍，避免误伤 20–30 个条目的活跃作者。按此阈值共有 1,547 个低信号条目（批量 1,498、重复 49），默认列表为 23,379 个。调整阈值时需在 PR 中给出新快照的同类分布。
+
+仓库体积或「无代码」暂不作为信号：快照没有仓库大小字段，补充需要额外 GitHub API 请求；`language` 为空的仅 124 条，且纯 YAML Patch 插件本身合法。
+
 ## 人工治理
 
 人工收录记录：[2026-10-21 社区插件申请 #77–#81](submissions-2026-10-21.md)，包含固定发布物、安装 smoke 检查与兼容边界。

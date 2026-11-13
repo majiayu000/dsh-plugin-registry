@@ -5,6 +5,7 @@ await import('/assets/i18n.js');
 await import('/assets/plugins.js');
 const { createPluginSearchIndex, filterPluginSearchIndex } = await import('/assets/registry-search.js');
 const { rankPlugins } = await import('/assets/registry-ranking.js');
+const { partitionListing } = await import('/assets/listing-quality.js');
 
 (function () {
   'use strict';
@@ -12,13 +13,21 @@ const { rankPlugins } = await import('/assets/registry-ranking.js');
   var params = new URLSearchParams(location.search);
   var state = {
     q: params.get('q') || document.getElementById('q').value.trim() || '', cat: params.get('category') || 'all', source: params.get('source') || 'all',
-    manifest: params.get('manifest') || 'all', language: params.get('language') || 'all',
+    manifest: params.get('manifest') || 'all', language: params.get('language') || 'all', listing: params.get('listing') || 'standard',
     sort: params.get('sort') || 'relevance', limit: document.documentElement.dataset.registryPrerendered === 'true' ? 8 : 60
   };
   var list = document.getElementById('list');
   var note = document.getElementById('list-note');
   var clearBtn = document.getElementById('clear-filters');
   var publishedIndex = [], pendingIndex = [], hydrated = false, pendingLoaded = false;
+  var listing = { standard: [], lowSignal: [], reasons: new Map() };
+
+  function isLowSignal(plugin) { return listing.reasons.has(String(plugin.id || '').toLowerCase()); }
+
+  function listingPool() {
+    if (state.listing === 'all') return HR.PUBLISHED;
+    return state.listing === 'low_signal' ? listing.lowSignal : listing.standard;
+  }
 
   function searchableText(plugin) {
     return plugin.id + ' ' + HR.description(plugin) + ' ' + plugin.owner + ' ' + HR.categoryName(plugin.category) + ' ' + (plugin.language || '') + ' ' + (plugin.topics || []).join(' ') + ' ' + (plugin.packageName || '') + ' ' + (plugin.profile || '');
@@ -29,25 +38,35 @@ const { rankPlugins } = await import('/assets/registry-ranking.js');
     if (element) element.textContent = Number(value || 0).toLocaleString();
   }
 
+  // 顶栏统计只描述默认列表，并写明隐藏了多少低信号条目。
   function renderSummary() {
-    var authors = new Set(HR.PUBLISHED.map(function (plugin) { return plugin.owner; }));
-    setText('st-count', HR.PUBLISHED.length);
-    setText('st-stars', HR.PUBLISHED.reduce(function (sum, plugin) { return sum + (plugin.stars || 0); }, 0));
+    var plugins = listing.standard;
+    var authors = new Set(plugins.map(function (plugin) { return plugin.owner; }));
+    setText('st-count', plugins.length);
+    setText('st-stars', plugins.reduce(function (sum, plugin) { return sum + (plugin.stars || 0); }, 0));
     setText('st-author', authors.size);
-    setText('st-auto', HR.PUBLISHED.filter(HR.manifestShapeValidated).length);
+    setText('st-auto', plugins.filter(HR.manifestShapeValidated).length);
+    var caption = document.getElementById('st-scope');
+    if (caption) {
+      var total = HR.PUBLISHED.length.toLocaleString(), hidden = listing.lowSignal.length.toLocaleString();
+      caption.textContent = window.HRI18N.locale === 'en-US'
+        ? 'Default list: ' + total + ' installable entries, ' + hidden + ' low-signal entries hidden'
+        : '默认列表：共 ' + total + ' 个可安装条目，隐藏 ' + hidden + ' 个低信号条目';
+    }
   }
 
   function populateFacets() {
+    var pool = listingPool();
     var chips = document.getElementById('chips');
     chips.innerHTML = '';
     var all = document.createElement('button');
     all.className = 'chip'; all.type = 'button'; all.dataset.cat = 'all';
-    all.innerHTML = (window.HRI18N.locale === 'en-US' ? 'All ' : '全部 ') + '<span class="chip-count">' + HR.PUBLISHED.length.toLocaleString() + '</span>';
+    all.innerHTML = (window.HRI18N.locale === 'en-US' ? 'All ' : '全部 ') + '<span class="chip-count">' + pool.length.toLocaleString() + '</span>';
     chips.appendChild(all);
     Object.keys(HR.registry.categories || {}).forEach(function (key) {
       var chip = document.createElement('button');
       chip.className = 'chip'; chip.type = 'button'; chip.dataset.cat = key;
-      var count = HR.PUBLISHED.filter(function (plugin) { return plugin.category === key; }).length;
+      var count = pool.filter(function (plugin) { return plugin.category === key; }).length;
       chip.innerHTML = HR.escapeHtml(HR.categoryName(key)) + ' <span class="chip-count">' + count.toLocaleString() + '</span>';
       chips.appendChild(chip);
     });
@@ -58,7 +77,7 @@ const { rankPlugins } = await import('/assets/registry-ranking.js');
     });
 
     var languageSelect = document.getElementById('language');
-    var languageCounts = HR.PUBLISHED.reduce(function (counts, plugin) {
+    var languageCounts = pool.reduce(function (counts, plugin) {
       if (plugin.language) counts[plugin.language] = (counts[plugin.language] || 0) + 1;
       return counts;
     }, {});
@@ -70,10 +89,10 @@ const { rankPlugins } = await import('/assets/registry-ranking.js');
     });
     languageSelect.disabled = !Object.keys(languageCounts).length;
     if (state.language !== 'all' && !languageCounts[state.language]) state.language = 'all';
-    ['source', 'manifest', 'language', 'sort'].forEach(function (id) {
+    ['source', 'manifest', 'listing', 'language', 'sort'].forEach(function (id) {
       var select = document.getElementById(id);
       if ([...select.options].some(function (option) { return option.value === state[id]; })) select.value = state[id];
-      else state[id] = id === 'sort' ? 'relevance' : 'all';
+      else state[id] = id === 'sort' ? 'relevance' : id === 'listing' ? 'standard' : 'all';
     });
   }
 
@@ -85,6 +104,7 @@ const { rankPlugins } = await import('/assets/registry-ranking.js');
     }
     if (!hydrated) {
       publishedIndex = createPluginSearchIndex(HR.PUBLISHED, searchableText);
+      listing = partitionListing(HR.PUBLISHED);
       renderSummary(); populateFacets(); hydrated = true;
       document.documentElement.dataset.registryHydration = 'ready';
     }
@@ -107,6 +127,7 @@ const { rankPlugins } = await import('/assets/registry-ranking.js');
     if (state.source !== 'all') next.set('source', state.source);
     if (state.manifest !== 'all') next.set('manifest', state.manifest);
     if (state.language !== 'all') next.set('language', state.language);
+    if (state.listing !== 'standard') next.set('listing', state.listing);
     if (state.sort !== 'relevance') next.set('sort', state.sort);
     history.replaceState(null, '', location.pathname + (next.size ? '?' + next.toString() : '') + location.hash);
   }
@@ -115,6 +136,9 @@ const { rankPlugins } = await import('/assets/registry-ranking.js');
     var searchIndex = state.manifest === 'not_validated' ? publishedIndex.concat(pendingIndex) : publishedIndex;
     var rows = filterPluginSearchIndex(searchIndex, { category: state.cat, source: state.source, manifest: state.manifest, query: state.q });
     if (state.language !== 'all') rows = rows.filter(function (plugin) { return plugin.language === state.language; });
+    var hiddenCount = 0;
+    if (state.listing === 'low_signal') rows = rows.filter(isLowSignal);
+    else if (state.listing === 'standard') rows = rows.filter(function (plugin) { if (!isLowSignal(plugin)) return true; hiddenCount += 1; return false; });
     if (!state.q && state.sort === 'relevance') rows = rankPlugins(rows);
     else if (state.sort !== 'relevance' || !state.q) rows.sort(function (a, b) {
       if (state.sort === 'forks') return b.forks - a.forks;
@@ -131,9 +155,10 @@ const { rankPlugins } = await import('/assets/registry-ranking.js');
     else rows.slice(0, state.limit).forEach(function (plugin, index) { list.appendChild(HR.row(plugin, index)); });
     var pendingCount = rows.filter(HR.pendingReview).length;
     var english = window.HRI18N.locale === 'en-US';
-    note.innerHTML = rows.length.toLocaleString() + (english ? ' results' : ' 个结果') + (pendingCount ? ' · ' + pendingCount + (english ? ' candidates need a valid ' : ' 个候选仓库待补充 ') + bundleTerm(english) : '');
+    note.innerHTML = rows.length.toLocaleString() + (english ? ' results' : ' 个结果') + (pendingCount ? ' · ' + pendingCount + (english ? ' candidates need a valid ' : ' 个候选仓库待补充 ') + bundleTerm(english) : '')
+      + (hiddenCount ? ' · <button class="fb-link" type="button" data-show-all-listings>' + hiddenCount.toLocaleString() + (english ? ' low-signal entries hidden — show all' : ' 个低信号条目已隐藏，显示全部') + '</button>' : '');
     clearBtn.textContent = english ? 'Clear filters' : '清除筛选';
-    clearBtn.hidden = state.source === 'all' && state.manifest === 'all' && state.language === 'all';
+    clearBtn.hidden = state.source === 'all' && state.manifest === 'all' && state.language === 'all' && state.listing === 'standard';
     document.getElementById('load-more-wrap').hidden = rows.length <= state.limit;
     syncUrl();
   }
@@ -151,9 +176,23 @@ const { rankPlugins } = await import('/assets/registry-ranking.js');
   document.getElementById('q').addEventListener('input', function (event) { state.q = event.target.value.trim(); state.limit = 60; refresh(); });
   document.getElementById('source').addEventListener('change', function (event) { state.source = event.target.value; state.limit = 60; refresh(); });
   document.getElementById('manifest').addEventListener('change', function (event) { state.manifest = event.target.value; state.limit = 60; refresh(); });
+  function setListing(value) {
+    state.listing = value; state.limit = 60;
+    document.getElementById('listing').value = value;
+    if (hydrated) populateFacets();
+    refresh();
+  }
+  document.getElementById('listing').addEventListener('change', function (event) { setListing(event.target.value); });
+  note.addEventListener('click', function (event) { if (event.target.closest('[data-show-all-listings]')) setListing('all'); });
   document.getElementById('language').addEventListener('change', function (event) { state.language = event.target.value; state.limit = 60; refresh(); });
   document.getElementById('sort').addEventListener('change', function (event) { state.sort = event.target.value; state.limit = 60; refresh(); });
-  clearBtn.addEventListener('click', function () { state.source = 'all'; state.manifest = 'all'; state.language = 'all'; state.limit = 60; refresh(); });
+  clearBtn.addEventListener('click', function () {
+    var listingChanged = state.listing !== 'standard';
+    state.source = 'all'; state.manifest = 'all'; state.language = 'all'; state.listing = 'standard'; state.limit = 60;
+    ['source', 'manifest', 'language', 'listing'].forEach(function (id) { document.getElementById(id).value = state[id]; });
+    if (listingChanged && hydrated) populateFacets();
+    refresh();
+  });
   document.getElementById('load-more').addEventListener('click', function () { state.limit += 60; refresh(); });
   document.getElementById('chips').addEventListener('click', function (event) {
     var chip = event.target.closest('.chip'); if (!chip) return;
@@ -180,7 +219,7 @@ const { rankPlugins } = await import('/assets/registry-ranking.js');
 
   document.getElementById('typer').textContent = 'dsh plugin --profile web add github:owner/plugin';
   HR.updateFreshness({ generatedAt: document.documentElement.dataset.generatedAt });
-  var needsImmediateResults = state.q || state.cat !== 'all' || state.source !== 'all' || state.manifest !== 'all' || state.language !== 'all' || state.sort !== 'relevance';
+  var needsImmediateResults = state.q || state.cat !== 'all' || state.source !== 'all' || state.manifest !== 'all' || state.language !== 'all' || state.listing !== 'standard' || state.sort !== 'relevance';
   if (needsImmediateResults || document.documentElement.dataset.registryPrerendered !== 'true') refresh();
 })();
 }

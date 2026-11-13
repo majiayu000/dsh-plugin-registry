@@ -76,11 +76,12 @@
     </details>
 
     <div class="statstrip rise rise-4">
-      <div class="ss"><b class="num" id="st-count">—</b><span>可安装插件</span></div>
+      <div class="ss"><b class="num" id="st-count">—</b><span>默认列表插件</span></div>
       <div class="ss"><b class="num" id="st-stars">—</b><span>GitHub Stars</span></div>
       <div class="ss"><b class="num" id="st-author">—</b><span>插件作者</span></div>
       <div class="ss"><b class="num" id="st-auto">—</b><span>Manifest 检查通过</span></div>
     </div>
+    <p class="st-scope" id="st-scope">默认列表隐藏低信号条目，统计只计默认列表。</p>
   </section>
 
   <section>
@@ -105,6 +106,12 @@
           <option value="shape_validated">格式检查通过</option>
           <option value="not_checked">未检查</option>
           <option value="not_validated">缺少有效 dsh.bundle</option>
+        </select>
+        <label class="sr-only" for="listing">列表范围</label>
+        <select class="sel" id="listing" aria-label="列表范围">
+          <option value="standard">默认列表（隐藏低信号）</option>
+          <option value="all">全部条目（含低信号）</option>
+          <option value="low_signal">仅低信号条目</option>
         </select>
         <label class="sr-only" for="language">编程语言</label>
         <select class="sel" id="language" aria-label="编程语言">
