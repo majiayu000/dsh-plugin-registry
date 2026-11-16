@@ -159,3 +159,43 @@ test('postbuild projects an oversized registry to the schema contract instead of
   }
   await assertUploadSizes(options.distDir)
 })
+
+test('postbuild compacts the deployed native index without changing its content', async t => {
+  const index = {
+    format: 1, title: { en: 'Registry', zh: '目录' },
+    plugins: [{ name: '@acme/tool', description: 'line\nquote"\\中文😀', versions: [{ version: '1.0.0', publishTimestamp: 1 }] }],
+  }
+  const options = await fixture(t, JSON.stringify({ generatedAt: '2026-11-15T00:00:00Z', categories: {}, plugins: [] }))
+  const indexPath = join(options.distDir, 'data/plugin-index.json')
+  // Vite copies the formatted public/data/plugin-index.json into dist verbatim.
+  await writeFile(indexPath, JSON.stringify(index, null, 2) + '\n')
+  await generateSeoFiles(options)
+  const output = await readFile(indexPath, 'utf8')
+  assert.equal(output, JSON.stringify(index))
+  await generateSeoFiles(options)
+  assert.equal(await readFile(indexPath, 'utf8'), output)
+})
+
+test('postbuild rejects any uploaded file over the Pages limit before publishing the build marker', async t => {
+  const options = await fixture(t, JSON.stringify({ generatedAt: '2026-11-15T00:00:00Z', categories: {}, plugins: [] }))
+  const markerPath = join(options.distDir, 'data/detail-build.json')
+  const assetPath = join(options.distDir, 'assets/large.bin')
+  await mkdir(join(options.distDir, 'assets'), { recursive: true })
+  // Exactly 25 MiB still uploads; wrangler rejects the deployment one byte later,
+  // after the scheduled sync has already pushed its snapshot commit.
+  await writeFile(assetPath, Buffer.alloc(PAGES_MAX_FILE_BYTES))
+  await generateSeoFiles(options)
+  assert.ok(JSON.parse(await readFile(markerPath, 'utf8')).version)
+
+  await writeFile(markerPath, '{"version":"previous"}')
+  await writeFile(assetPath, Buffer.alloc(PAGES_MAX_FILE_BYTES + 1))
+  await assert.rejects(generateSeoFiles(options), /assets\/large\.bin is 26214401 bytes; Cloudflare Pages allows at most 26214400 bytes per file/)
+  assert.equal(await readFile(markerPath, 'utf8'), '{"version":"previous"}')
+
+  // The native index grows with the registry and has no projection to fall back to.
+  await writeFile(assetPath, '')
+  const index = { format: 1, title: 'Registry', plugins: [], padding: 'x'.repeat(PAGES_MAX_FILE_BYTES) }
+  await writeFile(join(options.distDir, 'data/plugin-index.json'), JSON.stringify(index, null, 2))
+  await assert.rejects(generateSeoFiles(options), /data\/plugin-index\.json is \d+ bytes; Cloudflare Pages allows at most 26214400 bytes per file/)
+  assert.equal(await readFile(markerPath, 'utf8'), '{"version":"previous"}')
+})
