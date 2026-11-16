@@ -250,7 +250,14 @@ export async function exportPluginIndex({ snapshot, previous, fetchImpl = fetch,
   async function worker() {
     while (next < batches.length) {
       const batch = batches[next++]
-      const fetched = await fetchBatch(batch, fetchImpl, token, sleep)
+      let fetched
+      try {
+        fetched = await fetchBatch(batch, fetchImpl, token, sleep)
+      } catch (error) {
+        // The export is already lost; keep the other workers from sending the remaining batches.
+        next = batches.length
+        throw error
+      }
       stats.fetched += batch.length
       fetched.forEach((result, index) => {
         if (result.reason) skip(result.reason)
