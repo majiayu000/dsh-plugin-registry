@@ -423,6 +423,13 @@ async function main() {
     return hydrated ? [hydrated] : []
   })
   console.log(`Repository metadata: ${hydratedRepositories.size}/${repositoryKeys.length} roots resolved.`)
+  // No public output carries these rows, so this line is the only trace of which curated
+  // entries dropped out. It repeats ids already public in sources/curated.json and does not
+  // say whether a repository is private or merely unresolved.
+  const withheldCurated = curatedRegistry.plugins.filter(plugin => nonPublicKeys.has(repositoryKey(plugin)))
+  if (withheldCurated.length) {
+    console.warn(`Curated entries withheld from public output (${withheldCurated.length}); GitHub did not confirm a public repository (private, deleted, renamed away, or unresolved in this run): ${withheldCurated.map(plugin => plugin.id).join(', ')}`)
+  }
   const uniqueRepositories = [...new Map(repositories.map(repo => [repo.full_name.toLowerCase(), repo])).values()]
     .filter(repo => !repo.archived && !repo.fork)
 
@@ -570,9 +577,7 @@ async function main() {
     const evidence = TOKEN
       ? targetVerification(githubFullName(plugin), directory, plugin.id)
       : { checked: false }
-    const normalized = normalizeCurated(plugin, metadata.get(key), evidence)
-    if (TOKEN && !hydratedRepositories.has(key)) normalized.listingEligible = false
-    return normalized
+    return normalizeCurated(plugin, metadata.get(key), evidence)
   })
   const discoveredRoots = newCandidates.flatMap(repo => {
     const evidence = targetVerification(repo.full_name, '', repo.full_name)
@@ -630,9 +635,6 @@ async function main() {
   })
   const discovered = eligibleCandidates.filter(plugin => plugin.listingEligible)
   function pendingReason(plugin) {
-    if (TOKEN && plugin.source === 'curated' && !hydratedRepositories.has(repositoryKey(plugin))) {
-      return 'Repository metadata could not be resolved from GitHub'
-    }
     if (plugin.verification.patch === 'missing') return 'dsh.bundle.patch does not resolve to a file at repository HEAD'
     if (plugin.verification.patch === 'invalid') return 'dsh.bundle.patch is not a top-level YAML array'
     return 'package.json does not declare a valid dsh.bundle object'

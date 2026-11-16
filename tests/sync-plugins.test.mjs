@@ -173,6 +173,8 @@ test('partial repository metadata preserves resolved plugins and hides an unreso
   assert.equal(result.audit.pendingReview.some(plugin => plugin.id === 'acme/dsh-plugin-0'), false)
   assert.equal(result.audit.quarantined.some(plugin => plugin.id === 'acme/dsh-plugin-0'), false)
   assert.equal(result.document.stats.curatedSource, 1)
+  // No public output carries the entry, so the run log is the only place that names it.
+  assert.match(result.stderr, /Curated entries withheld from public output \(1\)[^\n]*: acme\/dsh-plugin-0\n/)
 })
 
 test('curated metadata retains its requested key when GitHub resolves a renamed repository', async t => {
