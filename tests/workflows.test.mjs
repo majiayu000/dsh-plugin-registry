@@ -5,7 +5,8 @@ import test from 'node:test'
 test('registry sync runs every two hours', async () => {
   const workflow = await readFile('.github/workflows/sync-plugins.yml', 'utf8')
   assert.match(workflow, /cron: '17 \*\/2 \* \* \*'/)
-  assert.match(workflow, /timeout-minutes: 60/)
+  // 留出高于实测 49–58 分钟的余量，同时在下一个两小时档位之前收回卡住的作业。
+  assert.match(workflow, /timeout-minutes: 110/)
 })
 
 test('a changed registry deploys the verified build without relying on a bot push event', async () => {
@@ -46,7 +47,8 @@ test('registry sync imports the shared bundle parser before checking referenced 
 test('a failed sync opens a tracking issue and a healthy run closes it', async () => {
   const workflow = await readFile('.github/workflows/sync-plugins.yml', 'utf8')
   assert.match(workflow, /needs: \[sync\]/)
-  assert.match(workflow, /always\(\) && needs\.sync\.result == 'failure'/)
+  // 超过 timeout-minutes 的作业结论是 cancelled 而不是 failure，告警必须同时覆盖两者。
+  assert.match(workflow, /if: \$\{\{ always\(\) && \(needs\.sync\.result == 'failure' \|\| needs\.sync\.result == 'cancelled'\) \}\}/)
   assert.match(workflow, /gh issue create --title "\[registry-sync\] Scheduled sync failed"/)
   assert.match(workflow, /id: deploy/)
   assert.match(workflow, /if: success\(\) && steps\.deploy\.outcome == 'success'/)

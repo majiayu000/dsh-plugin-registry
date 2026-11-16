@@ -40,7 +40,9 @@ Registry 的公开列表只包含两种可信等级：
 
 只有确认需要重建基线时，才可临时设置 `DSH_SYNC_ALLOW_UNSAFE=1`；此时快照 `stats` 会记录 `healthGateOverridden: true` 留痕。阈值可用 `DSH_MIN_PUBLISHED_RATIO` 与 `DSH_MIN_CURATED_RATIO` 调整。
 
-定时同步失败时，工作流会自动开启（或追加评论到）标题为 `[registry-sync] Scheduled sync failed` 的 GitHub Issue，恢复成功后自动关闭；站点顶栏也会展示"数据更新于 X 小时前"，超过 24 小时转为警示色。
+定时同步失败时，工作流会自动开启（或追加评论到）标题为 `[registry-sync] Scheduled sync failed` 的 GitHub Issue，恢复成功后自动关闭；站点顶栏也会展示"数据更新于 X 小时前"，超过 24 小时转为警示色。作业结论为 `cancelled` 时同样告警：超过 `timeout-minutes` 的作业以 `cancelled` 而不是 `failure` 结束，此前这类运行不会开 Issue。
+
+同步作业的超时上限是 110 分钟。依据：2026-11 中旬单轮耗时 49–58 分钟（一周前为 39–47 分钟），并随候选仓库数增长——根 manifest 每轮全量重验是有意设计；原先的 60 分钟上限已无余量。110 分钟低于两小时的 cron 间隔，卡住的作业仍会在下一档之前被收回。
 
 ```bash
 npm run sync:plugins
