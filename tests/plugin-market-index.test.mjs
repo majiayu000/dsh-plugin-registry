@@ -236,6 +236,21 @@ test('metadata requests batch at most 40 entries with bounded concurrency and pr
   assert.deepEqual(result.index.plugins.map(p => p.name), plugins.map(p => p.packageName))
 })
 
+test('a failed metadata request stops the remaining batches instead of draining the queue', async () => {
+  const plugins = Array.from({ length: 400 }, (_, i) => plugin({ id: `owner/repo${i}`, packageName: `package-${i}`, url: `https://github.com/owner/repo${i}`, install: `dsh plugin --profile web add github:owner/repo${i}#${SHA}` }))
+  const answer = github()
+  let calls = 0
+  const fetchImpl = async (...args) => {
+    // Ten batches for four workers: the first request is rejected outright, three more are in flight.
+    if (++calls === 1) return { ok: false, status: 401, headers: { get: () => null } }
+    await new Promise(resolve => setTimeout(resolve, 5))
+    return answer(...args)
+  }
+  await assert.rejects(generate(plugins, undefined, { fetchImpl }), /HTTP 401/)
+  await new Promise(resolve => setTimeout(resolve, 200))
+  assert.equal(calls, 4)
+})
+
 test('failed refresh leaves the old artifact byte-for-byte intact; successful refresh is parseable', async () => {
   const root = await mkdtemp(join(tmpdir(), 'plugin-index-test-'))
   try {
