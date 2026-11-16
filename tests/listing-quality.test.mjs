@@ -78,6 +78,23 @@ test('a curated listing is canonical over a discovered twin, even with equal sig
   assert.equal(classifyLowSignal([curatedTwin, curated]).size, 0)
 })
 
+test('bundles declared by one repository share its HEAD commit and are not duplicates of each other', () => {
+  // verifiedCommit is the repository HEAD, so every dsh.bundles entry of one repository
+  // carries the same value (L-ingqin12/dsh-redaction in the 2026-11-15 snapshot).
+  const commit = 'c'.repeat(40)
+  const description = { zh: '同一个仓库简介', en: 'One repository description' }
+  const bundle = (owner, name, overrides = {}) => plugin({ owner, name, description, verifiedCommit: commit, ...overrides })
+  const siblings = [bundle('Mono', 'tools#policy', { stars: 3 }), bundle('mono', 'tools#redact', { stars: 3 }), bundle('mono', 'tools', { stars: 3 })]
+  assert.equal(classifyLowSignal(siblings).size, 0)
+  assert.equal(partitionListing(siblings).standard.length, siblings.length)
+
+  // A mirror at the same commit is still hidden, every bundle of it; the commit is the only link.
+  const mirror = ['tools#policy', 'tools#redact'].map(name => plugin({ owner: 'mirror', name, verifiedCommit: commit }))
+  const reasons = classifyLowSignal([...mirror, ...siblings])
+  assert.deepEqual([...reasons.keys()].sort(), mirror.map(entry => entry.id.toLowerCase()).sort())
+  mirror.forEach(entry => assert.deepEqual(reasons.get(entry.id.toLowerCase()), ['duplicate']))
+})
+
 test('copies with the same name and description are duplicates; empty descriptions are not grouped', () => {
   const description = { zh: '开机动画', en: 'Boot animation' }
   const popular = plugin({ owner: 'one', name: 'dsh-boot', description, stars: 300 })
