@@ -8,16 +8,11 @@ Harness Registry is a searchable DeepSeek Harness plugin registry for DSH users 
 
 ## Quickstart
 
-Requirements: Node.js 22 and npm.
+- **Find a plugin:** [Browse the registry](https://plugin.dshdesk.com/), search for a task, and open **Install steps** on a result to review its source and command.
+- **Browse in DeepSeek Harness:** [Add the community index](#browse-inside-harness) to Discover. It lists Web plugins whose GitHub source is pinned to the checked commit.
+- **Publish a plugin:** [Check a public GitHub repository](https://plugin.dshdesk.com/publish#repo-checker-title) and follow the [listing instructions](#add-a-plugin).
 
-```bash
-git clone https://github.com/majiayu000/dsh-plugin-registry.git
-cd dsh-plugin-registry
-npm ci
-npm run dev
-```
-
-Open <http://localhost:5173> to browse, search, filter, and inspect the registry.
+The registry reports manifest and patch-file checks. [DSH Desk](https://github.com/majiayu000/dsh-desk#可信插件管理) maintains its own trusted list and shows a separate review before installing a plugin.
 
 ## What it provides
 
@@ -132,8 +127,20 @@ Use the public [repository checker and troubleshooting guide](https://plugin.dsh
 
 ## Development
 
+Requirements: Node.js 22 and npm.
+
 ```bash
+git clone https://github.com/majiayu000/dsh-plugin-registry.git
+cd dsh-plugin-registry
 npm ci
+npm run dev
+```
+
+Open <http://localhost:5173> to browse, search, filter, and inspect the local registry.
+
+Run the checks from the checkout:
+
+```bash
 npm test
 npm run validate:registry
 npm run build
