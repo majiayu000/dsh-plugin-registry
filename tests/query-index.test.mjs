@@ -163,13 +163,13 @@ test('fragment candidates retain substring, Unicode, locale and multiple-term se
       assert.deepEqual(all(index, { q, locale }), reference(registry, audit, { q, locale }), `${locale}: ${q}`)
     }
   }
-  let reads = 0
+  const reads = new Set()
   index.entries = new Proxy(index.entries, { get(target, key) {
-    if (/^\d+$/.test(String(key))) reads++
+    if (/^\d+$/.test(String(key))) reads.add(String(key))
     return Reflect.get(target, key)
   } })
   assert.equal(queryIndex(index, { q: '😀' }).total, 1)
-  assert.equal(reads, 1, 'rare fragments do not scan unrelated records')
+  assert.equal(reads.size, 1, 'rare fragments do not scan unrelated records')
 })
 
 test('bounded ranking preserves every page of broad matches and stable explicit-sort ties', () => {

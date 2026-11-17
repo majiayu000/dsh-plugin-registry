@@ -12,6 +12,9 @@ The current isolated implementation and acceptance boundaries are described in
 [d1-search-experiment.md](d1-search-experiment.md). Merging these experiments does
 not enable production search or a D1 publisher.
 
+The 2026-11-17 query-only gate (listing filter, exact early-stop ranking,
+workerd CPU/memory) is recorded in [query-only-search-gate.md](query-only-search-gate.md).
+
 ## Historical implementation
 
 The earlier prototype compiled a query index into a Pages Function and emitted

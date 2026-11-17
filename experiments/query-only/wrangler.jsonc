@@ -1,0 +1,9 @@
+// Local workerd measurement for #106 only. No account, routes or bindings
+// beyond static assets; do not deploy this configuration.
+{
+  "name": "dsh-query-only-experiment",
+  "main": "worker.js",
+  "compatibility_date": "2026-11-07",
+  "workers_dev": false,
+  "assets": { "directory": "../../.generated/query-only/public", "binding": "ASSETS" }
+}

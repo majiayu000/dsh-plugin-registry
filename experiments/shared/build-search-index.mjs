@@ -1,5 +1,6 @@
 import { BROWSE_PLUGIN_FIELDS } from '../../assets/browse-snapshot.js'
 import { hasDshCandidateContext, normalizePendingPlugin } from '../../assets/candidate-relevance.js'
+import { classifyLowSignal } from '../../assets/listing-quality.js'
 import { applyDiversity, computeRankingScore } from '../../assets/registry-ranking.js'
 import { compareQueryRows, QUERY_COLUMN as C } from './query-index.js'
 
@@ -40,13 +41,39 @@ export function buildSearchDocument(registry, audit = {}) {
       description, (plugin.topics || []).join(' ').toLowerCase(),
       [...descriptionRange(plugin, 'zh', description), ...descriptionRange(plugin, 'en', description)],
       `${plugin.language || ''} ${plugin.packageName || ''} ${plugin.profile || ''}`.toLowerCase(),
+      // Whitespace-normalized, space-padded topic words: an exact topic-word
+      // test becomes one includes(' term ') instead of a split per row.
+      ` ${(plugin.topics || []).join(' ').toLowerCase().split(/\s+/).filter(Boolean).join(' ')} `,
     ]
   })
   const orders = Object.fromEntries(['relevance', 'stars', 'forks', 'new', 'added', 'manifest'].map(sort => [sort,
     entries.map((_, position) => position).sort((a, b) => compareQueryRows(entries[a], entries[b], sort)),
   ]))
-  const home = applyDiversity(orders.relevance.filter(position => !entries[position][C.candidate])
-    .map(position => ({ owner: entries[position][C.owner], position }))).map(row => row.position)
+  // Browser listing filter (#115): low-signal flags are derived from published
+  // plugins only, so pending candidates are never low-signal.
+  const lowSignalIds = classifyLowSignal(registry.plugins)
+  const lowSignal = entries.map(entry => entry[C.candidate] || !lowSignalIds.has(entry[C.idLower] ?? entry[C.id]) ? 0 : 1)
+  const inListing = { all: () => true, standard: position => !lowSignal[position], low_signal: position => lowSignal[position] === 1 }
+  const homes = Object.fromEntries(Object.entries(inListing).map(([listing, keep]) => [listing,
+    applyDiversity(orders.relevance.filter(position => !entries[position][C.candidate] && keep(position))
+      .map(position => ({ owner: entries[position][C.owner], position }))).map(row => row.position)]))
+  // Dense ranks replace request-time localeCompare: equal keys share a rank.
+  // They are computed once here with the same comparators the browser uses.
+  const denseRanks = (order, compare) => {
+    const rank = new Array(entries.length)
+    let current = 0
+    order.forEach((position, i) => {
+      if (i && compare(entries[order[i - 1]], entries[position]) !== 0) current++
+      rank[position] = current
+    })
+    return rank
+  }
+  const ranks = Object.fromEntries(['stars', 'forks', 'new', 'added', 'manifest'].map(sort => [sort, denseRanks(orders[sort], (a, b) => compareQueryRows(a, b, sort))]))
+  const idCompare = (a, b) => a[C.id].localeCompare(b[C.id])
+  ranks.id = denseRanks(entries.map((_, position) => position).sort((a, b) => idCompare(entries[a], entries[b])), idCompare)
+  // Descending stored ranking score; search blends relevance with this
+  // monotonic quality factor, enabling an exact upper-bound stop.
+  const quality = entries.map((_, position) => position).sort((a, b) => entries[b][C.score] - entries[a][C.score] || a - b)
   const postings = new Map()
   for (let position = 0; position < entries.length; position++) {
     const entry = entries[position]
@@ -78,5 +105,5 @@ export function buildSearchDocument(registry, audit = {}) {
     }
     return [gram, Buffer.from(bytes).toString('base64')]
   }))
-  return { index: { generatedAt: registry.generatedAt, rankingAt, categories: registry.categories || {}, entries, orders, home, grams }, cards }
+  return { index: { generatedAt: registry.generatedAt, rankingAt, categories: registry.categories || {}, entries, orders, home: homes.all, homes, lowSignal, ranks, quality, grams }, cards }
 }
