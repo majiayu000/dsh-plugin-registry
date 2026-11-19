@@ -107,7 +107,7 @@ async function fixture(t, { mode = 'normal', authenticated = true, previous } = 
 
 test('no-topic community repositories use ordinary hydration, manifest/patch validation and governance', async t => {
   const result = await fixture(t)
-  await result.execution
+  const { stderr } = await result.execution
   const snapshot = JSON.parse(await readFile(result.output, 'utf8'))
   const audit = JSON.parse(await readFile(join(result.root, 'audit.json'), 'utf8'))
   const requests = await result.requests()
@@ -127,6 +127,9 @@ test('no-topic community repositories use ordinary hydration, manifest/patch val
   assert.ok(audit.pendingReview.some(p => p.id === 'acme/dsh-invalid'))
   assert.ok(!snapshot.plugins.some(p => /fork|archived|private|unknown|missing|blocked/.test(p.id)))
   assert.ok(![...audit.pendingReview, ...audit.quarantined].some(p => /private|unknown|missing/.test(p.id)))
+  // The run log names the withheld curated rows in one list that does not tell private from unresolved.
+  assert.match(stderr, /Curated entries withheld from public output \(3\)[^\n]*: acme\/dsh-private, acme\/dsh-unknown, acme\/dsh-missing\n/)
+  assert.equal(stderr.match(/dsh-private/g).length, 1)
   assert.ok(!requests.some(r => r.kind === 'verify' && /fork|archived|private|unknown|missing/.test(r.repository)))
   assert.equal(requests.find(r => r.kind === 'community').authorization, false)
   assert.equal(snapshot.plugins.find(p => p.id === 'acme/dsh-manual').source, 'curated')
