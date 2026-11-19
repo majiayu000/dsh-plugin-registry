@@ -31,7 +31,7 @@ test('community discovery extracts repository identities only, deduplicates root
   }
 })
 
-async function fixture(t, { mode = 'normal', authenticated = true, previous } = {}) {
+async function fixture(t, { mode = 'normal', authenticated = true, previous, previousAudit } = {}) {
   const root = await mkdtemp(join(tmpdir(), 'registry-community-'))
   t.after(() => rm(root, { recursive: true, force: true }))
   await mkdir(join(root, 'sources'))
@@ -43,6 +43,7 @@ async function fixture(t, { mode = 'normal', authenticated = true, previous } = 
   await writeFile(join(root, 'scenario.json'), JSON.stringify({ mode }))
   const output = join(root, 'plugins.json')
   if (previous) await writeFile(output, previous)
+  if (previousAudit) await writeFile(join(root, 'audit.json'), previousAudit)
   const mock = join(root, 'mock.mjs')
   await writeFile(mock, String.raw`
     import { appendFileSync, readFileSync } from 'node:fs'
@@ -135,6 +136,20 @@ test('no-topic community repositories use ordinary hydration, manifest/patch val
 })
 
 for (const mode of ['network', 'invalid-json', 'truncated']) {
+  test(`community ${mode} failure rechecks a complete prior snapshot`, async t => {
+    const baseline = await fixture(t)
+    await baseline.execution
+    const previous = await readFile(baseline.output, 'utf8')
+    const previousAudit = await readFile(join(baseline.root, 'audit.json'), 'utf8')
+    const result = await fixture(t, { mode, previous, previousAudit })
+    const { stderr } = await result.execution
+    const snapshot = JSON.parse(await readFile(result.output, 'utf8'))
+    assert.match(stderr, /::warning.*community discovery unavailable/i)
+    assert.deepEqual(new Set(snapshot.plugins.map(p => p.id)), new Set(['acme/dsh-topic', 'acme/dsh-community', 'acme/dsh-manual']))
+    assert.ok((await result.requests()).some(r => r.kind === 'hydrate' && r.repository === 'acme/dsh-community'))
+    assert.ok(JSON.parse(await readFile(join(result.root, 'audit.json'), 'utf8')).pendingReview.some(p => p.id === 'acme/dsh-invalid'))
+  })
+
   test(`community ${mode} failure preserves the previous snapshot`, async t => {
     const previous = JSON.stringify({ schemaVersion: 2, generatedAt: '2026-11-01T00:00:00Z', plugins: [] }) + '\n'
     const result = await fixture(t, { mode, previous })

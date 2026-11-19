@@ -184,8 +184,12 @@ export function communityRepositoryCandidates(document) {
     || document.plugins.some(plugin => !plugin || typeof plugin !== 'object' || Array.isArray(plugin) || typeof plugin.url !== 'string')) {
     throw new Error('Community discovery response is incomplete or unknown; refusing to publish a partial snapshot.')
   }
+  return repositoryIdentities(document.plugins)
+}
+
+function repositoryIdentities(plugins) {
   const repositories = new Map()
-  for (const plugin of document.plugins) {
+  for (const plugin of plugins) {
     if (plugin.private === true || plugin.isPrivate === true) continue
     const repo = parseGithubRepositoryUrl(plugin.url)
     if (!repo) continue
@@ -402,7 +406,21 @@ async function main() {
   const curatedRegistry = await loadCurated()
   // Bare community identities require authenticated hydration; the limited
   // unauthenticated mode continues to use only hydrated REST topic results.
-  const communityIdentities = TOKEN ? communityRepositoryCandidates(await fetchJson(COMMUNITY_SOURCE)) : []
+  let communityIdentities = []
+  if (TOKEN) {
+    try {
+      communityIdentities = communityRepositoryCandidates(await fetchJson(COMMUNITY_SOURCE))
+    } catch (error) {
+      if (previous?.stats?.discoveryMode !== 'complete' || !Array.isArray(previous.plugins)) throw error
+      const priorRows = [
+        ...previous.plugins.filter(plugin => plugin.source === 'discovered'),
+        ...(previousAudit?.pendingReview ?? []),
+        ...(previousAudit?.quarantined ?? []),
+      ]
+      communityIdentities = repositoryIdentities(priorRows)
+      console.warn(`::warning title=Community discovery unavailable::Rechecking ${communityIdentities.length} prior repository identities through GitHub.`)
+    }
+  }
   const topicIdentities = await discoverRepositories()
   const topicKeys = new Set(topicIdentities.map(repo => repo.full_name.toLowerCase()))
   const communityKeys = new Set(communityIdentities.map(repo => repo.full_name.toLowerCase()))
