@@ -21,8 +21,8 @@ test('a changed registry deploys the verified build without relying on a bot pus
 
 test('pushes to main deploy straight to Cloudflare Pages', async () => {
   const workflow = await readFile('.github/workflows/deploy-pages.yml', 'utf8')
-  assert.ok(workflow.indexOf('npm run export:plugin-index') < workflow.indexOf('npm run build'))
-  assert.match(workflow, /run: npm run export:plugin-index\s+env:\s+GITHUB_TOKEN: \$\{\{ secrets\.GITHUB_TOKEN \}\}/)
+  assert.doesNotMatch(workflow, /run: npm run export:plugin-index/)
+  assert.ok(workflow.indexOf('npm run validate:registry') < workflow.indexOf('npm run build'))
   assert.match(workflow, /npx wrangler pages deploy dist --project-name dsh-plugin-registry --branch main/)
   assert.match(workflow, /CLOUDFLARE_API_TOKEN: \$\{\{ secrets\.CLOUDFLARE_API_TOKEN \}\}/)
   assert.match(workflow, /CLOUDFLARE_ACCOUNT_ID: \$\{\{ secrets\.CLOUDFLARE_ACCOUNT_ID \}\}/)
