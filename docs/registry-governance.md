@@ -19,11 +19,11 @@ Registry 的公开列表只包含两种可信等级：
 可安装列表中的所有条目都保留在快照、详情页和公开 API 中。网站默认浏览列表与首页统计只计「默认列表」，隐藏下列低信号条目；筛选「全部条目（含低信号）」或「仅低信号条目」可随时查看，首页统计下方写明总数与隐藏数。判定在浏览端和构建端由 [`assets/listing-quality.js`](../assets/listing-quality.js) 用快照已有字段计算，不改变快照结构，也不增加部署文件体积。
 
 - `bulk_publisher`：同一 owner（不区分大小写）在可安装列表中有至少 `bulkPublisherMinListings` 个条目，且该条目自身 Stars、Forks 均为 0、没有 Release。获得任一信号即回到默认列表。
-- `duplicate`：与另一条目的 `verifiedCommit` 相同（同一仓库改名或镜像），或仓库名与非空简介都相同（副本）。组内保留豁免条目优先、Stars、Release、Forks 依次更高的一条，其余标记。
+- `duplicate`：与另一仓库的条目 `verifiedCommit` 相同（同一仓库改名或镜像），或仓库名与非空简介都相同（副本）。组内保留豁免条目优先、Stars、Release、Forks 依次更高的一条，其余标记。`verifiedCommit` 是仓库 HEAD，同一仓库用 `dsh.bundles` 声明的多个插件天然共享它；与保留条目同仓库（`id` 中 `#` 之前的部分相同）的条目是不同的插件，不因提交相同而标记。
 
 社区目录、issue 申请通过（`origin: issue`）和特别收录（`special` / `recommendationSource`）条目不参与自动降级。低信号不是隔离：不写入 `sources/blocklist.json`，也不影响安装命令。屏蔽整个账号仍需要具体的恶意、误收录或重复理由。
 
-阈值只在 `LISTING_QUALITY_CONFIG` 中维护。`bulkPublisherMinListings = 50` 的依据（2026-11-12 快照，24,926 个可安装条目、15,346 个 owner）：owner 条目数 P99 = 8、P99.9 = 27，达到 50 的只有 7 个 owner，却占 1,918 个条目（7.7%）；取 P99.9 的约两倍，避免误伤 20–30 个条目的活跃作者。按此阈值共有 1,547 个低信号条目（批量 1,498、重复 49），默认列表为 23,379 个。调整阈值时需在 PR 中给出新快照的同类分布。
+阈值只在 `LISTING_QUALITY_CONFIG` 中维护。`bulkPublisherMinListings = 50` 的依据（2026-11-12 快照，24,926 个可安装条目、15,346 个 owner）：owner 条目数 P99 = 8、P99.9 = 27，达到 50 的只有 7 个 owner，却占 1,918 个条目（7.7%）；取 P99.9 的约两倍，避免误伤 20–30 个条目的活跃作者。按此阈值共有 1,546 个低信号条目（批量 1,498、重复 48），默认列表为 23,380 个。调整阈值时需在 PR 中给出新快照的同类分布。
 
 仓库体积或「无代码」暂不作为信号：快照没有仓库大小字段，补充需要额外 GitHub API 请求；`language` 为空的仅 124 条，且纯 YAML Patch 插件本身合法。
 
@@ -40,7 +40,9 @@ Registry 的公开列表只包含两种可信等级：
 
 只有确认需要重建基线时，才可临时设置 `DSH_SYNC_ALLOW_UNSAFE=1`；此时快照 `stats` 会记录 `healthGateOverridden: true` 留痕。阈值可用 `DSH_MIN_PUBLISHED_RATIO` 与 `DSH_MIN_CURATED_RATIO` 调整。
 
-定时同步失败时，工作流会自动开启（或追加评论到）标题为 `[registry-sync] Scheduled sync failed` 的 GitHub Issue，恢复成功后自动关闭；站点顶栏也会展示"数据更新于 X 小时前"，超过 24 小时转为警示色。
+定时同步失败时，工作流会自动开启（或追加评论到）标题为 `[registry-sync] Scheduled sync failed` 的 GitHub Issue，恢复成功后自动关闭；站点顶栏也会展示"数据更新于 X 小时前"，超过 24 小时转为警示色。作业结论为 `cancelled` 时同样告警：超过 `timeout-minutes` 的作业以 `cancelled` 而不是 `failure` 结束，此前这类运行不会开 Issue。
+
+同步作业的超时上限是 110 分钟。依据：2026-11 中旬单轮耗时 49–58 分钟（一周前为 39–47 分钟），并随候选仓库数增长——根 manifest 每轮全量重验是有意设计；原先的 60 分钟上限已无余量。110 分钟低于两小时的 cron 间隔，卡住的作业仍会在下一档之前被收回。
 
 ```bash
 npm run sync:plugins

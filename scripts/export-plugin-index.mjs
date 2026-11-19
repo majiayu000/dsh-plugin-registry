@@ -116,7 +116,42 @@ function previousEntries(previous) {
   return entries
 }
 
-async function fetchBatch(batch, fetchImpl, token) {
+const REQUEST_ATTEMPTS = 3
+const RETRY_AFTER_MAX_MS = 120_000
+const pause = ms => new Promise(resolvePromise => setTimeout(resolvePromise, ms))
+
+/* This step runs after a ~50-minute sync, so one gateway error must not discard the run.
+   Retry transport failures, 5xx and rate-limit answers a bounded number of times; a request
+   GitHub rejects outright, or one that keeps failing, still aborts and keeps the old index. */
+async function requestMetadata(query, fetchImpl, token, sleep) {
+  for (let attempt = 1; ; attempt++) {
+    let response
+    let failure
+    try {
+      response = await fetchImpl('https://api.github.com/graphql', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ query }),
+        signal: AbortSignal.timeout(60_000),
+      })
+      if (response.ok) return await response.json()
+    } catch (error) {
+      // Network error, timeout, or an empty/truncated body behind a 200.
+      response = undefined
+      failure = error
+    }
+    if (response) {
+      failure = new Error(`GitHub index metadata request failed (HTTP ${response.status})`)
+      if (response.status !== 403 && response.status !== 429 && response.status < 500) throw failure
+    }
+    if (attempt >= REQUEST_ATTEMPTS) throw failure
+    const retryAfter = Number(response?.headers?.get?.('retry-after'))
+    console.warn(`Retrying index metadata request (${attempt}/${REQUEST_ATTEMPTS}): ${failure.message}`)
+    await sleep(retryAfter > 0 ? Math.min(retryAfter * 1_000, RETRY_AFTER_MAX_MS) : 2_000 * attempt)
+  }
+}
+
+async function fetchBatch(batch, fetchImpl, token, sleep) {
   const fields = batch.map((item, index) => {
     const [owner, name] = item.fullName.split('/')
     const file = `${item.commit}:${item.directory ? `${item.directory}/` : ''}package.json`
@@ -125,14 +160,7 @@ async function fetchBatch(batch, fetchImpl, token) {
       manifest: object(expression: ${JSON.stringify(file)}) { ... on Blob { text } }
     }`
   })
-  const response = await fetchImpl('https://api.github.com/graphql', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ query: `query { ${fields.join('\n')} }` }),
-    signal: AbortSignal.timeout(60_000),
-  })
-  if (!response.ok) throw new Error(`GitHub index metadata request failed (HTTP ${response.status})`)
-  const payload = await response.json()
+  const payload = await requestMetadata(`query { ${fields.join('\n')} }`, fetchImpl, token, sleep)
   const absent = new Set()
   for (const error of payload.errors || []) {
     const alias = error.path?.[0]
@@ -172,7 +200,7 @@ async function fetchBatch(batch, fetchImpl, token) {
 }
 
 /** Export only the snapshot's verified Web Git targets; no package code is installed or executed. */
-export async function exportPluginIndex({ snapshot, previous, fetchImpl = fetch, token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN } = {}) {
+export async function exportPluginIndex({ snapshot, previous, fetchImpl = fetch, token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN, sleep = pause } = {}) {
   if (!Array.isArray(snapshot?.plugins)) throw new Error('Registry snapshot must contain plugins')
   const stats = { input: snapshot.plugins.length, eligible: 0, cached: 0, fetched: 0, exported: 0, skipped: {} }
   const skip = reason => { stats.skipped[reason] = (stats.skipped[reason] || 0) + 1 }
@@ -222,7 +250,7 @@ export async function exportPluginIndex({ snapshot, previous, fetchImpl = fetch,
   async function worker() {
     while (next < batches.length) {
       const batch = batches[next++]
-      const fetched = await fetchBatch(batch, fetchImpl, token)
+      const fetched = await fetchBatch(batch, fetchImpl, token, sleep)
       stats.fetched += batch.length
       fetched.forEach((result, index) => {
         if (result.reason) skip(result.reason)
@@ -239,12 +267,12 @@ export async function exportPluginIndex({ snapshot, previous, fetchImpl = fetch,
 }
 
 /** Generate completely before replacing the previous artifact. Paths remain fixed relative to the repository. */
-export async function runExport({ root = ROOT, fetchImpl, token } = {}) {
+export async function runExport({ root = ROOT, fetchImpl, token, sleep } = {}) {
   const output = join(root, 'public/data/plugin-index.json')
   const snapshot = JSON.parse(await readFile(join(root, 'public/data/plugins.json'), 'utf8'))
   let previous
   try { previous = JSON.parse(await readFile(output, 'utf8')) } catch (error) { if (error.code !== 'ENOENT') throw error }
-  const result = await exportPluginIndex({ snapshot, previous, fetchImpl, token })
+  const result = await exportPluginIndex({ snapshot, previous, fetchImpl, token, sleep })
   const temporary = `${output}.${process.pid}.tmp`
   try {
     await writeFile(temporary, `${JSON.stringify(result.index, null, 2)}\n`, { flag: 'wx' })

@@ -34,7 +34,7 @@ function github(value = metadata(), observe = () => {}) {
   }
 }
 async function generate(plugins = [plugin()], value = manifest(), extra = {}) {
-  return exportPluginIndex({ snapshot: { plugins }, token: 'test-token', fetchImpl: github(metadata(value)), ...extra })
+  return exportPluginIndex({ snapshot: { plugins }, token: 'test-token', fetchImpl: github(metadata(value)), sleep: async () => {}, ...extra })
 }
 
 test('root Git export preserves the verified SHA, reads package version and committer time', async () => {
@@ -187,6 +187,34 @@ test('GraphQL absent objects are skipped; unknown failures and incomplete data a
   ]) await assert.rejects(generate(undefined, undefined, { fetchImpl }))
 })
 
+test('transient GitHub failures are retried with bounded backoff; rejected requests and spent attempts still abort', async () => {
+  const status = (code, headers = {}) => () => ({ ok: false, status: code, headers: { get: name => headers[name] ?? null } })
+  async function attempt(failures) {
+    const waits = []
+    let calls = 0
+    const answer = github()
+    const fetchImpl = async (...args) => {
+      const failure = failures[calls++]
+      return failure ? failure() : answer(...args)
+    }
+    const outcome = await generate(undefined, undefined, { fetchImpl, sleep: async ms => { waits.push(ms) } })
+      .then(result => ({ exported: result.stats.exported }), error => ({ error: error.message }))
+    return { ...outcome, calls, waits }
+  }
+  const warn = console.warn
+  console.warn = () => {}
+  try {
+    // One 502 from this step discarded a completed scheduled sync (run 43608194189).
+    assert.deepEqual(await attempt([status(502)]), { exported: 1, calls: 2, waits: [2000] })
+    assert.deepEqual(await attempt([() => { throw new Error('socket hang up') }, status(503)]), { exported: 1, calls: 3, waits: [2000, 4000] })
+    assert.deepEqual(await attempt([() => ({ ok: true, json: async () => { throw new SyntaxError('Unexpected end of JSON input') } })]), { exported: 1, calls: 2, waits: [2000] })
+    assert.deepEqual(await attempt([status(429, { 'retry-after': '7' })]), { exported: 1, calls: 2, waits: [7000] })
+    assert.deepEqual(await attempt([status(403, { 'retry-after': '3600' })]), { exported: 1, calls: 2, waits: [120000] })
+    assert.deepEqual(await attempt([status(502), status(502), status(502)]), { error: 'GitHub index metadata request failed (HTTP 502)', calls: 3, waits: [2000, 4000] })
+    assert.deepEqual(await attempt([status(401)]), { error: 'GitHub index metadata request failed (HTTP 401)', calls: 1, waits: [] })
+  } finally { console.warn = warn }
+})
+
 test('metadata requests batch at most 40 entries with bounded concurrency and preserve snapshot ordering', async () => {
   let active = 0
   let maximum = 0
@@ -216,7 +244,7 @@ test('failed refresh leaves the old artifact byte-for-byte intact; successful re
     const old = JSON.stringify({ format: 1, title: 'previous index', plugins: [] }, null, 2) + '\n'
     await writeFile(join(dir, 'plugins.json'), JSON.stringify({ plugins: [plugin()] }))
     await writeFile(join(dir, 'plugin-index.json'), old)
-    await assert.rejects(runExport({ root, token: 'test-token', fetchImpl: async () => { throw new Error('network unavailable') } }), /network unavailable/)
+    await assert.rejects(runExport({ root, token: 'test-token', sleep: async () => {}, fetchImpl: async () => { throw new Error('network unavailable') } }), /network unavailable/)
     assert.equal(await readFile(join(dir, 'plugin-index.json'), 'utf8'), old)
     assert.deepEqual((await readdir(dir)).sort(), ['plugin-index.json', 'plugins.json'])
     await runExport({ root, token: 'test-token', fetchImpl: github() })
