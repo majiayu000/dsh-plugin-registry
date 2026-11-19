@@ -12,6 +12,7 @@ import {
 import { listBundleDirectories, validateBundleManifest } from '../assets/bundle-manifest.js'
 import { validateBundlePatch } from '../assets/bundle-patch.js'
 import { hasDshCandidateContext } from '../assets/candidate-relevance.js'
+import { parseInstallCommand } from '../assets/install-command.js'
 import {
   applyGovernance,
   bundleDirectoryFromUrl,
@@ -650,7 +651,20 @@ async function main() {
   const eligibleCandidates = normalizedCandidates.filter(plugin => {
     return !blocked.has(repoKey(plugin.owner, plugin.name)) && (plugin.listingEligible || hasDshCandidateContext(plugin))
   })
-  const discovered = eligibleCandidates.filter(plugin => plugin.listingEligible)
+  // Keep the curated root Git target when the moved repository has the same
+  // verified commit. npm rows and unverified aliases cannot replace it.
+  const curatedGitAliases = new Map()
+  for (const plugin of curated) {
+    if (!plugin.listingEligible || plugin.profile !== 'web' || !plugin.verifiedCommit || bundleDirectoryFromUrl(plugin.url)) continue
+    const key = repositoryKey(plugin)
+    const canonical = hydratedRepositories.get(key)?.full_name.toLowerCase()
+    const installRoot = parseInstallCommand(plugin.install)?.spec.split('#')[0].toLowerCase()
+    if (canonical && canonical !== key && installRoot === `github:${key}`) curatedGitAliases.set(canonical, plugin.verifiedCommit)
+  }
+  const discovered = eligibleCandidates.filter(plugin => {
+    const curatedCommit = curatedGitAliases.get(plugin.id.toLowerCase())
+    return plugin.listingEligible && (!curatedCommit || plugin.profile !== 'web' || plugin.verifiedCommit !== curatedCommit)
+  })
   function pendingReason(plugin) {
     if (TOKEN && plugin.source === 'curated' && !hydratedRepositories.has(repositoryKey(plugin))) {
       return 'Repository metadata could not be resolved from GitHub'

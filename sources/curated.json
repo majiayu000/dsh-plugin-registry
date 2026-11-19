@@ -406,9 +406,9 @@
       "forks": 24
     },
     {
-      "id": "omdsh-dev/dsh-at-file",
+      "id": "FSMargoo/dsh-at-file",
       "name": "dsh-at-file",
-      "url": "https://github.com/omdsh-dev/dsh-at-file",
+      "url": "https://github.com/FSMargoo/dsh-at-file",
       "description": {
         "zh": "Codex 风格的 `@file` 文件引用，输入框里直接搜索并引用工作区文件。",
         "en": "Codex-style `@file` mentions: search workspace files in the composer and attach their contents to prompts."
@@ -418,7 +418,7 @@
         "dsh",
         "dsh-plugin"
       ],
-      "install": "dsh plugin --profile web add github:omdsh-dev/dsh-at-file",
+      "install": "dsh plugin --profile web add github:FSMargoo/dsh-at-file",
       "icon": "https://avatars.githubusercontent.com/u/312905287?v=4",
       "added": "2026-08-13",
       "stars": 221,
@@ -702,9 +702,9 @@
       "forks": 3
     },
     {
-      "id": "icetomoyo/dsh_workflow",
+      "id": "omdsh-dev/dsh_workflow",
       "name": "dsh_workflow",
-      "url": "https://github.com/icetomoyo/dsh_workflow",
+      "url": "https://github.com/omdsh-dev/dsh_workflow",
       "description": {
         "zh": "把 UltraCode 式多 Agent 调度带给 DSH：可生成、可保存、可治理、可观察、可恢复的 Workflow 层。",
         "en": "UltraCode-style multi-agent orchestration: a generatable, savable, governable, observable, resumable workflow layer."
@@ -719,7 +719,7 @@
         "multi-agent",
         "workflow"
       ],
-      "install": "dsh plugin --profile web add github:icetomoyo/dsh_workflow",
+      "install": "dsh plugin --profile web add github:omdsh-dev/dsh_workflow",
       "icon": "https://avatars.githubusercontent.com/u/6926059?u=e3cd9cf87d0050acf35bbd8c558618516d2b7b40&v=4",
       "added": "2026-08-13",
       "stars": 59,
@@ -948,16 +948,16 @@
       "forks": 4
     },
     {
-      "id": "forrestchang/dsh-multica-runtime",
+      "id": "multica-ai/dsh-multica-runtime",
       "name": "dsh-multica-runtime",
-      "url": "https://github.com/forrestchang/dsh-multica-runtime",
+      "url": "https://github.com/multica-ai/dsh-multica-runtime",
       "description": {
         "zh": "让 dsh 运行时跑在 Multica 上。",
         "en": "Run the dsh runtime on Multica."
       },
       "category": "dev",
       "topics": [],
-      "install": "dsh plugin --profile web add github:forrestchang/dsh-multica-runtime",
+      "install": "dsh plugin --profile web add github:multica-ai/dsh-multica-runtime",
       "icon": "https://github.com/forrestchang.png?size=96",
       "added": "2026-08-14",
       "stars": 37,
@@ -1361,9 +1361,9 @@
       "forks": 2
     },
     {
-      "id": "Noob-stupid/dsh-plugin-hub",
-      "name": "dsh-plugin-hub",
-      "url": "https://github.com/Noob-stupid/dsh-plugin-hub",
+      "id": "Noob-stupid/dsh-plugin-gating-hub",
+      "name": "dsh-plugin-gating-hub",
+      "url": "https://github.com/Noob-stupid/dsh-plugin-gating-hub",
       "description": {
         "zh": "插件管理面板：已安装插件一键启用/停用，内置 GitHub dsh-plugin 插件市场，支持详情查看与一键安装。",
         "en": "A plugin management panel: one-click enable/disable for installed plugins plus a GitHub dsh-plugin marketplace with details and one-click installs."
@@ -1379,7 +1379,7 @@
         "plugin-market",
         "dsh-plugins"
       ],
-      "install": "dsh plugin --profile web add github:Noob-stupid/dsh-plugin-hub",
+      "install": "dsh plugin --profile web add github:Noob-stupid/dsh-plugin-gating-hub",
       "icon": "https://avatars.githubusercontent.com/u/264477940?u=96a78f98eb8199ceac667146605aef88f94370a1&v=4",
       "added": "2026-08-14",
       "stars": 23,
@@ -1500,9 +1500,9 @@
       "forks": 2
     },
     {
-      "id": "lire1131/dsh-undo-plugin",
-      "name": "dsh-undo-plugin",
-      "url": "https://github.com/lire1131/dsh-undo-plugin",
+      "id": "lire1131/dsh-undo-savepoint",
+      "name": "dsh-undo-savepoint",
+      "url": "https://github.com/lire1131/dsh-undo-savepoint",
       "description": {
         "zh": "DSH 撤销/回退系统：配置变更自动存档，一键撤销/恢复/回退到任意版本，支持 WebUI 与离线 CLI/GUI 工具（DSH 启动失败也能救）。",
         "en": "Undo/redo & rollback system for DSH: every config change is auto-snapshotted; undo/redo/restore to any version from the WebUI or the offline CLI/GUI tools (works even when DSH fails to boot)."
@@ -1516,7 +1516,7 @@
         "snapshot",
         "undo"
       ],
-      "install": "dsh plugin --profile web add github:lire1131/dsh-undo-plugin",
+      "install": "dsh plugin --profile web add github:lire1131/dsh-undo-savepoint",
       "icon": "https://avatars.githubusercontent.com/u/316649547?v=4",
       "added": "2026-08-14",
       "stars": 19,
@@ -2226,16 +2226,16 @@
       "forks": 3
     },
     {
-      "id": "btspoony/dsh-advisor",
+      "id": "omdsh-dev/dsh-advisor",
       "name": "dsh-advisor",
-      "url": "https://github.com/btspoony/dsh-advisor",
+      "url": "https://github.com/omdsh-dev/dsh-advisor",
       "description": {
         "zh": "搭配一个副模型，每轮被动审查并注入见解。",
         "en": "Pair a second model that passively reviews each turn and injects notes."
       },
       "category": "model",
       "topics": [],
-      "install": "dsh plugin --profile web add github:btspoony/dsh-advisor",
+      "install": "dsh plugin --profile web add github:omdsh-dev/dsh-advisor",
       "icon": "https://github.com/btspoony.png?size=96",
       "added": "2026-08-13",
       "stars": 11,
@@ -2414,9 +2414,9 @@
       "forks": 1
     },
     {
-      "id": "omdsh-dev/fabric",
-      "name": "fabric",
-      "url": "https://github.com/omdsh-dev/fabric",
+      "id": "omdsh-dev/stent",
+      "name": "stent",
+      "url": "https://github.com/omdsh-dev/stent",
       "description": {
         "zh": "类似 MC Fabric 的 hook 处理器。",
         "en": "An MC-Fabric-style hook processor."
@@ -2426,7 +2426,7 @@
         "dsh",
         "dsh-plugin"
       ],
-      "install": "dsh plugin --profile web add github:omdsh-dev/fabric",
+      "install": "dsh plugin --profile web add github:omdsh-dev/stent",
       "icon": "https://avatars.githubusercontent.com/u/312905287?v=4",
       "added": "2026-08-13",
       "stars": 10,
@@ -2847,16 +2847,16 @@
       "forks": 2
     },
     {
-      "id": "Buyi-wsgzg/dsh-sidechain",
+      "id": "omdsh-dev/dsh-sidechain",
       "name": "dsh-sidechain",
-      "url": "https://github.com/Buyi-wsgzg/dsh-sidechain",
+      "url": "https://github.com/omdsh-dev/dsh-sidechain",
       "description": {
         "zh": "`/side` 持续性侧会话与 `/btw` 一次性侧问，在临时 fork 中运行、不写入主会话历史。",
         "en": "`/side` persistent side sessions and `/btw` one-shot side questions, run in a temporary fork without touching main history."
       },
       "category": "session",
       "topics": [],
-      "install": "dsh plugin --profile web add github:Buyi-wsgzg/dsh-sidechain",
+      "install": "dsh plugin --profile web add github:omdsh-dev/dsh-sidechain",
       "icon": "https://github.com/Buyi-wsgzg.png?size=96",
       "added": "2026-08-13",
       "stars": 7,
@@ -2881,9 +2881,9 @@
       "forks": 0
     },
     {
-      "id": "Fishsb/dsh-prompt-enhancer",
-      "name": "dsh-prompt-enhancer",
-      "url": "https://github.com/Fishsb/dsh-prompt-enhancer",
+      "id": "Fishsb/dsh-voice-prompt-enhancer",
+      "name": "dsh-voice-prompt-enhancer",
+      "url": "https://github.com/Fishsb/dsh-voice-prompt-enhancer",
       "description": {
         "zh": "一键提示词增强：独立 LLM 调用把模糊草稿改写为更强的提示词，不满意可撤回。",
         "en": "One-click prompt enhancement: an independent LLM call rewrites your rough draft in the composer, fully undoable."
@@ -2896,7 +2896,7 @@
         "plugin",
         "prompt-engineering"
       ],
-      "install": "dsh plugin --profile web add github:Fishsb/dsh-prompt-enhancer",
+      "install": "dsh plugin --profile web add github:Fishsb/dsh-voice-prompt-enhancer",
       "icon": "https://avatars.githubusercontent.com/u/130815583?v=4",
       "added": "2026-08-14",
       "stars": 7,
@@ -3094,9 +3094,9 @@
       "forks": 2
     },
     {
-      "id": "SpookySandwich/dsh-smooth-stream",
-      "name": "dsh-smooth-stream",
-      "url": "https://github.com/SpookySandwich/dsh-smooth-stream",
+      "id": "SpookySandwich/dsh-plugin-smooth-stream",
+      "name": "dsh-plugin-smooth-stream",
+      "url": "https://github.com/SpookySandwich/dsh-plugin-smooth-stream",
       "description": {
         "zh": "给 DeepSeek Harness 加入更好的流式文字动画。",
         "en": "Better streaming text animation for DeepSeek Harness."
@@ -3108,7 +3108,7 @@
         "dsh",
         "dsh-plugin"
       ],
-      "install": "dsh plugin --profile web add github:SpookySandwich/dsh-smooth-stream",
+      "install": "dsh plugin --profile web add github:SpookySandwich/dsh-plugin-smooth-stream",
       "icon": "https://avatars.githubusercontent.com/u/210268775?u=932d36ff6e33f12a1ba342839696ad63fd355152&v=4",
       "added": "2026-08-15",
       "stars": 7,
@@ -3520,9 +3520,9 @@
       "forks": 0
     },
     {
-      "id": "tianyhjg-lab/dsh-font",
+      "id": "WangPaoPaoLab/dsh-font",
       "name": "dsh-font",
-      "url": "https://github.com/tianyhjg-lab/dsh-font",
+      "url": "https://github.com/WangPaoPaoLab/dsh-font",
       "description": {
         "zh": "DSH Web GUI 字体切换器：99 个界面字体与 31 个代码字体，中西文自动搭配，即选即生效，localStorage 持久化。",
         "en": "Font switcher for the DSH Web GUI: 99 UI fonts and 31 code fonts with CJK-Latin pairing stacks, instant apply and localStorage persistence."
@@ -3531,7 +3531,7 @@
       "topics": [
         "dsh-plugin"
       ],
-      "install": "dsh plugin --profile web add github:tianyhjg-lab/dsh-font",
+      "install": "dsh plugin --profile web add github:WangPaoPaoLab/dsh-font",
       "icon": "https://avatars.githubusercontent.com/u/236396225?v=4",
       "added": "2026-08-14",
       "stars": 6,
@@ -3797,16 +3797,16 @@
       "forks": 0
     },
     {
-      "id": "btspoony/dsh-llm-fallbacks",
+      "id": "omdsh-dev/dsh-llm-fallbacks",
       "name": "dsh-llm-fallbacks",
-      "url": "https://github.com/btspoony/dsh-llm-fallbacks",
+      "url": "https://github.com/omdsh-dev/dsh-llm-fallbacks",
       "description": {
         "zh": "基于角色的模型重试与备用策略。",
         "en": "Role-based LLM retry & fallback strategies."
       },
       "category": "model",
       "topics": [],
-      "install": "dsh plugin --profile web add github:btspoony/dsh-llm-fallbacks",
+      "install": "dsh plugin --profile web add github:omdsh-dev/dsh-llm-fallbacks",
       "icon": "https://github.com/btspoony.png?size=96",
       "added": "2026-08-13",
       "stars": 5,
@@ -3844,16 +3844,16 @@
       "forks": 2
     },
     {
-      "id": "GLFzr/dsh-drop-file-to-path",
-      "name": "dsh-drop-file-to-path",
-      "url": "https://github.com/GLFzr/dsh-drop-file-to-path",
+      "id": "GLFzr/dsh-file-upload",
+      "name": "dsh-file-upload",
+      "url": "https://github.com/GLFzr/dsh-file-upload",
       "description": {
         "zh": "Codex 式拖拽：把任意文件拖入 DSH Web 界面，文件存入 ~/.dsh-dropbox，路径以整块蓝色 chip 插入输入框。",
         "en": "Codex-style drag-drop: drag any file into the DSH web GUI, it lands in ~/.dsh-dropbox, and the path is inserted into the composer as a whole blue chip."
       },
       "category": "ui",
       "topics": [],
-      "install": "dsh plugin --profile web add github:GLFzr/dsh-drop-file-to-path",
+      "install": "dsh plugin --profile web add github:GLFzr/dsh-file-upload",
       "icon": "https://github.com/GLFzr.png?size=96",
       "added": "2026-08-15",
       "stars": 5,
@@ -3894,9 +3894,9 @@
       "forks": 0
     },
     {
-      "id": "jiangnanquan/dsh-ux",
-      "name": "dsh-ux",
-      "url": "https://github.com/jiangnanquan/dsh-ux",
+      "id": "jiangnanquan/dsh-uxexo",
+      "name": "dsh-uxexo",
+      "url": "https://github.com/jiangnanquan/dsh-uxexo",
       "description": {
         "zh": "Solarized 浅色主题、紧凑布局、思考/工具链折叠胶囊，以及余额、本轮成本与用量看板的 DSH Web 界面增强插件。",
         "en": "Solarized light theme, compact layout, think/tool-chain collapse capsules, and balance, session cost, and usage dashboards for the DSH web UI."
@@ -3912,7 +3912,7 @@
         "electron",
         "theme"
       ],
-      "install": "dsh plugin --profile web add github:jiangnanquan/dsh-ux",
+      "install": "dsh plugin --profile web add github:jiangnanquan/dsh-uxexo",
       "icon": "https://avatars.githubusercontent.com/u/7789602?u=094f5668430110180b2a4231612ffb0196105520&v=4",
       "added": "2026-08-14",
       "stars": 5,
@@ -5775,9 +5775,9 @@
       "forks": 1
     },
     {
-      "id": "akqwpeter-prog/dsh-media-skills",
+      "id": "MJorgin/dsh-media-skills",
       "name": "dsh-media-skills",
-      "url": "https://github.com/akqwpeter-prog/dsh-media-skills",
+      "url": "https://github.com/MJorgin/dsh-media-skills",
       "description": {
         "zh": "面向纯文本模型的免费视觉桥与生图：粘贴读图、GLM-4V-Flash 与 Gemini 引擎故障转移、modlens 同款结构化证据输出，并自动播种免费视觉模型路由。",
         "en": "Free vision bridge and image generation for text-only models: paste-image reading, GLM-4V-Flash and Gemini engine failover, ModLens-style structured evidence, and a seeded free vision model route."
@@ -5791,7 +5791,7 @@
         "agent-skills",
         "skill"
       ],
-      "install": "dsh plugin --profile web add github:akqwpeter-prog/dsh-media-skills",
+      "install": "dsh plugin --profile web add github:MJorgin/dsh-media-skills",
       "icon": "https://avatars.githubusercontent.com/u/227324225?v=4",
       "added": "2026-08-15",
       "stars": 3,
@@ -6382,9 +6382,9 @@
       "forks": 1
     },
     {
-      "id": "LeslieWylie/dsh-ops-kit",
+      "id": "YaoleWu/dsh-ops-kit",
       "name": "dsh-ops-kit",
-      "url": "https://github.com/LeslieWylie/dsh-ops-kit",
+      "url": "https://github.com/YaoleWu/dsh-ops-kit",
       "description": {
         "zh": "证据优先的操作套件：六个只读工具（能力清单、分阶段编排计划、随包技能阅读、有上限的本地记忆检索、仓库发布审计、发布清单）加五个随包技能；只规划与审计，不做远程写入。",
         "en": "Evidence-first operating kit: six read-only tools (capability catalog, staged workflow plans, packaged skill reader, bounded local memory search, repository release audit, release checklist) and five packaged skills - plans and audits, never remote writes."
@@ -6398,16 +6398,16 @@
         "evidence",
         "multi-agent"
       ],
-      "install": "dsh plugin --profile web add github:LeslieWylie/dsh-ops-kit",
+      "install": "dsh plugin --profile web add github:YaoleWu/dsh-ops-kit",
       "icon": "https://avatars.githubusercontent.com/u/112309453?u=8a9acd73794ab682859fd610bec129026470b68a&v=4",
       "added": "2026-08-14",
       "stars": 3,
       "forks": 0
     },
     {
-      "id": "LeslieWylie/dsh-task-relay",
+      "id": "YaoleWu/dsh-task-relay",
       "name": "dsh-task-relay",
-      "url": "https://github.com/LeslieWylie/dsh-task-relay",
+      "url": "https://github.com/YaoleWu/dsh-task-relay",
       "description": {
         "zh": "跨会话任务队列与交接摘要：会话与子 agent 在共享的文件队列上投递、认领、完成、取消任务，并留下交接摘要供后续会话查看。",
         "en": "Cross-session task queue with handoff notes: sessions and subagents push, claim, complete and cancel tasks on a shared file-backed queue, and leave a handoff summary for whoever picks up next."
@@ -6420,7 +6420,7 @@
         "dsh-plugin",
         "multi-agent"
       ],
-      "install": "dsh plugin --profile web add github:LeslieWylie/dsh-task-relay",
+      "install": "dsh plugin --profile web add github:YaoleWu/dsh-task-relay",
       "icon": "https://avatars.githubusercontent.com/u/112309453?u=8a9acd73794ab682859fd610bec129026470b68a&v=4",
       "added": "2026-08-14",
       "stars": 3,
@@ -7966,9 +7966,9 @@
       "forks": 0
     },
     {
-      "id": "chinaRXQ/dsh-wallpaper",
+      "id": "RexCue/dsh-wallpaper",
       "name": "dsh-wallpaper",
-      "url": "https://github.com/chinaRXQ/dsh-wallpaper",
+      "url": "https://github.com/RexCue/dsh-wallpaper",
       "description": {
         "zh": "DSH Web 壁纸皮肤：图片背景，可调透明度、压暗遮罩与模糊。",
         "en": "Wallpaper skin for the DSH Web UI: image background with opacity, mask and blur controls."
@@ -7977,7 +7977,7 @@
       "topics": [
         "dsh-plugin"
       ],
-      "install": "dsh plugin --profile web add github:chinaRXQ/dsh-wallpaper",
+      "install": "dsh plugin --profile web add github:RexCue/dsh-wallpaper",
       "icon": "https://avatars.githubusercontent.com/u/30915815?u=9c1088495d03addb6e951c8fe3a96248aa36747b&v=4",
       "added": "2026-08-15",
       "stars": 2,
@@ -8692,9 +8692,9 @@
       "forks": 0
     },
     {
-      "id": "LeslieWylie/dsh-md-preview",
+      "id": "YaoleWu/dsh-md-preview",
       "name": "dsh-md-preview",
-      "url": "https://github.com/LeslieWylie/dsh-md-preview",
+      "url": "https://github.com/YaoleWu/dsh-md-preview",
       "description": {
         "zh": "把 Markdown 渲染为自包含的独立 HTML 页面：提供在 headless 配置下同样可用的 `md_html_render` 工具，以及在网页端浏览、预览、编辑并导出本地 `.md` 文件的抽屉；两个入口共用同一个渲染器，无运行时依赖。",
         "en": "Render Markdown to a standalone, self-contained HTML page: an `md_html_render` tool that works in a headless profile, plus a web drawer to browse, preview, edit and export local `.md` files; both share one renderer, with no runtime dependencies."
@@ -8710,7 +8710,7 @@
         "html-export",
         "markdown-to-html"
       ],
-      "install": "dsh plugin --profile web add github:LeslieWylie/dsh-md-preview",
+      "install": "dsh plugin --profile web add github:YaoleWu/dsh-md-preview",
       "icon": "https://avatars.githubusercontent.com/u/112309453?u=8a9acd73794ab682859fd610bec129026470b68a&v=4",
       "added": "2026-08-14",
       "stars": 2,
@@ -11246,9 +11246,9 @@
       "forks": 0
     },
     {
-      "id": "keyiadiannao/dsh-restart-button",
-      "name": "dsh-restart-button",
-      "url": "https://github.com/keyiadiannao/dsh-restart-button",
+      "id": "keyiadiannao/dsh-power-button",
+      "name": "dsh-power-button",
+      "url": "https://github.com/keyiadiannao/dsh-power-button",
       "description": {
         "zh": "一个小而自洽的 DSH 电源控制插件：侧边栏电源按钮 + 上拉「重启/关机」菜单 + Windows 关机风格过渡遮罩。自带重启/关机引擎（不依赖其它插件），动态端口适配。",
         "en": "A small self-contained power control for DSH: sidebar power button with an upward restart/shutdown menu and a Windows-shutdown-style overlay. Own restart & shutdown engine (no dependency on other plugins), dynamic-port aware."
@@ -11264,7 +11264,7 @@
         "restart",
         "shutdown"
       ],
-      "install": "dsh plugin --profile web add github:keyiadiannao/dsh-restart-button",
+      "install": "dsh plugin --profile web add github:keyiadiannao/dsh-power-button",
       "icon": "https://avatars.githubusercontent.com/u/237368748?u=02f2343864cb78a6e02d1ef3529b3d966bd58ed7&v=4",
       "added": "2026-08-15",
       "stars": 1,
@@ -11359,9 +11359,9 @@
       "forks": 0
     },
     {
-      "id": "LeslieWylie/dsh-fleet-audit",
+      "id": "YaoleWu/dsh-fleet-audit",
       "name": "dsh-fleet-audit",
-      "url": "https://github.com/LeslieWylie/dsh-fleet-audit",
+      "url": "https://github.com/YaoleWu/dsh-fleet-audit",
       "description": {
         "zh": "只读的 agent 机群凭据卫生审计：检查凭据文件权限、git remote 内嵌凭据（输出脱敏）与 provider token 字面量计数；零依赖、确定性。",
         "en": "Read-only agent-fleet credential hygiene audit: credential-file permissions, embedded credentials in git remotes (masked in output), and provider token literal counts; zero-dependency and deterministic."
@@ -11373,16 +11373,16 @@
         "dsh-plugin",
         "security"
       ],
-      "install": "dsh plugin --profile web add github:LeslieWylie/dsh-fleet-audit",
+      "install": "dsh plugin --profile web add github:YaoleWu/dsh-fleet-audit",
       "icon": "https://avatars.githubusercontent.com/u/112309453?u=8a9acd73794ab682859fd610bec129026470b68a&v=4",
       "added": "2026-08-14",
       "stars": 1,
       "forks": 0
     },
     {
-      "id": "LeslieWylie/dsh-session-search-pro",
+      "id": "YaoleWu/dsh-session-search-pro",
       "name": "dsh-session-search-pro",
-      "url": "https://github.com/LeslieWylie/dsh-session-search-pro",
+      "url": "https://github.com/YaoleWu/dsh-session-search-pro",
       "description": {
         "zh": "通过 harness 自带的 `sessionQuery` 服务搜索、列出、读取历史与当前会话：部署启用了 SQLite FTS5 索引时走索引，未启用时回退到有上限的倒序扫描。",
         "en": "Search, list and read past and current sessions through the harness's own `sessionQuery` service: uses the SQLite FTS5 index where a deployment enables it, and falls back to a bounded newest-first scan where it does not."
@@ -11394,7 +11394,7 @@
         "dsh-plugin",
         "session-search"
       ],
-      "install": "dsh plugin --profile web add github:LeslieWylie/dsh-session-search-pro",
+      "install": "dsh plugin --profile web add github:YaoleWu/dsh-session-search-pro",
       "icon": "https://avatars.githubusercontent.com/u/112309453?u=8a9acd73794ab682859fd610bec129026470b68a&v=4",
       "added": "2026-08-14",
       "stars": 1,
@@ -13154,9 +13154,9 @@
       "forks": 0
     },
     {
-      "id": "akqwpeter-prog/dsh-agent-conductor",
+      "id": "MJorgin/dsh-agent-conductor",
       "name": "dsh-agent-conductor",
-      "url": "https://github.com/akqwpeter-prog/dsh-agent-conductor",
+      "url": "https://github.com/MJorgin/dsh-agent-conductor",
       "description": {
         "zh": "在 DSH 里派活给 11 种外部 agent CLI（Codex、Claude Code、TraeCode、OpenCode、Gemini、Cursor、Kimi、Qwen、Copilot、WorkBuddy、Grok）：host-only bundle 注册 conductor_dispatch 工具，附自动触发的指挥家技能。",
         "en": "Dispatch self-contained tasks from DSH to 11 external agent CLIs (Codex, Claude Code, TraeCode, OpenCode, Gemini, Cursor, Kimi, Qwen, Copilot, WorkBuddy, Grok): a host-only bundle registering the conductor_dispatch tool plus an auto-triggered conductor skill."
@@ -13171,7 +13171,7 @@
         "multica",
         "task-board"
       ],
-      "install": "dsh plugin --profile web add github:akqwpeter-prog/dsh-agent-conductor",
+      "install": "dsh plugin --profile web add github:MJorgin/dsh-agent-conductor",
       "icon": "https://avatars.githubusercontent.com/u/227324225?v=4",
       "added": "2026-08-15",
       "stars": 0,
@@ -16356,9 +16356,9 @@
       "forks": 0
     },
     {
-      "id": "zylzyqzz/dsh-mobile-pwa",
-      "name": "dsh-mobile-pwa",
-      "url": "https://github.com/zylzyqzz/dsh-mobile-pwa",
+      "id": "zylzyqzz/dsbot",
+      "name": "dsbot",
+      "url": "https://github.com/zylzyqzz/dsbot",
       "description": {
         "zh": "基于 dsh-mobile-gate 的完整移动端 PWA：安全远程访问网关 + 可安装到主屏（manifest + service worker）+ 离线可用 + 触屏手势（下拉刷新/边缘返弹/捏合缩放字体）+ agent 完成推送 + 触屏优先布局，桌面零影响。",
         "en": "Complete mobile PWA for DSH, built on dsh-mobile-gate: secure remote-access gateway plus install-to-homescreen (manifest + service worker), offline capability, touch gestures (pull-to-refresh, edge-swipe back, pinch-zoom font), agent-done push notifications, and touch-first layout — desktop unaffected."
@@ -16373,7 +16373,7 @@
         "mobile",
         "pwa"
       ],
-      "install": "dsh plugin --profile web add github:zylzyqzz/dsh-mobile-pwa",
+      "install": "dsh plugin --profile web add github:zylzyqzz/dsbot",
       "icon": "https://avatars.githubusercontent.com/u/222138685?v=4",
       "added": "2026-08-15",
       "stars": 0,
