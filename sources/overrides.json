@@ -70,6 +70,12 @@
     "zhishengplus/dsh-project-bookshelf": {
       "name": "Project Bookshelf",
       "origin": "issue"
+    },
+    "wnluo/dsh-mobile-plugin": {
+      "description": {
+        "zh": "DeepSeek Harness 手机端：用手机远程接着聊、审批并管理电脑上的会话，支持中转隧道与局域网配对。注意：默认开启自动更新，约每 2 分钟从 npm 安装最新版且不经确认，目录固定的提交不约束实际运行的版本；默认公用中转（wnluo.com）由作者运营。尚未通过人工收录审核（#111）。",
+        "en": "DeepSeek Harness mobile companion: continue chats, approve actions and manage desktop sessions from a phone, via a relay tunnel or LAN pairing. Note: auto-update is on by default and installs the latest npm release about every 2 minutes without confirmation, so the pinned commit does not bound the running version; the default public relay (wnluo.com) is operated by the author. Not yet approved in manual review (#111)."
+      }
     }
   }
 }

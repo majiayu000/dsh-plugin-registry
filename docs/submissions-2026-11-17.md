@@ -27,3 +27,12 @@
 - Project Bookshelf 只调用宿主的工作区、会话、右键菜单与目录选择接口，没有网络请求。它默认替换工作区视图，可以切回原版；封面设置保存在浏览器 localStorage。移除项目需要确认，调用宿主 `workspaces.delete`。本次没有在界面中操作重命名、移除或封面编辑，作者只报告过 Windows 测试，macOS/Linux 界面行为未验证。
 
 `verification.installation` 保持 `not_tested`：此次检查覆盖固定来源、安装、配置组合与启动，不代表完整界面、全部业务行为或跨平台验收，也不是安全认证。
+
+## 2026-11-19 补记：#111 自动发现条目的简介披露
+
+#111（WNLUO/dsh-mobile-plugin）未通过人工收录，修改意见已回复在申请下。它仍以 `manifest_verified` 自动发现条目留在列表中；治理规则只对恶意、误收录、教程或重复项目使用 `sources/blocklist.json`，本条不符合，因此不屏蔽，改用 `sources/overrides.json` 覆盖简介，写明两项在 `6c42f5f` 上核对过的默认行为：
+
+- 自动更新默认开启：`lib/shell/updater.js` 的 `autoUpdateEnabled()` 在开关文件不存在时返回 true，`AUTO_INTERVAL_MS = 2 * 60 * 1000`，安装时带 `--config.minimum-release-age=0`（见上游 `test/update-install.test.cjs`）。目录固定的提交因此不约束实际运行版本。
+- 默认公用中转 `ai-hub-de-1.wnluo.com` 由作者运营（见上游 `test/public-relay-policy.test.cjs`）。
+
+作者按意见修改并重新提交后，删除这条覆盖并重新审核。
