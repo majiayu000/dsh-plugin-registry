@@ -16639,6 +16639,32 @@
       "install": "dsh plugin --profile web add @remem-ai/dsh-remem@0.1.0",
       "icon": "https://github.com/majiayu000.png?size=96",
       "added": "2026-11-07"
+    },
+    {
+      "id": "champeil/deep_search_agent",
+      "name": "deep_search_agent",
+      "url": "https://github.com/champeil/deep_search_agent",
+      "description": {
+        "zh": "用当前宿主模型做多领域深度研究：来源规划、全文优先阅读、证据与引用审阅，生成带引用报告。启动本机 Python 3.11+ MCP 服务，在 ~/.local/share/deep-research-agent 保存配置与研究记录；检索时联网访问学术接口、所选搜索服务及来源网页，可选搜索 API Key 写入本地 research.env。需 DSH 0.2.2-rc.1 及以上 0.2.x、Node.js 24.9+，固定审核提交 c85cfb8。",
+        "en": "Multi-domain deep research with the current host model: source planning, full-text-first reading, evidence and citation review, and cited reports. Starts a local Python 3.11+ MCP server and keeps settings and research runs in ~/.local/share/deep-research-agent. Research contacts scholarly APIs, the selected search providers and source pages; optional search API keys live in a local research.env. Requires DSH 0.2.2-rc.1 or later 0.2.x and Node.js 24.9+; pinned to reviewed commit c85cfb8."
+      },
+      "category": "skill",
+      "install": "dsh plugin --profile web add https://github.com/champeil/deep_search_agent/archive/c85cfb869048f1ae3b214685fd48c738d5e2dfc5.tar.gz",
+      "icon": "https://github.com/champeil.png?size=96",
+      "added": "2026-11-17"
+    },
+    {
+      "id": "zhishengplus/dsh-project-bookshelf",
+      "name": "dsh-project-bookshelf",
+      "url": "https://github.com/zhishengplus/dsh-project-bookshelf",
+      "description": {
+        "zh": "把已有项目显示为书封、会话显示为章节，默认替换工作区视图并可切回原版；含实时工作/等待计数、封面设置和项目右键菜单（重命名、设置、在文件夹中显示、经确认后移除工作区）。封面设置保存在浏览器本地，不联网。需 DSH 0.2.2-rc.3 及以上 0.2.x，固定 v1.1.4 Release 包。",
+        "en": "Shows existing projects as book covers and conversations as chapters, replacing the workspace view by default with a switch back to the original. Includes live working/waiting counts, cover settings and project context menus (rename, settings, reveal in folder, confirmed workspace removal). Cover settings stay in browser storage; no network calls. Requires DSH 0.2.2-rc.3 or later 0.2.x; pinned v1.1.4 Release package."
+      },
+      "category": "session",
+      "install": "dsh plugin --profile web add https://github.com/zhishengplus/dsh-project-bookshelf/releases/download/v1.1.4/dsh-project-bookshelf-1.1.4.tgz",
+      "icon": "https://github.com/zhishengplus.png?size=96",
+      "added": "2026-11-17"
     }
   ]
 }
