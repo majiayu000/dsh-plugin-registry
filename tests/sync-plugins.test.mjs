@@ -31,7 +31,8 @@ test('a corrupt previous snapshot refuses to disable the health gate silently', 
   })
 })
 
-async function syncFixture(t, { count = 400, bundle = false, curatedDirectory = '', authenticated = true, unrelated = [] } = {}) {
+async function syncFixture(t, { count = 400, bundle = false, curatedDirectory = '', curatedInstall = 'github:acme/dsh-plugin-0',
+  authenticated = true, unrelated = [] } = {}) {
   const root = await mkdtemp(join(tmpdir(), 'hr-sync-partial-'))
   t.after(() => rm(root, { recursive: true, force: true }))
   await mkdir(join(root, 'sources'))
@@ -39,7 +40,7 @@ async function syncFixture(t, { count = 400, bundle = false, curatedDirectory = 
     id: 'acme/dsh-plugin-0', name: 'dsh-plugin-0', owner: 'acme',
     url: 'https://github.com/acme/dsh-plugin-0', category: 'tools',
     description: { en: 'DeepSeek Harness plugin' },
-    install: 'dsh plugin --profile web add github:acme/dsh-plugin-0',
+    install: 'dsh plugin --profile web add ' + curatedInstall,
   }
   if (curatedDirectory) {
     curated.id += '#sample'
@@ -183,6 +184,14 @@ test('curated metadata retains its requested key when GitHub resolves a renamed 
   const curated = result.document.plugins.find(plugin => plugin.id === 'acme/dsh-plugin-0')
   assert.equal(curated.stars, 41)
   assert.equal(curated.pushedAt, '2026-09-01T00:00:00Z')
+  assert.equal(result.document.plugins.some(plugin => plugin.id === 'new-owner/moved'), false)
+})
+
+test('a curated npm install does not suppress the renamed repository Git install', async t => {
+  const fixture = await syncFixture(t, { count: 3, curatedInstall: 'dsh-fixture-plugin' })
+  const result = await fixture.sync({ renamedCurated: true })
+  assert.match(result.document.plugins.find(plugin => plugin.id === 'acme/dsh-plugin-0').install, /dsh-fixture-plugin$/)
+  assert.match(result.document.plugins.find(plugin => plugin.id === 'new-owner/moved').install, /github:new-owner\/moved#/)
 })
 
 test('a renamed archived curated repository cannot remain published under its old slug', async t => {
