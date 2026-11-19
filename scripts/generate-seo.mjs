@@ -1,7 +1,7 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises'
 import { readFileSync } from 'node:fs'
 import { createHash, randomUUID } from 'node:crypto'
-import { join, resolve } from 'node:path'
+import { join, relative, resolve, sep } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { pluginRoute, pluginShardFilename } from '../assets/plugin-route.js'
 import { computeRankingScore } from '../assets/registry-ranking.js'
@@ -45,6 +45,23 @@ export function createDeploymentRegistry(registry) {
         .filter(field => plugin[field] !== undefined)
         .map(field => [field, plugin[field]]),
     )),
+  }
+}
+
+// wrangler aborts the whole upload when any single file is over the limit, and by
+// then the scheduled sync has already pushed its snapshot commit. Only
+// data/plugins.json has a projection to fall back to; the native index, browse
+// snapshot, shards and sitemap grow with the registry too.
+async function assertPagesFileSizes(distDir) {
+  const oversized = []
+  for (const entry of await readdir(distDir, { recursive: true, withFileTypes: true })) {
+    if (!entry.isFile()) continue
+    const path = join(entry.parentPath, entry.name)
+    const { size } = await stat(path)
+    if (size > PAGES_MAX_FILE_BYTES) oversized.push(`${relative(distDir, path).split(sep).join('/')} is ${size} bytes`)
+  }
+  if (oversized.length) {
+    throw new Error(`${oversized.join('; ')}; Cloudflare Pages allows at most ${PAGES_MAX_FILE_BYTES} bytes per file.`)
   }
 }
 
@@ -141,10 +158,19 @@ export async function generateSeoFiles({
     registryText = serializeRegistrySnapshot(createDeploymentRegistry(registry))
     console.warn(`data/plugins.json exceeded ${PAGES_MAX_FILE_BYTES} bytes; deployed the ${Buffer.byteLength(registryText, 'utf8')}-byte schema-contract projection. Complete data remains in the canonical snapshot, browse snapshot, and detail shards.`)
   }
+  // Vite copies the formatted native index verbatim. As with the registry
+  // snapshot, keep the git copy readable and compact only the deployment copy.
+  const indexPath = join(distDir, 'data', 'plugin-index.json')
+  const indexSource = await readFile(indexPath, 'utf8').catch(error => {
+    if (error.code === 'ENOENT') return null
+    throw error
+  })
+  const indexText = indexSource === null ? null : JSON.stringify(JSON.parse(indexSource))
   const urls = STATIC_PAGES.map(({ path }) => ({ loc: new URL(path, homepage).href, lastmod: registry.generatedAt }))
   const browseSnapshot = createBrowseSnapshot(registry)
   await mkdir(join(distDir, 'data'), { recursive: true })
   await writeFile(join(distDir, 'data', 'plugins.json'), registryText)
+  if (indexText !== null) await writeFile(indexPath, indexText)
   await writeFile(join(distDir, 'data', browseSnapshot.filename), browseSnapshot.text)
 
   const peersByCategory = new Map()
@@ -207,6 +233,7 @@ export async function generateSeoFiles({
     writeFile(join(distDir, 'sitemap.xml'), sitemap),
     writeFile(join(distDir, 'robots.txt'), `User-agent: *\nAllow: /\nSitemap: ${new URL('sitemap.xml', homepage).href}\n`),
   ])
+  await assertPagesFileSizes(distDir)
   // Publish the cache version only after all files for this build are ready.
   await writeFile(join(distDir, 'data', 'detail-build.json'), JSON.stringify({ version: randomUUID() }))
   console.log(`SEO pages generated: ${registry.plugins.length} plugin URLs, 256 detail shards, ${staticPageCount} static pages, ${browseSnapshot.filename}, and sitemap.xml.`)

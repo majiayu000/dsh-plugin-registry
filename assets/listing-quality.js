@@ -31,6 +31,11 @@ function duplicateKeys(plugin) {
   return keys
 }
 
+// 条目所属仓库：id 中 # 之前的部分（浏览快照不带 url 字段）。
+function repositoryOf(plugin) {
+  return String(plugin.id || '').split('#')[0].toLowerCase()
+}
+
 // 重复组内保留信号最强的一条：豁免条目 > Stars > 有 Release > Forks > id 字典序。
 function compareCanonical(a, b) {
   return Number(exempt(b)) - Number(exempt(a))
@@ -66,10 +71,16 @@ export function classifyLowSignal(plugins, config = LISTING_QUALITY_CONFIG) {
     if (exempt(plugin) || adopted(plugin)) continue
     if (ownerCounts.get(String(plugin.owner || '').toLowerCase()) >= config.bulkPublisherMinListings) flag(plugin, LOW_SIGNAL_REASONS.bulkPublisher)
   }
-  for (const group of groups.values()) {
+  for (const [key, group] of groups) {
     if (group.length < 2) continue
-    const [, ...copies] = [...group].sort(compareCanonical)
-    for (const plugin of copies) if (!exempt(plugin)) flag(plugin, LOW_SIGNAL_REASONS.duplicate)
+    const [canonical, ...copies] = [...group].sort(compareCanonical)
+    for (const plugin of copies) {
+      if (exempt(plugin)) continue
+      // verifiedCommit 是仓库 HEAD：同一仓库用 dsh.bundles 声明的多个插件天然共享它，
+      // 是不同的插件而不是改名或镜像，只有其他仓库的同提交条目才算重复。
+      if (key.startsWith('commit:') && repositoryOf(plugin) === repositoryOf(canonical)) continue
+      flag(plugin, LOW_SIGNAL_REASONS.duplicate)
+    }
   }
   return reasons
 }
