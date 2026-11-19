@@ -167,6 +167,8 @@ test('partial repository metadata preserves resolved plugins and hides an unreso
   const fixture = await syncFixture(t)
   await fixture.sync()
   const result = await fixture.sync({ partialmetadata: ['acme/dsh-plugin-0'] })
+  assert.match(result.stderr, /^Curated entries withheld from public output: 1$/m)
+  assert.doesNotMatch(result.stderr, /acme\/dsh-plugin-0/)
   assert.equal(result.document.plugins.length, 399)
   assert.ok(result.document.plugins.some(plugin => plugin.id === 'acme/dsh-plugin-1'))
   assert.equal(result.document.plugins.some(plugin => plugin.id === 'acme/dsh-plugin-0'), false)

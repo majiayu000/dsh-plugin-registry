@@ -423,6 +423,10 @@ async function main() {
     return hydrated ? [hydrated] : []
   })
   console.log(`Repository metadata: ${hydratedRepositories.size}/${repositoryKeys.length} roots resolved.`)
+  const withheldCuratedCount = curatedRegistry.plugins.filter(plugin => nonPublicKeys.has(repositoryKey(plugin))).length
+  if (withheldCuratedCount) {
+    console.warn(`Curated entries withheld from public output: ${withheldCuratedCount}`)
+  }
   const uniqueRepositories = [...new Map(repositories.map(repo => [repo.full_name.toLowerCase(), repo])).values()]
     .filter(repo => !repo.archived && !repo.fork)
 
