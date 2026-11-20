@@ -95,7 +95,7 @@ test('dsh-TUI is classified as a client with confirmed manifest evidence', async
 })
 
 test('plugin details expose manifest, patch, and installation evidence', async ({ page }) => {
-  await page.goto('/plugin-detail.html?plugin=omdsh-dev%2Fdsh-at-file')
+  await page.goto('/plugin-detail.html?plugin=FSMargoo%2Fdsh-at-file')
   await expect(page.locator('#plugin-name')).toHaveText(/dsh-at-file/i)
   await expect(page.locator('#manifest-status')).not.toBeEmpty()
   await expect(page.locator('#patch-status')).not.toBeEmpty()
