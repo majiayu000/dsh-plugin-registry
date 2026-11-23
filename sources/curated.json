@@ -16704,6 +16704,19 @@
       "install": "dsh plugin --profile web add https://github.com/KaneGong/muse-frame/archive/7a19047e8c968ada024ff8c8ddc1bbf85ad1ea88.tar.gz",
       "icon": "https://github.com/KaneGong.png?size=96",
       "added": "2026-11-23"
+    },
+    {
+      "id": "shiyan688/dsh-note-to-learn",
+      "name": "dsh-note-to-learn",
+      "url": "https://github.com/shiyan688/dsh-note-to-learn",
+      "description": {
+        "zh": "Windows DeepSeek Harness Desktop 笔记本插件：把网页和 PDF 选中内容送进可编辑的对话草稿，Tab 接受追问建议，把选中的 AI 回复保存为工作区本地笔记；支持简体中文和英文。只有在你导入在线 PDF 链接时才联网。需 DSH 0.2.2-rc.1 及以上 0.2.x、Node.js 22.19+；作者只在 Windows Desktop 上验证过。固定 v0.1.3 Release 包。",
+        "en": "Notebook plugin for DeepSeek Harness Desktop on Windows: sends web and PDF selections into the editable conversation draft, suggests a follow-up you accept with Tab, and saves selected AI replies as workspace-local notes, in Simplified Chinese and English. Goes online only when you import an online PDF link. Requires DSH 0.2.2-rc.1 or later 0.2.x and Node.js 22.19+; the author has validated it only on Windows Desktop. Pinned v0.1.3 Release package."
+      },
+      "category": "workflow",
+      "install": "dsh plugin --profile web add https://github.com/shiyan688/dsh-note-to-learn/releases/download/v0.1.3/dsh-note-to-learn-0.1.3.tgz",
+      "icon": "https://github.com/shiyan688.png?size=96",
+      "added": "2026-11-23"
     }
   ]
 }

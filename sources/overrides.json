@@ -82,6 +82,13 @@
     "kanegong/muse-frame": {
       "name": "Muse Frame",
       "origin": "issue"
+    },
+    "shiyan688/dsh-note-to-learn": {
+      "name": "Note to Learn",
+      "origin": "issue"
+    },
+    "a86582751/dsh-nexttavern": {
+      "install": "dsh plugin --profile web add dsh-nexttavern@0.3.0-rc.1"
     }
   }
 }

@@ -28,3 +28,9 @@
   - 2026-11-19 加的“未通过人工收录”简介覆盖已经删除，改用精选条目自带的简介。
 - **#124**：`create_map` 会把地点数据 POST 到作者运营的公开服务，生成的地图公开可访问。草稿只在本地生成 JSON，不联网。本次没有调用这个服务。
 - **#138**：根目录的 `dsh.patch.yml` 只加载 `plugins/muse-frame/dsh.mjs`，这个模块只读取自带的 `SKILL.md`，没有网络请求。桌面工作室和生图流程不在插件范围内，本次也没有验证。
+
+## 补记：#136 收录与 #134 安装来源
+
+- **#136 dsh-note-to-learn**：固定为 [`v0.1.3` Release 包](https://github.com/shiyan688/dsh-note-to-learn/releases/download/v0.1.3/dsh-note-to-learn-0.1.3.tgz)，源码提交 `59965e1b07abe6ec3d34cbc9cdb4562232675254`，SHA-256 为 `6c302820342740d669947c5abf2f7eade4833f4009d6cf619f936cc75c6a534f`，与 GitHub 资产摘要一致。仓库是 MIT 许可证，带 `dsh-plugin` Topic，`check:plugin` 检查通过。运行时只有在用户导入在线 PDF 链接时才联网，而且只接受 HTTPS、不带凭据。作者只在 Windows Desktop 上验证过。仓库 HEAD（`b250a15`）晚于 v0.1.3，这次没有审核那部分改动。
+- **#134 NextTavern**：申请人就是仓库作者。条目仍然来自自动发现，这次通过 `sources/overrides.json` 把安装命令改成官方 npm 版本 `dsh-nexttavern@0.3.0-rc.1`。这个 npm 包没有记录 `gitHead`，目录暂时无法把它和具体的源码提交对应起来。
+- 新记录经过 `normalizeCurated` / `applyGovernance` 处理后，`validateRegistry` 没有报契约错误；`npm test` 307 项通过。安装 smoke 没有做。
