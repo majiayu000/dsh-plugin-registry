@@ -16665,6 +16665,45 @@
       "install": "dsh plugin --profile web add https://github.com/zhishengplus/dsh-project-bookshelf/releases/download/v1.1.4/dsh-project-bookshelf-1.1.4.tgz",
       "icon": "https://github.com/zhishengplus.png?size=96",
       "added": "2026-11-17"
+    },
+    {
+      "id": "WNLUO/dsh-mobile-plugin",
+      "name": "dsh-mobile-plugin",
+      "url": "https://github.com/WNLUO/dsh-mobile-plugin",
+      "description": {
+        "zh": "DeepSeek Harness 手机端：用手机远程接着聊、审批并管理电脑上的会话，支持中转隧道与局域网配对；v2 会话端到端加密。注意：自动更新默认开启（可在面板关闭），约每 2 分钟从 npm 安装最新版且不经确认，插件更新本身不做签名校验，固定版本不约束实际运行版本；默认公用中转由作者运营，会话列表与工作区快照经中转；tailcat/p2p 原生助手需手动开启。审核版本 0.5.97。",
+        "en": "DeepSeek Harness mobile companion: continue chats, approve actions and manage desktop sessions from a phone via a relay tunnel or LAN pairing, with v2 end-to-end encrypted sessions. Note: auto-update is on by default (can be turned off in the panel) and installs the latest npm release about every 2 minutes without confirmation; plugin updates are not signature-checked, so the pinned version does not bound the running one. The default public relay is run by the author and carries session lists and workspace snapshots; the tailcat/p2p native helpers start only when enabled. Reviewed version 0.5.97."
+      },
+      "category": "client",
+      "install": "dsh plugin --profile web add dsh-mobile-plugin@0.5.97",
+      "icon": "https://github.com/WNLUO.png?size=96",
+      "added": "2026-11-23"
+    },
+    {
+      "id": "junyisunme/dsh-plugin-my-earth",
+      "name": "dsh-plugin-my-earth",
+      "url": "https://github.com/junyisunme/dsh-plugin-my-earth",
+      "description": {
+        "zh": "把地点清单、榜单或旅行笔记做成可互动的地球地图，返回分享链接和 PNG 封面。只有明确要求发布时才调用 create_map，把地点数据 POST 到作者运营的公开服务 me-interest-globe.netlify.app，生成的地图公开可访问；草稿只在本地生成 JSON，不联网。公开测试版，固定 v0.1.2 审核提交。",
+        "en": "Turns place lists, rankings or travel notes into an interactive globe map with a share link and PNG cover. create_map runs only when publishing is explicitly requested and POSTs the place data to the author's public service me-interest-globe.netlify.app; the resulting map is publicly reachable. Drafts are local JSON with no network calls. Public beta, pinned to the reviewed v0.1.2 commit."
+      },
+      "category": "tools",
+      "install": "dsh plugin --profile web add https://github.com/junyisunme/dsh-plugin-my-earth/archive/d00c838876191ae6eb3e33e61104c4c38ed6e95a.tar.gz",
+      "icon": "https://github.com/junyisunme.png?size=96",
+      "added": "2026-11-23"
+    },
+    {
+      "id": "KaneGong/muse-frame",
+      "name": "muse-frame",
+      "url": "https://github.com/KaneGong/muse-frame",
+      "description": {
+        "zh": "为摄影师规划 1–12 张人像系列：注册可由模型调用的 shot-planner 技能，输出有序镜头清单和 muse-frame.plan/v1 JSON，用户审阅后导入 Muse Frame 桌面工作室。插件只读取自带的技能文件，不联网、不需要凭据、不提交生图任务。AGPL-3.0，固定审核提交 7a19047。",
+        "en": "Plans a 1–12 shot portrait series for photographers: registers the model-invocable shot-planner skill, which returns an ordered shot list and a muse-frame.plan/v1 JSON plan for the user to review and import into the Muse Frame desktop studio. The plugin only reads its bundled skill file: no network calls, credentials or image jobs. AGPL-3.0, pinned to reviewed commit 7a19047."
+      },
+      "category": "skill",
+      "install": "dsh plugin --profile web add https://github.com/KaneGong/muse-frame/archive/7a19047e8c968ada024ff8c8ddc1bbf85ad1ea88.tar.gz",
+      "icon": "https://github.com/KaneGong.png?size=96",
+      "added": "2026-11-23"
     }
   ]
 }
