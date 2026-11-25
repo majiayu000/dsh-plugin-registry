@@ -16717,6 +16717,19 @@
       "install": "dsh plugin --profile web add https://github.com/shiyan688/dsh-note-to-learn/releases/download/v0.1.3/dsh-note-to-learn-0.1.3.tgz",
       "icon": "https://github.com/shiyan688.png?size=96",
       "added": "2026-11-23"
+    },
+    {
+      "id": "kbr19930409/kk-deep-factory",
+      "name": "kk-deep-factory",
+      "url": "https://github.com/kbr19930409/kk-deep-factory",
+      "description": {
+        "zh": "DeepSeek Harness Web 工厂插件，提供三维设备台账、OEE 分析和维修工单。启动本机 Python/SQLite 服务，聊天和工单默认存于当前配置档。内置适配器定时生成示例设备记录。AI 分析会把当前工单及相关设备记录交给宿主所选模型，创建工单需要确认。固定 v0.3.1 Release 包，要求 DSH >=0.2.2-alpha.2 <0.2.3-0、Node.js 24.9+ 和带 SQLite 的 Python 3.11+。",
+        "en": "DeepSeek Harness Web plugin for a 3D equipment register, OEE analysis and maintenance work orders. Starts a local Python/SQLite service, stores chats and work orders in the profile by default, and periodically generates sample equipment records. AI analysis sends the current case and relevant equipment records to the host-selected model. Work-order creation requires confirmation. Pinned v0.3.1 Release package. Requires DSH >=0.2.2-alpha.2 <0.2.3-0, Node.js 24.9+, and Python 3.11+ with SQLite."
+      },
+      "category": "tools",
+      "install": "dsh plugin --profile web add https://github.com/kbr19930409/kk-deep-factory/releases/download/v0.3.1/kk-deep-factory-0.3.1.tgz",
+      "icon": "https://github.com/kbr19930409.png?size=96",
+      "added": "2026-11-25"
     }
   ]
 }

@@ -89,6 +89,9 @@
     },
     "a86582751/dsh-nexttavern": {
       "install": "dsh plugin --profile web add dsh-nexttavern@0.3.0-rc.1"
+    },
+    "kbr19930409/kk-deep-factory": {
+      "origin": "issue"
     }
   }
 }
